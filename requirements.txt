@@ -1,0 +1,2 @@
+securesystemslib[crypto,pynacl]
+tuf
