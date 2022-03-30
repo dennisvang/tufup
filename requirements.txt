@@ -1,2 +1,3 @@
+packaging
 securesystemslib[crypto,pynacl]
 tuf
