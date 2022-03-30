@@ -1,3 +1,5 @@
+import pathlib
+
 from packaging.version import Version
 
 import tuf.ngclient
@@ -13,25 +15,6 @@ class Client(tuf.ngclient.Updater):
         self.new_targets = {}
         self.downloaded_targets = {}
 
-    @property
-    def new_patches(self):
-        return dict(
-            item for item in self.new_targets.items()
-            if TargetPath(item[0]).is_patch
-        )
-
-    @property
-    def new_archives(self):
-        return dict(
-            item for item in self.new_targets.items()
-            if TargetPath(item[0]).is_archive
-        )
-
-    @property
-    def new_target_paths_sorted(self):
-        """Returns target_path values sorted by filename version"""
-        return sorted(self.new_targets.keys(), key=lambda k: TargetPath(k))
-
     def update(self, ):
         if self._check_updates() and self._download_updates():
             self._apply_updates()
@@ -40,36 +23,33 @@ class Client(tuf.ngclient.Updater):
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         self.refresh()
         # check for new updates
-        trusted_targets = self._trusted_set.targets.signed.targets
-        trusted_target_paths = [
-            TargetPath(target_path=key) for key in trusted_targets.keys()
-        ]
-        new_target_paths = [
-            target_path for target_path in trusted_target_paths
-            if target_path.name == self.target_name
-            and target_path.version > self.current_version
-        ]
-        # determine size of patch update and full update
-        latest_archive_path = sorted(
-            target_path for target_path in new_target_paths if target_path.is_archive
-        )[-1]
-        latest_archive_size = trusted_targets[str(latest_archive_path)].get('length')
+        trusted_targets = dict(  # replace str keys by TargetPath instances
+            (TargetPath(target_path=key), value)
+            for key, value in self._trusted_set.targets.signed.targets.items()
+        )
+        new_targets = dict(
+            item for item in trusted_targets.items()
+            if item[0].name == self.target_name
+            and item[0].version > self.current_version
+        )
+        new_archives = dict(item for item in new_targets.items() if item[0].is_archive)
+        new_patches = dict(item for item in new_targets.items() if item[0].is_patch)
+        # determine size of patch update and archive update
+        latest_archive_path, latest_archive_file = sorted(new_archives.items())[-1]
+        latest_archive_size = latest_archive_file.get('length')
         total_patch_size = sum(
-            trusted_targets[str(target_path)].get('length')
-            for target_path in new_target_paths
-            if target_path.is_patch
+            target_file.get('length') for target_file in new_patches.values()
         )
         # decide if we want to do a patch update or full update
-        self.new_targets = [str(latest_archive_path)]
-        if total_patch_size < latest_archive_size:
-            self.new_targets = [
-                str(target_path) for target_path in new_target_paths
-                if target_path.is_patch
-            ]
+        self.new_targets = new_patches
+        if total_patch_size > latest_archive_size:
+            self.new_targets = {latest_archive_path: latest_archive_file}
         return len(self.new_targets) > 0
 
     def _download_updates(self) -> bool:
-        ...
+        for target_path, target_file in self.new_targets.items():
+            local_path_str = self.download_target(targetinfo=target_file)
+            self.downloaded_targets[target_path] = pathlib.Path(local_path_str)
         return len(self.downloaded_targets) > 0
 
     def _apply_updates(self):
