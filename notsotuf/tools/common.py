@@ -19,13 +19,13 @@ class TargetPath(object):
     def __init__(self, target_path: str):
         super().__init__()
         self.target_path_str = target_path  # keep the original for reference
-        self.target_path = pathlib.Path(target_path)
+        self.path = pathlib.Path(target_path)
 
     def __str__(self):
         return self.target_path_str
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(target_path="{self.target_path}")'
+        return f'{self.__class__.__name__}(target_path="{self.target_path_str}")'
 
     def __hash__(self):
         """
@@ -49,7 +49,7 @@ class TargetPath(object):
 
     @property
     def filename(self):
-        return self.target_path.name
+        return self.path.name
 
     @property
     def name(self) -> Optional[str]:

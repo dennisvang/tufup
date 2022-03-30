@@ -1,17 +1,14 @@
 import pathlib
 
-from packaging.version import Version
-
 import tuf.ngclient
 
 from notsotuf.tools.common import TargetPath
 
 
 class Client(tuf.ngclient.Updater):
-    def __init__(self, target_name: str, current_version: str, *args, **kwargs):
+    def __init__(self, current_archive_path: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.target_name = target_name
-        self.current_version = Version(current_version)
+        self.current_archive = TargetPath(current_archive_path)
         self.new_targets = {}
         self.downloaded_target_files = {}
 
@@ -29,8 +26,8 @@ class Client(tuf.ngclient.Updater):
         )
         all_new_targets = dict(
             item for item in trusted_targets.items()
-            if item[0].name == self.target_name
-            and item[0].version > self.current_version
+            if item[0].name == self.current_archive.name
+            and item[0].version > self.current_archive.version
         )
         # split new targets into patches and archives
         new_archives = dict(item for item in all_new_targets.items() if item[0].is_archive)
@@ -54,5 +51,5 @@ class Client(tuf.ngclient.Updater):
         return len(self.downloaded_target_files) == len(self.new_targets)
 
     def _apply_updates(self):
-        pass
+        ...
 
