@@ -38,9 +38,10 @@ class Client(tuf.ngclient.Updater):
         total_patch_size = sum(
             target_file.get('length') for target_file in new_patches.values()
         )
-        # use size to decide if we want to do a patch update or full update
+        # use size to decide if we want to do a patch update or full update (
+        # if there are not patches, do a full update)
         self.new_targets = new_patches
-        if total_patch_size > latest_archive_size:
+        if total_patch_size > latest_archive_size or total_patch_size == 0:
             self.new_targets = {latest_archive_path: latest_archive_file}
         return len(self.new_targets) > 0
 
