@@ -13,7 +13,7 @@ class Client(tuf.ngclient.Updater):
         self.target_name = target_name
         self.current_version = Version(current_version)
         self.new_targets = {}
-        self.downloaded_targets = {}
+        self.downloaded_target_files = {}
 
     def update(self, ):
         if self._check_updates() and self._download_updates():
@@ -22,25 +22,26 @@ class Client(tuf.ngclient.Updater):
     def _check_updates(self) -> bool:
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         self.refresh()
-        # check for new updates
+        # check for new target files
         trusted_targets = dict(  # replace str keys by TargetPath instances
             (TargetPath(target_path=key), value)
             for key, value in self._trusted_set.targets.signed.targets.items()
         )
-        new_targets = dict(
+        all_new_targets = dict(
             item for item in trusted_targets.items()
             if item[0].name == self.target_name
             and item[0].version > self.current_version
         )
-        new_archives = dict(item for item in new_targets.items() if item[0].is_archive)
-        new_patches = dict(item for item in new_targets.items() if item[0].is_patch)
+        # split new targets into patches and archives
+        new_archives = dict(item for item in all_new_targets.items() if item[0].is_archive)
+        new_patches = dict(item for item in all_new_targets.items() if item[0].is_patch)
         # determine size of patch update and archive update
         latest_archive_path, latest_archive_file = sorted(new_archives.items())[-1]
         latest_archive_size = latest_archive_file.get('length')
         total_patch_size = sum(
             target_file.get('length') for target_file in new_patches.values()
         )
-        # decide if we want to do a patch update or full update
+        # use size to decide if we want to do a patch update or full update
         self.new_targets = new_patches
         if total_patch_size > latest_archive_size:
             self.new_targets = {latest_archive_path: latest_archive_file}
@@ -49,8 +50,8 @@ class Client(tuf.ngclient.Updater):
     def _download_updates(self) -> bool:
         for target_path, target_file in self.new_targets.items():
             local_path_str = self.download_target(targetinfo=target_file)
-            self.downloaded_targets[target_path] = pathlib.Path(local_path_str)
-        return len(self.downloaded_targets) > 0
+            self.downloaded_target_files[target_path] = pathlib.Path(local_path_str)
+        return len(self.downloaded_target_files) == len(self.new_targets)
 
     def _apply_updates(self):
         pass
