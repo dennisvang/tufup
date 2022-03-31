@@ -13,7 +13,7 @@ SUFFIX_PATCH = '.patch'
 
 class TargetPath(object):
     filename_regex = re.compile(
-        r'^(?P<name>[\w -]+)-(?P<version>.+)(?P<suffix>\.gz|\.patch)$'
+        r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.gz|\.patch)$'
     )
 
     def __init__(self, target_path: str):

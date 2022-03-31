@@ -1,4 +1,7 @@
 import pathlib
+import shutil
+from tempfile import TemporaryDirectory
+from typing import Optional
 
 import tuf.ngclient
 
@@ -12,11 +15,21 @@ class Client(tuf.ngclient.Updater):
         self.new_targets = {}
         self.downloaded_target_files = {}
 
-    def update(self, ):
-        if self._check_updates() and self._download_updates():
+    def update(self, pre: Optional[str] = None):
+        """
+        Check, download, and apply updates.
+
+        Final releases are always included. Pre-releases are excluded by
+        default. If `pre` is specified, pre-releases are included, down to
+        the specified level. Pre-release identifiers follow the PEP440
+        specification, i.e. 'a', 'b', or 'rc', for alpha, beta, and release
+        candidate, respectively.
+        """
+        if self._check_updates(pre=pre) and self._download_updates():
             self._apply_updates()
 
-    def _check_updates(self) -> bool:
+    def _check_updates(self, pre: Optional[str]) -> bool:
+        included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         self.refresh()
         # check for new target files
@@ -27,6 +40,7 @@ class Client(tuf.ngclient.Updater):
         all_new_targets = dict(
             item for item in trusted_targets.items()
             if item[0].name == self.current_archive.name
+            and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
             and item[0].version > self.current_archive.version
         )
         # split new targets into patches and archives

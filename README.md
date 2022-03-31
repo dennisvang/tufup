@@ -28,17 +28,28 @@ See the [tuf docs][4] for more information.
 ## Archives and patches
 
 Notsotuf works with *archives* (gzipped PyInstaller bundles) and *patches* (binary differences between subsequent archives).
+Each archive, except the first one, must have a corresponding patch file.
 
-Archive files (and patch files) are named according to [PEP440][6] version specifications.
-Each archive (except the first one) has a corresponding patch file, with the matching filename but different extension (`.patch` vs `.gz`).
+Archive filenames and patch filenames follow the pattern
+
+`<name>-<version><suffix>` 
+
+where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.gz'` or `'.patch'`.
 
 Patches are typically smaller than archives, so the notsotuf client will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
 
+## How updates are applied
 
-## Migrating from PyUpdater
+Updates are applied by replacing all files in the current app installation path with files from the latest archive.
+The latest archive is either downloaded in full (as described above), or it is derived from the current archive by applying one or more downloaded patches.
+Once the latest archive is available, it is decompressed to a temporary location.
+From there, a script is started that clears the current app installation dir, and moves the new files into place.
+After starting the script, the currently running process will exit.
 
-If you have a working update framework built around PyUpdater, here's how you could migrate to `notsotuf`:
+## Migrating from other update frameworks
+
+Here's one way to migrate from another update framework, such as `pyupdater`, to `notsotuf`:
 
 1. Add `notsotuf` to your main application environment as a core dependency, and move `pyupdater` from core dependencies to development dependencies.
 2. Replace all `pyupdater` client code (and configuration) in your application by the `notsotuf` client.
