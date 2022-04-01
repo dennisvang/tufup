@@ -1,0 +1,5 @@
+# dirs
+__pycache__/
+keystore/
+
+# files
