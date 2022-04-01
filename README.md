@@ -1,10 +1,15 @@
 # notsotuf
 
-A simple software updater, built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
+A simple software updater for stand-alone Python applications, built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
 
-The `notsotuf` package was inspired by [PyUpdater][3].
+## Relation to PyUpdater
 
-A detailed discussion of the intricacies of TUF implementation can be found in [PEP458][5].
+The `notsotuf` package was inspired by [PyUpdater][3], and uses a general approach to updating that is directly based on PyUpdater's implementation.
+
+However, whereas PyUpdater implements a custom security mechanism to ensure authenticity (and integrity) of downloaded update files, `notsotuf` is built on top of the security mechanisms implemented in the [python-tuf][1] package.
+We entrust secure design to the security professionals, so that we can focus on high-level tools.
+
+A detailed discussion of the intricacies of TUF adoption can be found in [PEP458][5].
 
 ## Overview
 
@@ -39,7 +44,22 @@ where `name` is a short string that may contain alphanumeric characters, undersc
 Patches are typically smaller than archives, so the notsotuf client will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
 
-## How updates are applied
+## How updates are created (repo-side)
+
+When a new release of your application is ready, the following steps need to be taken to enable clients to update to that new release:
+
+1. Create an application archive for the new release (e.g. a zipped PyInstaller bundle).
+2. Create a patch from the current archive to the new archive.
+3. Add hashes for the newly created archive file and patch file to the `tuf` metadata.
+4. Sign the modified `tuf` metadata files.
+5. Upload the new target files, i.e. archive and patch, and the updated metadata files, to the update server.
+
+The signed metadata and hashes ensure both authenticity and integrity of the update files (see [tuf docs][2]).
+In order to sign the metadata, we need access to the private key files for the applicable `tuf` roles.
+
+The `notsotuf.tools.repo` module provides a convenient way to streamline the above procedure, based on the `tuf` [basic repo example][7].
+
+## How updates are applied (client-side)
 
 Updates are applied by replacing all files in the current app installation path with files from the latest archive.
 The latest archive is either downloaded in full (as described above), or it is derived from the current archive by applying one or more downloaded patches.
@@ -66,3 +86,4 @@ From here on, new updates will be deployed using `notsotuf`.
 [4]: https://theupdateframework.io/overview/#software-updates-101
 [5]: https://peps.python.org/pep-0458/
 [6]: https://peps.python.org/pep-0440/
+[7]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_example/basic_repo.py
