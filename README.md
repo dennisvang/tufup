@@ -1,13 +1,16 @@
 # notsotuf
 
-A simple software updater for stand-alone Python applications, built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
+A simple software updater for stand-alone Python *applications*, built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
 
-## Relation to PyUpdater
+## About
 
 The `notsotuf` package was inspired by [PyUpdater][3], and uses a general approach to updating that is directly based on PyUpdater's implementation.
 
-However, whereas PyUpdater implements a custom security mechanism to ensure authenticity (and integrity) of downloaded update files, `notsotuf` is built on top of the security mechanisms implemented in the [python-tuf][1] package.
-We entrust secure design to the security professionals, so that we can focus on high-level tools.
+However, whereas PyUpdater implements a *custom* security mechanism to ensure authenticity (and integrity) of downloaded update files, `notsotuf` is built on top of the security mechanisms implemented in the [python-tuf][1] package, a.k.a. `tuf`.
+By entrusting the design of security measures to the security professionals, `notsotuf` can focus on high-level tools.
+
+Although `tuf` supports highly complex security infrastructures, it also offers sufficient flexibility to allow application developers to tailor the security level to their use case.
+For details and best practices, refer to the [tuf docs][2].
 
 A detailed discussion of the intricacies of TUF adoption can be found in [PEP458][5].
 
