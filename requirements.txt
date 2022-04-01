@@ -1,3 +1,4 @@
+bsdiff4
 packaging
 securesystemslib[crypto,pynacl]
 tuf
