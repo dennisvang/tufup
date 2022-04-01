@@ -183,9 +183,25 @@ class Roles(object):
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer)
 
-    def persist(self):
+    def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
-        for role_name in [ROOT, TARGETS, SNAPSHOT, TIMESTAMP]:
-            role = getattr(self, role_name)
-            file_path = self.dir_path / (role.signed.type + SUFFIX_JSON)
-            role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
+        role = getattr(self, role_name)
+        file_path = self.dir_path / (role.signed.type + SUFFIX_JSON)
+        role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
+
+    def publish_updated_targets(self):
+        # based on python-tuf basic_repo.py
+
+        # targets content has changed, so increment version
+        self.targets.signed.version += 1
+        # update snapshot content and increment version
+        self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
+        self.snapshot.signed.version += 1
+        # update timestamp content and increment version
+        self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
+        self.timestamp.signed.version += 1
+        # sign the modified metadate files
+        for role_name in [TARGETS, SNAPSHOT, TIMESTAMP]:
+            private_key_path = ...  # todo
+            self.sign_role(role_name=role_name, private_key_path=private_key_path, encrypted=role_name == TARGETS)
+            self.persist_role(role_name=role_name)
