@@ -26,6 +26,12 @@ from tuf.api.serialization.json import JSONSerializer
 
 logger = logging.getLogger(__name__)
 
+"""
+
+https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_example/basic_repo.py
+
+"""
+
 # copied from python-tuf basic_repo.py
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 
@@ -55,6 +61,7 @@ FILENAME_TIMESTAMP = TIMESTAMP + SUFFIX_JSON
 
 class Keys(object):
     dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+    filename_pattern = '{role_name}_key'
     encrypted = [ROOT, TARGETS]
 
     def __init__(
@@ -77,11 +84,11 @@ class Keys(object):
             self.dir_path.mkdir(parents=True)
             # initialize keys for default top-level roles
             self._generate_and_write(role_names=DEFAULT_ROLE_NAMES, encrypted=encrypted)
-        # import keys from dir_path
-        self._import(role_names=DEFAULT_ROLE_NAMES)
+        # import public keys from dir_path
+        self._import_public(role_names=DEFAULT_ROLE_NAMES)
 
     def private_key_path(self, role_name: str) -> pathlib.Path:
-        return self.dir_path / f'{role_name}_key'
+        return self.dir_path / self.filename_pattern.format(role_name=role_name)
 
     def public_key_path(self, role_name: str) -> pathlib.Path:
         return self.private_key_path(role_name=role_name).with_suffix(SUFFIX_PUB)
@@ -100,6 +107,18 @@ class Keys(object):
             for role_name, ssl_key in vars(self).items()
         }
 
+    @classmethod
+    def find_private(cls, role_name: str, key_dirs: List[Union[pathlib.Path, str]]):
+        private_key_path = None
+        private_key_filename = cls.filename_pattern.format(role_name=role_name)
+        for key_dir in key_dirs:
+            key_dir = pathlib.Path(key_dir)  # ensure Path
+            for path in key_dir.iterdir():
+                if path.is_file() and path.name == private_key_filename:
+                    private_key_path = path
+                    break
+        return private_key_path
+
     def _generate_and_write(self, role_names: Iterable[str], encrypted: List[str]):
         # create keys for specified roles
         for role_name in role_names:
@@ -113,7 +132,7 @@ class Keys(object):
                 generate_and_write_unencrypted_ed25519_keypair(
                     filepath=str(private_key_path))
 
-    def _import(self, role_names: Iterable[str]):
+    def _import_public(self, role_names: Iterable[str]):
         for role_name in role_names:
             public_key_path = self.public_key_path(role_name)
             if public_key_path.exists():
@@ -124,6 +143,7 @@ class Keys(object):
 
 class Roles(object):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
+    encrypted = [ROOT, TARGETS]
 
     def __init__(self, keys: Keys, dir_path: Union[pathlib.Path, str, None] = None):
         if dir_path is not None:
@@ -162,7 +182,7 @@ class Roles(object):
             signatures={},
         )
 
-    def add_target(self, local_path: Union[pathlib.Path, str]):
+    def add_or_update_target(self, local_path: Union[pathlib.Path, str]):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
         target_url_path = '/'.join([DEFAULT_TARGETS_DIR_NAME, local_path.name])
@@ -189,10 +209,10 @@ class Roles(object):
         file_path = self.dir_path / (role.signed.type + SUFFIX_JSON)
         role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
-    def publish_updated_targets(self):
+    def publish_updated_targets(self, keys_dirs: List[Union[pathlib.Path, str]]):
         # based on python-tuf basic_repo.py
 
-        # targets content has changed, so increment version
+        # targets role has been updated, so we need to increment its version
         self.targets.signed.version += 1
         # update snapshot content and increment version
         self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
@@ -202,6 +222,6 @@ class Roles(object):
         self.timestamp.signed.version += 1
         # sign the modified metadate files
         for role_name in [TARGETS, SNAPSHOT, TIMESTAMP]:
-            private_key_path = ...  # todo
-            self.sign_role(role_name=role_name, private_key_path=private_key_path, encrypted=role_name == TARGETS)
+            private_key_path = Keys.find_private(role_name=role_name, key_dirs=keys_dirs)
+            self.sign_role(role_name=role_name, private_key_path=private_key_path, encrypted=role_name in self.encrypted)
             self.persist_role(role_name=role_name)
