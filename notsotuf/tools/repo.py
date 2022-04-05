@@ -12,6 +12,7 @@ from securesystemslib.interface import (
 from securesystemslib.signer import SSlibSigner
 from tuf.api.metadata import (
     SPECIFICATION_VERSION,
+    TOP_LEVEL_ROLE_NAMES,
     Key,
     Metadata,
     MetaFile,
@@ -32,6 +33,8 @@ https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_exam
 
 """
 
+__all__ = ['Keys', 'Roles', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON']
+
 # copied from python-tuf basic_repo.py
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 
@@ -46,7 +49,6 @@ ROOT = 'root'
 TARGETS = 'targets'
 SNAPSHOT = 'snapshot'
 TIMESTAMP = 'timestamp'
-DEFAULT_ROLE_NAMES = [ROOT, TARGETS, SNAPSHOT, TIMESTAMP]
 
 DEFAULT_KEYS_DIR_NAME = 'keystore'
 DEFAULT_META_DIR_NAME = 'metadata'
@@ -59,33 +61,67 @@ FILENAME_SNAPSHOT = SNAPSHOT + SUFFIX_JSON
 FILENAME_TIMESTAMP = TIMESTAMP + SUFFIX_JSON
 
 
-class Keys(object):
-    dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
-    filename_pattern = '{role_name}_key'
+class Base(object):
+    dir_path = pathlib.Path.cwd()
     encrypted = [ROOT, TARGETS]
+
+    def __init__(self, dir_path: Union[pathlib.Path, str], encrypted: List[str]):
+        if dir_path is not None:
+            self.__class__.dir_path = pathlib.Path(dir_path)
+        if encrypted is not None:
+            self.__class__.encrypted = encrypted
+        if not self.dir_path.exists():
+            if input(f'Create directory {self.dir_path}? [y]/n') in ['y', '']:
+                self.dir_path.mkdir(parents=True)
+                print(f'Directory created: {self.dir_path}')
+
+
+class Keys(Base):
+    dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+    encrypted = [ROOT, TARGETS]
+    filename_pattern = '{role_name}_key'
 
     def __init__(
             self,
             dir_path: Union[pathlib.Path, str, None] = None,
             encrypted: Optional[List[str]] = None,
     ):
-        if dir_path is not None:
-            Keys.dir_path = pathlib.Path(dir_path)
-        if encrypted is not None:
-            Keys.encrypted = encrypted
+        super().__init__(dir_path=dir_path, encrypted=encrypted)
         # default roles
         self.root: Optional[Dict[str, Any]] = None
         self.targets: Optional[Dict[str, Any]] = None
         self.snapshot: Optional[Dict[str, Any]] = None
         self.timestamp: Optional[Dict[str, Any]] = None
-        # initialize if necessary
-        if not self.dir_path.exists():
-            # create dir path
-            self.dir_path.mkdir(parents=True)
-            # initialize keys for default top-level roles
-            self._generate_and_write(role_names=DEFAULT_ROLE_NAMES, encrypted=encrypted)
-        # import public keys from dir_path
-        self._import_public(role_names=DEFAULT_ROLE_NAMES)
+        # import public keys from dir_path, if it exists
+        self._import_public(role_names=TOP_LEVEL_ROLE_NAMES)
+
+    def _import_public(self, role_names: Iterable[str]):
+        for role_name in role_names:
+            public_key_path = self.public_key_path(role_name)
+            if public_key_path.exists():
+                ssl_key = import_ed25519_publickey_from_file(filepath=str(public_key_path))
+                setattr(self, role_name, ssl_key)
+                logger.debug(f'public key imported: {public_key_path}')
+            else:
+                logger.debug(f'file does not exist: {public_key_path}')
+
+    def create(self, role_names: Optional[Iterable[str]] = None):
+        if role_names is None:
+            role_names = TOP_LEVEL_ROLE_NAMES
+        # create keys for specified roles
+        for role_name in role_names:
+            private_key_path = self.private_key_path(role_name)
+            if role_name in self.encrypted:
+                # encrypt private key
+                generate_and_write_ed25519_keypair_with_prompt(
+                    filepath=str(private_key_path))
+            else:
+                # do not encrypt private key (for automated signing)
+                generate_and_write_unencrypted_ed25519_keypair(
+                    filepath=str(private_key_path))
+            logger.debug(f'key-pair created: {private_key_path}')
+        # import the newly created public keys
+        self._import_public(role_names=role_names)
 
     def private_key_path(self, role_name: str) -> pathlib.Path:
         return self.dir_path / self.filename_pattern.format(role_name=role_name)
@@ -97,14 +133,14 @@ class Keys(object):
         # return a dict mapping key ids to *public* key objects
         return {
             ssl_key['keyid']: Key.from_securesystemslib_key(key_dict=ssl_key)
-            for ssl_key in vars(self).values()
+            for ssl_key in vars(self).values() if ssl_key is not None
         }
 
     def roles(self):
         # return a dict mapping role names to key ids and key thresholds
         return {
             role_name: Role(keyids=[ssl_key['keyid']], threshold=1)
-            for role_name, ssl_key in vars(self).items()
+            for role_name, ssl_key in vars(self).items() if ssl_key is not None
         }
 
     @classmethod
@@ -119,94 +155,87 @@ class Keys(object):
                     break
         return private_key_path
 
-    def _generate_and_write(self, role_names: Iterable[str], encrypted: List[str]):
-        # create keys for specified roles
-        for role_name in role_names:
-            private_key_path = self.private_key_path(role_name)
-            if role_name in encrypted:
-                # encrypt private key
-                generate_and_write_ed25519_keypair_with_prompt(
-                    filepath=str(private_key_path))
-            else:
-                # do not encrypt private key (for automated signing)
-                generate_and_write_unencrypted_ed25519_keypair(
-                    filepath=str(private_key_path))
 
-    def _import_public(self, role_names: Iterable[str]):
-        for role_name in role_names:
-            public_key_path = self.public_key_path(role_name)
-            if public_key_path.exists():
-                ssl_key = import_ed25519_publickey_from_file(
-                    filepath=str(public_key_path))
-                setattr(self, role_name, ssl_key)
-
-
-class Roles(object):
+class Roles(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
-    encrypted = [ROOT, TARGETS]
+    filename_pattern = '{role_name}' + SUFFIX_JSON
 
-    def __init__(self, keys: Keys, dir_path: Union[pathlib.Path, str, None] = None):
-        if dir_path is not None:
-            Roles.dir_path = pathlib.Path(dir_path)
+    def __init__(
+            self,
+            dir_path: Union[pathlib.Path, str, None] = None,
+            encrypted: Optional[List[str]] = None,
+    ):
+        super().__init__(dir_path=dir_path, encrypted=encrypted)
         self.root: Optional[Metadata[Root]] = None
         self.targets: Optional[Metadata[Targets]] = None
         self.snapshot: Optional[Metadata[Snapshot]] = None
         self.timestamp: Optional[Metadata[Timestamp]] = None
+        # import roles from dir_path, if it exists
+        self._import_roles(role_names=TOP_LEVEL_ROLE_NAMES)
+
+    def _import_roles(self, role_names: Iterable[str]):
+        """Import roles from metadata files."""
         if self.dir_path.exists():
-            # import roles from metadata files
             for path in self.dir_path.iterdir():
-                if path.is_file() and path.stem in DEFAULT_ROLE_NAMES:
+                if path.is_file() and path.stem in role_names:
                     setattr(self, path.stem, Metadata.from_file(str(path)))
-        else:
-            # create dir
-            self.dir_path.mkdir(parents=True)
-            # initialize top level roles
-            self.create(keys=keys)
 
     def create(self, keys: Keys):
         # based on python-tuf basic_repo.py
-        self.root = Metadata(
-            signed=Root(version=1, spec_version=SPEC_VERSION, expires=_in(365), keys=keys.public(), roles=keys.roles(), consistent_snapshot=False),
-            signatures={},
-        )
-        self.targets = Metadata(
-            signed=Targets(version=1, spec_version=SPEC_VERSION, expires=_in(7), targets={}),
-            signatures={},
-        )
-        self.snapshot = Metadata(
-            signed=Snapshot(version=1, spec_version=SPEC_VERSION, expires=_in(7), meta={FILENAME_TARGETS: MetaFile(version=1)}),
-            signatures={},
-        )
-        self.timestamp = Metadata(
-            signed=Timestamp(version=1, spec_version=SPEC_VERSION, expires=_in(1), snapshot_meta=MetaFile(version=1)),
-            signatures={},
-        )
+        common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
+        initial_data = {
+            Root: dict(expires=_in(365), keys=keys.public(), roles=keys.roles(), consistent_snapshot=False),
+            Targets: dict(expires=_in(7), targets=dict()),
+            Snapshot: dict(expires=_in(7), meta={FILENAME_TARGETS: MetaFile(version=1)}),
+            Timestamp: dict(expires=_in(1), snapshot_meta=MetaFile(version=1)),
+        }
+        for role_class, role_kwargs in initial_data.items():
+            setattr(
+                self,
+                role_class.__name__.lower(),
+                Metadata(
+                    signed=role_class(**common_kwargs, **role_kwargs),
+                    signatures=dict(),
+                ),
+            )
 
     def add_or_update_target(self, local_path: Union[pathlib.Path, str]):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
         target_url_path = '/'.join([DEFAULT_TARGETS_DIR_NAME, local_path.name])
-        target_file_info = TargetFile.from_file(target_file_path=target_url_path, local_path=str(local_path))
+        target_file_info = TargetFile.from_file(
+            target_file_path=target_url_path, local_path=str(local_path)
+        )
         self.targets.signed.targets[target_url_path] = target_file_info
 
-    def add_public_key(self, role_name: str, public_key_path: Union[pathlib.Path, str], increment_threshold=False):
+    def add_public_key(
+            self, role_name: str, public_key_path: Union[pathlib.Path, str]
+    ):
         """Import a public key from file and add it to the specified role."""
         # based on python-tuf basic_repo.py
         ssl_key = import_ed25519_publickey_from_file(filepath=str(public_key_path))
         self.root.signed.add_key(role=role_name, key=Key.from_securesystemslib_key(ssl_key))
-        if increment_threshold:
-            self.root.signed.roles[role_name].threshold += 1
 
-    def sign_role(self, role_name: str, private_key_path: Union[pathlib.Path, str], encrypted: bool = False):
+    def set_signature_threshold(self, role_name: str, threshold: int):
+        self.root.signed.roles[role_name].threshold = threshold
+
+    def sign_role(
+            self,
+            role_name: str,
+            private_key_path: Union[pathlib.Path, str],
+            encrypted: bool = False,
+    ):
         # based on python-tuf basic_repo.py
-        ssl_key = import_ed25519_privatekey_from_file(filepath=str(private_key_path), prompt=encrypted)
+        ssl_key = import_ed25519_privatekey_from_file(
+            filepath=str(private_key_path), prompt=encrypted
+        )
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer)
 
     def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
-        file_path = self.dir_path / (role.signed.type + SUFFIX_JSON)
+        file_path = self.dir_path / self.filename_pattern.format(role_name=role.signed.type)
         role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
     def publish_updated_targets(self, keys_dirs: List[Union[pathlib.Path, str]]):
@@ -223,5 +252,9 @@ class Roles(object):
         # sign the modified metadate files
         for role_name in [TARGETS, SNAPSHOT, TIMESTAMP]:
             private_key_path = Keys.find_private(role_name=role_name, key_dirs=keys_dirs)
-            self.sign_role(role_name=role_name, private_key_path=private_key_path, encrypted=role_name in self.encrypted)
+            self.sign_role(
+                role_name=role_name,
+                private_key_path=private_key_path,
+                encrypted=role_name in self.encrypted,
+            )
             self.persist_role(role_name=role_name)
