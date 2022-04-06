@@ -108,11 +108,12 @@ class Keys(Base):
     def create(self, role_names: Optional[Iterable[str]] = None):
         if role_names is None:
             role_names = TOP_LEVEL_ROLE_NAMES
-        # create keys for specified roles
+        logger.debug(f'creating key-pairs for roles: {role_names}')
         for role_name in role_names:
             private_key_path = self.private_key_path(role_name)
             if role_name in self.encrypted:
                 # encrypt private key
+                logger.debug(f'set encryption password for {role_name} private key')
                 generate_and_write_ed25519_keypair_with_prompt(
                     filepath=str(private_key_path))
             else:
@@ -180,7 +181,7 @@ class Roles(Base):
                 if path.is_file() and path.stem in role_names:
                     setattr(self, path.stem, Metadata.from_file(str(path)))
 
-    def create(self, keys: Keys):
+    def initialize(self, keys: Keys):
         # based on python-tuf basic_repo.py
         common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
         initial_data = {

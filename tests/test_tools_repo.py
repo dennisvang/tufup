@@ -115,7 +115,7 @@ class KeysTests(TempDirTestCase):
 
 class RolesTests(TempDirTestCase):
     def test_init(self):
-        roles = Roles(dir_path=self.temp_dir_path)
+        self.assertTrue(Roles(dir_path=self.temp_dir_path))
 
     def test_init_import_roles(self):
         def mock_from_file(filename, *args, **kwargs):
@@ -129,12 +129,14 @@ class RolesTests(TempDirTestCase):
             roles = Roles(dir_path=self.temp_dir_path)
             self.assertTrue(all(getattr(roles, n) for n in TOP_LEVEL_ROLE_NAMES))
 
-    def test_create(self):
+    def test_initialize(self):
+        # prepare
         mock_keys = Mock()
         mock_keys.public = Mock()
         mock_keys.roles = Mock(return_value={n: None for n in TOP_LEVEL_ROLE_NAMES})
         roles = Roles(dir_path=self.temp_dir_path)
-        roles.create(keys=mock_keys)
+        # test
+        roles.initialize(keys=mock_keys)
         self.assertTrue(
             all(isinstance(getattr(roles, n), Metadata) for n in TOP_LEVEL_ROLE_NAMES)
         )
