@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from notsotuf.tools.common import Patcher
+from notsotuf.tools.common import Patcher, TargetPath
 from notsotuf.tools.repo import Keys, Roles, ROOT, TARGETS
 
 """
@@ -17,6 +17,8 @@ passwords cannot be entered.
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
+
+APP_NAME = 'example_app'
 
 # Specify local paths
 BASE_DIR = pathlib.Path(__file__).resolve().parent
@@ -40,9 +42,11 @@ if roles.root is None:
 
 # Create dummy initial target file (normally using e.g. PyInstaller and gzip)
 TARGETS_DIR.mkdir(exist_ok=True)
-initial_archive_path = TARGETS_DIR / 'my_app-1.0.gz'
+initial_archive_path = TARGETS_DIR / TargetPath.compose_filename(
+    name=APP_NAME, version='1.0', is_archive=True
+)
 if not initial_archive_path.exists():
-    initial_archive_path.write_bytes(b'my_app gzip content')
+    initial_archive_path.write_bytes(b'dummy archive content')
 
 # Register the initial target file
 roles.add_or_update_target(local_path=initial_archive_path)
@@ -52,9 +56,11 @@ roles.publish_targets(keys_dirs=[KEYS_DIR])
 ...
 
 # Create target files for first update
-new_archive_path = TARGETS_DIR / 'my_app-2.0.gz'
+new_archive_path = TARGETS_DIR / TargetPath.compose_filename(
+    name=APP_NAME, version='2.0', is_archive=True
+)
 if not new_archive_path.exists():
-    new_archive_path.write_bytes(b'my_app gzip content updated')
+    new_archive_path.write_bytes(b'dummy archive content updated')
 new_patch_path = Patcher.create_patch(
     src_path=initial_archive_path, dst_path=new_archive_path
 )
