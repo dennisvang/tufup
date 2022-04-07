@@ -1,5 +1,7 @@
 # dirs
 __pycache__/
-keystore/
+examples/repo/keystore/
+examples/repo/metadata/
+examples/repo/targets
 
 # files
