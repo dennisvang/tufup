@@ -3,6 +3,7 @@ import pathlib
 import re
 from typing import Optional
 
+import bsdiff4
 from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
@@ -95,3 +96,27 @@ class TargetPath(object):
         """
         match = cls.filename_regex.search(string=filename)
         return match.groupdict() if match else {}
+
+
+class Patcher(object):
+    @classmethod
+    def create_patch(cls, src_path: pathlib.Path, dst_path: pathlib.Path) -> pathlib.Path:
+        """
+        Create a binary patch file based on source and destination files.
+
+        Patch file path matches destination file path, except for suffix.
+        """
+        patch_path = dst_path.with_suffix(SUFFIX_PATCH)
+        bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
+        return patch_path
+
+    @classmethod
+    def apply_patch(cls, src_path: pathlib.Path, patch_path: pathlib.Path):
+        """
+        Apply binary patch file to source file to create destination file.
+
+        Destination file path matches patch file path, except for suffix.
+        """
+        dst_path = patch_path.with_suffix(SUFFIX_ARCHIVE)
+        bsdiff4.file_patch(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
+        return dst_path
