@@ -6,6 +6,10 @@ from notsotuf.tools.repo import Keys, Roles, ROOT, TARGETS
 
 """
 
+NOTE: The repo content can be served for local testing as follows:
+
+    python -m http.server -d examples/repo/content
+
 NOTE: This script creates subdirectories and files in the 
 notsotuf/examples/repo directory. 
 
@@ -23,8 +27,9 @@ APP_NAME = 'example_app'
 # Specify local paths
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 KEYS_DIR = BASE_DIR / 'keystore'
-META_DIR = BASE_DIR / 'metadata'
-TARGETS_DIR = BASE_DIR / 'targets'
+CONTENT_DIR = BASE_DIR / 'content'
+META_DIR = CONTENT_DIR / 'metadata'
+TARGETS_DIR = CONTENT_DIR / 'targets'
 
 # Create key pairs for the top level tuf roles
 keys = Keys(dir_path=KEYS_DIR, encrypted=[ROOT, TARGETS])
