@@ -13,12 +13,27 @@ SUFFIX_PATCH = '.patch'
 
 
 class TargetPath(object):
+    filename_pattern = '{name}-{version}{suffix}'
     filename_regex = re.compile(
         r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.gz|\.patch)$'
     )
 
-    def __init__(self, target_path: str):
+    def __init__(
+            self,
+            target_path: Optional[str] = None,
+            name: Optional[str] = None,
+            version: Optional[str] = None,
+            is_archive: Optional[bool] = True,
+    ):
+        """
+
+        Initialize either with target_path, or with name, version, archive.
+        """
         super().__init__()
+        if target_path is None:
+            target_path = TargetPath.compose_filename(
+                name=name, version=version, is_archive=is_archive
+            )
         self.target_path_str = target_path  # keep the original for reference
         self.path = pathlib.Path(target_path)
 
@@ -96,6 +111,11 @@ class TargetPath(object):
         """
         match = cls.filename_regex.search(string=filename)
         return match.groupdict() if match else {}
+
+    @classmethod
+    def compose_filename(cls, name: str, version: str, is_archive: bool):
+        suffix = SUFFIX_ARCHIVE if is_archive else SUFFIX_PATCH
+        return cls.filename_pattern.format(name=name, version=version, suffix=suffix)
 
 
 class Patcher(object):
