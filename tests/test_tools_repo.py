@@ -201,24 +201,44 @@ class RolesTests(TempDirTestCase):
         roles.persist_role(role_name='root')
         self.assertTrue((self.temp_dir_path / 'root.json').exists())
 
-    def test_publish_updated_targets(self):
-        with patch.object(Roles, 'sign_role', Mock()):
-            with patch.object(Roles, 'persist_role', Mock()):
-                # prepare
-                roles = Roles(dir_path=self.temp_dir_path)
-                roles.targets = Mock(signed=Mock(version=1))
-                roles.snapshot = Mock(
-                    signed=Mock(meta={'targets.json': Mock(version=1)}, version=1)
-                )
-                roles.timestamp = Mock(
-                    signed=Mock(snapshot_meta=Mock(version=1), version=1)
-                )
-                roles.encrypted = []
-                # test
-                roles.publish_updated_targets(keys_dirs=[])
-                role_names = [TARGETS, SNAPSHOT, TIMESTAMP]
-                self.assertTrue(
-                    all(getattr(roles, n).signed.version == 2 for n in role_names)
-                )
-                self.assertTrue(Roles.sign_role.called)  # noqa
-                self.assertTrue(Roles.persist_role.called)  # noqa
+    def test_publish_root(self):
+        with patch.object(Roles, '_publish_metadata', Mock()):
+            # prepare
+            roles = Roles(dir_path=self.temp_dir_path)
+            roles.root = Mock(signed=Mock(version=1))
+            roles.encrypted = []
+            # test
+            roles.publish_root(keys_dirs=[])
+            self.assertEqual(2, roles.root.signed.version)
+            self.assertTrue(Roles._publish_metadata.called)  # noqa
+
+    def test_publish_targets(self):
+        with patch.object(Roles, '_publish_metadata', Mock()):
+            # prepare
+            roles = Roles(dir_path=self.temp_dir_path)
+            roles.targets = Mock(signed=Mock(version=1))
+            roles.snapshot = Mock(
+                signed=Mock(meta={'targets.json': Mock(version=1)}, version=1)
+            )
+            roles.timestamp = Mock(
+                signed=Mock(snapshot_meta=Mock(version=1), version=1)
+            )
+            roles.encrypted = []
+            # test
+            roles.publish_targets(keys_dirs=[])
+            role_names = [TARGETS, SNAPSHOT, TIMESTAMP]
+            self.assertTrue(
+                all(getattr(roles, n).signed.version == 2 for n in role_names)
+            )
+            self.assertTrue(Roles._publish_metadata.called)  # noqa
+
+    def test__publish_metadata(self):
+        with patch.multiple(Roles, sign_role=Mock(), persist_role=Mock()):
+            # prepare
+            roles = Roles(dir_path=self.temp_dir_path)
+            roles.encrypted = []
+            # test
+            role_names = TOP_LEVEL_ROLE_NAMES
+            roles._publish_metadata(role_names=role_names, keys_dirs=[])
+            self.assertTrue(Roles.sign_role.called)  # noqa
+            self.assertTrue(Roles.persist_role.called)  # noqa

@@ -166,6 +166,21 @@ class Roles(Base):
             dir_path: Union[pathlib.Path, str, None] = None,
             encrypted: Optional[List[str]] = None,
     ):
+        """
+        TUF roles
+
+        - root metadata tells us:
+            + all the known keys (key id and public key value)
+            + which keys belong to each role
+            + how many signatures are needed for each role
+        - targets metadata tells us:
+            + which target files are available (filename, size, hash)
+        - snapshots metatadata tells us:
+            + which version of the targets-metadata file to expect
+        - timestamp metadata tells us:
+            + which version of the snapshot-metadata file to expect
+
+        """
         super().__init__(dir_path=dir_path, encrypted=encrypted)
         self.root: Optional[Metadata[Root]] = None
         self.targets: Optional[Metadata[Targets]] = None
@@ -239,10 +254,16 @@ class Roles(Base):
         file_path = self.dir_path / self.filename_pattern.format(role_name=role.signed.type)
         role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
-    def publish_updated_targets(self, keys_dirs: List[Union[pathlib.Path, str]]):
-        # based on python-tuf basic_repo.py
+    def publish_root(self, keys_dirs: List[Union[pathlib.Path, str]]):
+        """Call this whenever root has been modified (should be rare)."""
+        # root content has changed, so increment version
+        self.root.signed.version += 1
+        # sign and save
+        self._publish_metadata(role_names=[ROOT], keys_dirs=keys_dirs)
 
-        # targets role has been updated, so we need to increment its version
+    def publish_targets(self, keys_dirs: List[Union[pathlib.Path, str]]):
+        """Call this whenever new targets have been added."""
+        # targets content has changed, so increment version
         self.targets.signed.version += 1
         # update snapshot content and increment version
         self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
@@ -250,8 +271,12 @@ class Roles(Base):
         # update timestamp content and increment version
         self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
         self.timestamp.signed.version += 1
-        # sign the modified metadate files
-        for role_name in [TARGETS, SNAPSHOT, TIMESTAMP]:
+        # sign and save
+        self._publish_metadata(role_names=[TARGETS, SNAPSHOT, TIMESTAMP], keys_dirs=keys_dirs)
+
+    def _publish_metadata(self, role_names: List[str], keys_dirs: List[Union[pathlib.Path, str]]):
+        # sign the metadata files and save to disk
+        for role_name in role_names:
             private_key_path = Keys.find_private(role_name=role_name, key_dirs=keys_dirs)
             self.sign_role(
                 role_name=role_name,
