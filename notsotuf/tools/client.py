@@ -1,4 +1,5 @@
 import bsdiff4
+import logging
 import pathlib
 import shutil
 from tempfile import TemporaryDirectory
@@ -8,15 +9,47 @@ import tuf.ngclient
 
 from notsotuf.tools.common import TargetPath
 
+logger = logging.getLogger(__name__)
+
 
 class Client(tuf.ngclient.Updater):
-    def __init__(self, cache_dir: pathlib.Path, current_archive_name: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.archive_cache_dir = cache_dir
-        self.current_archive = TargetPath(current_archive_name)
-        self.new_archive_path = None
+    def __init__(
+            self,
+            app_name: str,
+            current_version: str,
+            metadata_dir: pathlib.Path,
+            metadata_base_url: str,
+            target_dir: pathlib.Path,
+            target_base_url: str,
+            **kwargs,
+    ):
+        # tuf.ngclient.Updater.__init__ loads local root metadata automatically
+        super().__init__(
+            metadata_dir=str(metadata_dir),
+            metadata_base_url=metadata_base_url,
+            target_dir=str(target_dir),
+            target_base_url=target_base_url,
+            **kwargs,
+        )
+        self.current_archive = TargetPath(name=app_name, version=current_version)
+        self.new_archive_path: Optional[pathlib.Path] = None
         self.new_targets = {}
         self.downloaded_target_files = {}
+
+    @property
+    def trusted_targets(self) -> dict:
+        # todo: _trusted_set is private, but ideally we would use a public
+        #  interface (if only tuf.ngclient exposed one...)
+        _trusted_targets = dict()
+        if self._trusted_set.targets:
+            _trusted_targets = dict(
+                (TargetPath(target_path=key), value)
+                for key, value in
+                self._trusted_set.targets.signed.targets.items()
+            )
+        else:
+            logger.warning('targets metadata not found')
+        return _trusted_targets
 
     def update(self, pre: Optional[str] = None):
         """
@@ -35,13 +68,9 @@ class Client(tuf.ngclient.Updater):
         included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         self.refresh()
-        # check for new target files
-        trusted_targets = dict(  # replace str keys by TargetPath instances
-            (TargetPath(target_path=key), value)
-            for key, value in self._trusted_set.targets.signed.targets.items()
-        )
+        # check for new target files (archives and patches)
         all_new_targets = dict(
-            item for item in trusted_targets.items()
+            item for item in self.trusted_targets.items()
             if item[0].name == self.current_archive.name
             and item[0].version > self.current_archive.version
         )
@@ -52,7 +81,7 @@ class Client(tuf.ngclient.Updater):
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
         latest_archive, latest_archive_file = sorted(new_archives.items())[-1]
-        self.new_archive_path = self.archive_cache_dir / latest_archive.path.name
+        self.new_archive_path = pathlib.Path(self.target_dir, latest_archive.path.name)
         self.new_archive_verify = latest_archive_file.verify_length_and_hashes
         # patches must include all pre-releases and final releases up to,
         # and including, the latest archive as determined above
