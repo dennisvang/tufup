@@ -1,4 +1,6 @@
+# to upgrade packages in existing env: pip install -r requirements.txt --upgrade
+
 bsdiff4
 packaging
-securesystemslib[crypto,pynacl]
-tuf
+securesystemslib[crypto,pynacl]==0.22.*
+tuf==1.0.*
