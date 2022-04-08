@@ -1,3 +1,4 @@
+import gzip
 import logging
 import pathlib
 
@@ -51,7 +52,9 @@ initial_archive_path = TARGETS_DIR / TargetPath.compose_filename(
     name=APP_NAME, version='1.0', is_archive=True
 )
 if not initial_archive_path.exists():
-    initial_archive_path.write_bytes(b'dummy archive content')
+    # Note: for multi-file archives, we could use e.g. shutil.make_archive
+    with gzip.open(initial_archive_path, 'wb') as gz_file:
+        gz_file.write(b'dummy archive content')
 
 # Register the initial target file
 roles.add_or_update_target(local_path=initial_archive_path)
@@ -65,7 +68,8 @@ new_archive_path = TARGETS_DIR / TargetPath.compose_filename(
     name=APP_NAME, version='2.0', is_archive=True
 )
 if not new_archive_path.exists():
-    new_archive_path.write_bytes(b'dummy archive content updated')
+    with gzip.open(new_archive_path, 'wb') as gz_file:
+        gz_file.write(b'dummy archive content updated')
 new_patch_path = Patcher.create_patch(
     src_path=initial_archive_path, dst_path=new_archive_path
 )
