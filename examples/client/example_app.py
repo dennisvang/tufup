@@ -4,6 +4,8 @@ import shutil
 
 from notsotuf.tools.client import Client
 
+logger = logging.getLogger(__name__)
+
 # This example stores all files in the notsotuf/examples/client directory
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -32,7 +34,7 @@ def main():
     destination_path = METADATA_DIR / 'root.json'
     if not destination_path.exists():
         shutil.copy(src=source_path, dst=destination_path)
-        print('trusted root metadata copied to cache')
+        logger.info('Trusted root metadata copied to cache.')
 
     # Create update client
     client = Client(
