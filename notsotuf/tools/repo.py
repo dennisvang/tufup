@@ -215,14 +215,21 @@ class Roles(Base):
                 ),
             )
 
-    def add_or_update_target(self, local_path: Union[pathlib.Path, str]):
+    def add_or_update_target(
+            self,
+            local_path: Union[pathlib.Path, str],
+            url_path_segments: Optional[List[str]] = None,
+    ):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
-        target_url_path = '/'.join([DEFAULT_TARGETS_DIR_NAME, local_path.name])
+        # build url path
+        url_path_segments = url_path_segments or []
+        url_path_segments.append(local_path.name)
+        url_path = '/'.join(url_path_segments)
         target_file_info = TargetFile.from_file(
-            target_file_path=target_url_path, local_path=str(local_path)
+            target_file_path=url_path, local_path=str(local_path)
         )
-        self.targets.signed.targets[target_url_path] = target_file_info
+        self.targets.signed.targets[url_path] = target_file_info
 
     def add_public_key(
             self, role_name: str, public_key_path: Union[pathlib.Path, str]

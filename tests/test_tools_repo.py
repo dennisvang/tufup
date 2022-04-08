@@ -148,16 +148,23 @@ class RolesTests(TempDirTestCase):
         roles = Roles(dir_path=self.temp_dir_path)
         roles.targets = Mock(signed=Mock(targets=dict()))
         # test
-        local_target_path = self.temp_dir_path / 'my_app.gz'
+        filename = 'my_app.gz'
+        local_target_path = self.temp_dir_path / filename
         # path must exist
         with self.assertRaises(FileNotFoundError):
             roles.add_or_update_target(local_path=local_target_path)
         local_target_path.write_bytes(b'some bytes')
-        roles.add_or_update_target(local_path=local_target_path)
-        expected_url = DEFAULT_TARGETS_DIR_NAME + '/' + local_target_path.name
-        self.assertIsInstance(
-            roles.targets.signed.targets[expected_url], TargetFile
-        )
+        # test
+        for segments, expected_url_path in [
+            (None, filename), ([], filename), (['a', 'b'], 'a/b/' + filename)
+        ]:
+            roles.add_or_update_target(
+                local_path=local_target_path, url_path_segments=segments
+            )
+            with self.subTest(msg=segments):
+                self.assertIsInstance(
+                    roles.targets.signed.targets[expected_url_path], TargetFile
+                )
 
     def test_add_public_key(self):
         # prepare
