@@ -4,9 +4,10 @@ import pathlib
 import shutil
 import sys
 from tempfile import TemporaryDirectory
-from typing import Optional, Callable
+from typing import Callable, Optional, Union
 
 import tuf.api.exceptions
+from tuf.api.metadata import TargetFile
 import tuf.ngclient
 
 from notsotuf.tools.common import TargetPath
@@ -42,19 +43,29 @@ class Client(tuf.ngclient.Updater):
         self.downloaded_target_files = {}
 
     @property
-    def trusted_targets(self) -> dict:
+    def trusted_target_paths(self) -> list:
+        """
+        Return a list of available trusted targets, as TargetPath objects.
+
+        This is convenient because TargetPath objects can be sorted by version.
+        """
         # todo: _trusted_set is private, but ideally we would use a public
         #  interface (if only tuf.ngclient exposed one...)
-        _trusted_targets = dict()
+        _trusted_target_paths = []
         if self._trusted_set.targets:
-            _trusted_targets = dict(
-                (TargetPath(target_path=key), value)
-                for key, value in
-                self._trusted_set.targets.signed.targets.items()
-            )
+            _trusted_target_paths = [
+                TargetPath(target_path=key)
+                for key in self._trusted_set.targets.signed.targets.keys()
+            ]
         else:
             logger.warning('targets metadata not found')
-        return _trusted_targets
+        return _trusted_target_paths
+
+    def get_targetinfo(self, target_path: Union[str, TargetPath]) -> Optional[TargetFile]:
+        """Extend Updater.get_targetinfo to handle TargetPath input args."""
+        if isinstance(target_path, TargetPath):
+            target_path = target_path.target_path_str
+        return super().get_targetinfo(target_path=target_path)
 
     def update(self, pre: Optional[str] = None):
         """
@@ -82,9 +93,10 @@ class Client(tuf.ngclient.Updater):
             return False
         # check for new target files (archives and patches)
         all_new_targets = dict(
-            item for item in self.trusted_targets.items()
-            if item[0].name == self.current_archive.name
-            and item[0].version > self.current_archive.version
+            (target_path, self.get_targetinfo(target_path))
+            for target_path in self.trusted_target_paths
+            if target_path.name == self.current_archive.name
+            and target_path.version > self.current_archive.version
         )
         # determine latest archive, filtered by the specified pre-release level
         new_archives = dict(
@@ -116,7 +128,11 @@ class Client(tuf.ngclient.Updater):
     def _download_updates(self) -> bool:
         # download the new targets selected in _check_updates
         for target_path, target_file in self.new_targets.items():
-            local_path_str = self.download_target(targetinfo=target_file)
+            # check if the target file has already been downloaded
+            local_path_str = self.find_cached_target(targetinfo=target_file)
+            if not local_path_str:
+                # download the target file
+                local_path_str = self.download_target(targetinfo=target_file)
             self.downloaded_target_files[target_path] = pathlib.Path(local_path_str)
         return len(self.downloaded_target_files) == len(self.new_targets)
 
