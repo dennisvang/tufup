@@ -1,6 +1,6 @@
 import gzip
 import pathlib
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
@@ -102,3 +102,16 @@ class ClientTests(TempDirTestCase):
             target_info = client.get_targetinfo(target_path=target_path)
             with self.subTest(msg=target_path):
                 self.assertIsInstance(target_info, TargetFile)
+
+    def test_update(self):
+        # just for completeness...
+        mock_true = Mock(return_value=True)
+        with patch.multiple(
+                Client,
+                _check_updates=mock_true,
+                _download_updates=mock_true,
+                _apply_updates=mock_true
+        ):
+            client = self.get_refreshed_client()
+            client.update()
+        self.assertEqual(3, mock_true.call_count)
