@@ -3,8 +3,10 @@ import pathlib
 from unittest.mock import patch
 
 import tuf.api.exceptions
+from tuf.api.metadata import TargetFile
 
 from notsotuf.client import Client, shutil
+from notsotuf.common import TargetPath
 from tests import TempDirTestCase
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
@@ -58,6 +60,21 @@ class ClientTests(TempDirTestCase):
         file_path = self.metadata_dir / f'{rolename}.json'
         return file_path.read_bytes()
 
+    def get_refreshed_client(self):
+        # make sure all metadata files are present (these would normally be
+        # downloaded from the update server)
+        for filename in [TARGETS_FILENAME, SNAPSHOT_FILENAME,
+                         TIMESTAMP_FILENAME]:
+            shutil.copy(
+                src=TEST_REPO_DIR / 'metadata' / filename,
+                dst=self.metadata_dir / filename,
+            )
+        # refresh to load targets metadata (mock to prevent actual download)
+        client = Client(**self.client_kwargs)
+        with patch.object(client, '_download_metadata', self.mock_download_metadata):
+            client.refresh()
+        return client
+
     def test_init_no_metadata(self):
         # cannot initialize without root metadata file
         (self.metadata_dir / ROOT_FILENAME).unlink()
@@ -74,16 +91,14 @@ class ClientTests(TempDirTestCase):
             self.assertIsNone(getattr(client._trusted_set, role_name))
 
     def test_trusted_target_paths(self):
-        # make sure all metadata files are present (these would normally be
-        # downloaded from the update server)
-        for filename in [TARGETS_FILENAME, SNAPSHOT_FILENAME, TIMESTAMP_FILENAME]:
-            shutil.copy(
-                src=TEST_REPO_DIR / 'metadata' / filename,
-                dst=self.metadata_dir / filename,
-            )
-        # refresh to load targets metadata (mock to prevent actual download)
-        client = Client(**self.client_kwargs)
-        with patch.object(client, '_download_metadata', self.mock_download_metadata):
-            client.refresh()
-        # test
+        client = self.get_refreshed_client()
         self.assertTrue(client.trusted_target_paths)
+
+    def test_get_targetinfo(self):
+        client = self.get_refreshed_client()
+        target_path_str = 'example_app-1.0.gz'
+        target_path_obj = TargetPath(target_path=target_path_str)
+        for target_path in [target_path_str, target_path_obj]:
+            target_info = client.get_targetinfo(target_path=target_path)
+            with self.subTest(msg=target_path):
+                self.assertIsInstance(target_info, TargetFile)
