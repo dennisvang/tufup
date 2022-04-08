@@ -13,7 +13,7 @@ CURRENT_VERSION = '1.0'
 # App directories
 CACHE_DIR = BASE_DIR / 'cache'
 METADATA_DIR = CACHE_DIR / 'metadata'
-TARGET_DIR = CACHE_DIR / 'target'
+TARGET_DIR = CACHE_DIR / 'targets'
 # Update-server urls
 METADATA_BASE_URL = 'http://localhost:8000/metadata/'
 TARGET_BASE_URL = 'http://localhost:8000/targets/'
