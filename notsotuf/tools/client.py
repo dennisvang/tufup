@@ -2,9 +2,11 @@ import bsdiff4
 import logging
 import pathlib
 import shutil
+import sys
 from tempfile import TemporaryDirectory
 from typing import Optional, Callable
 
+import tuf.api.exceptions
 import tuf.ngclient
 
 from notsotuf.tools.common import TargetPath
@@ -21,6 +23,7 @@ class Client(tuf.ngclient.Updater):
             metadata_base_url: str,
             target_dir: pathlib.Path,
             target_base_url: str,
+            refresh_required: bool = False,
             **kwargs,
     ):
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
@@ -31,6 +34,7 @@ class Client(tuf.ngclient.Updater):
             target_base_url=target_base_url,
             **kwargs,
         )
+        self.refresh_required = refresh_required
         self.current_archive = TargetPath(name=app_name, version=current_version)
         self.new_archive_path: Optional[pathlib.Path] = None
         self.new_archive_verify: Optional[Callable] = None
@@ -68,7 +72,14 @@ class Client(tuf.ngclient.Updater):
     def _check_updates(self, pre: Optional[str]) -> bool:
         included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
-        self.refresh()
+        try:
+            self.refresh()
+        except tuf.api.exceptions.DownloadError as e:
+            logger.warning(f'Cannot refresh metadata: {e}')
+            if self.refresh_required:
+                logger.warning('Exiting: refresh is required')
+                sys.exit()
+            return False
         # check for new target files (archives and patches)
         all_new_targets = dict(
             item for item in self.trusted_targets.items()

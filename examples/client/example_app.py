@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import shutil
 
@@ -41,6 +42,7 @@ def main():
         metadata_base_url=METADATA_BASE_URL,
         target_dir=TARGET_DIR,
         target_base_url=TARGET_BASE_URL,
+        refresh_required=False,
     )
 
     # Perform update
@@ -48,4 +50,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     main()
