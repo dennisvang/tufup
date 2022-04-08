@@ -2,7 +2,7 @@ import logging
 import pathlib
 import shutil
 
-from notsotuf.tools.client import Client
+from notsotuf.client import Client
 
 logger = logging.getLogger(__name__)
 

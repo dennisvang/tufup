@@ -1,8 +1,6 @@
 import gzip
-import pathlib
-from unittest.mock import patch, Mock
 
-from notsotuf.tools.client import unpack_gzip, Client, shutil
+from notsotuf.client import shutil
 from tests import TempDirTestCase
 
 

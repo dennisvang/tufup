@@ -2,8 +2,8 @@ import gzip
 import logging
 import pathlib
 
-from notsotuf.tools.common import Patcher, TargetPath
-from notsotuf.tools.repo import Keys, Roles, ROOT, TARGETS
+from notsotuf.common import Patcher, TargetPath
+from notsotuf.repo import Keys, Roles, ROOT, TARGETS
 
 """
 

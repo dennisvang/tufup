@@ -1,6 +1,6 @@
 import bsdiff4
 
-from notsotuf.tools.common import Patcher
+from notsotuf.common import Patcher
 from tests import TempDirTestCase
 
 

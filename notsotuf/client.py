@@ -11,7 +11,7 @@ import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
 
-from notsotuf.tools.common import TargetPath
+from notsotuf.common import TargetPath
 
 logger = logging.getLogger(__name__)
 

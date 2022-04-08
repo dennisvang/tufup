@@ -6,9 +6,9 @@ from unittest.mock import patch, Mock
 from securesystemslib.interface import generate_and_write_unencrypted_ed25519_keypair
 from tuf.api.metadata import Metadata, Role, Root, TargetFile, TOP_LEVEL_ROLE_NAMES
 
-import notsotuf.tools.repo  # for patching
-from notsotuf.tools.repo import (
-    Base, Keys, Roles, SUFFIX_PUB, ROOT, TARGETS, SNAPSHOT, TIMESTAMP, DEFAULT_TARGETS_DIR_NAME
+import notsotuf.repo  # for patching
+from notsotuf.repo import (
+    Base, Keys, Roles, SUFFIX_PUB, ROOT, TARGETS, SNAPSHOT, TIMESTAMP
 )
 from tests import TempDirTestCase
 
@@ -125,7 +125,7 @@ class RolesTests(TempDirTestCase):
         for role_name in TOP_LEVEL_ROLE_NAMES:
             (self.temp_dir_path / f'{role_name}.json').touch()
         # test
-        with patch.object(notsotuf.tools.repo.Metadata, 'from_file', mock_from_file):
+        with patch.object(notsotuf.repo.Metadata, 'from_file', mock_from_file):
             roles = Roles(dir_path=self.temp_dir_path)
             self.assertTrue(all(getattr(roles, n) for n in TOP_LEVEL_ROLE_NAMES))
 
