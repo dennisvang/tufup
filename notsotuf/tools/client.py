@@ -37,8 +37,8 @@ class Client(tuf.ngclient.Updater):
         )
         self.refresh_required = refresh_required
         self.current_archive = TargetPath(name=app_name, version=current_version)
-        self.new_archive_path: Optional[pathlib.Path] = None
-        self.new_archive_verify: Optional[Callable] = None
+        self.new_archive_local_path: Optional[pathlib.Path] = None
+        self.new_archive_info: Optional[TargetFile] = None
         self.new_targets = {}
         self.downloaded_target_files = {}
 
@@ -104,15 +104,14 @@ class Client(tuf.ngclient.Updater):
             if item[0].is_archive
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
-        latest_archive, latest_archive_file = sorted(new_archives.items())[-1]
-        self.new_archive_path = pathlib.Path(self.target_dir, latest_archive.path.name)
-        self.new_archive_verify = latest_archive_file.verify_length_and_hashes
+        new_archive, self.new_archive_info = sorted(new_archives.items())[-1]
+        self.new_archive_local_path = pathlib.Path(self.target_dir, new_archive.path.name)
         # patches must include all pre-releases and final releases up to,
         # and including, the latest archive as determined above
         new_patches = dict(
             item for item in all_new_targets.items()
             if item[0].is_patch
-            and item[0].version <= latest_archive.version
+            and item[0].version <= new_archive.version
         )
         # determine size of patch update and archive update
         total_patch_size = sum(
@@ -121,8 +120,8 @@ class Client(tuf.ngclient.Updater):
         # use size to decide if we want to do a patch update or full update (
         # if there are no patches, we must do a full update)
         self.new_targets = new_patches
-        if total_patch_size > latest_archive_file.length or total_patch_size == 0:
-            self.new_targets = {latest_archive: latest_archive_file}
+        if total_patch_size > self.new_archive_info.length or total_patch_size == 0:
+            self.new_targets = {new_archive: self.new_archive_info}
         return len(self.new_targets) > 0
 
     def _download_updates(self) -> bool:
@@ -141,9 +140,9 @@ class Client(tuf.ngclient.Updater):
         archive_bytes = None
         for target, file_path in sorted(self.downloaded_target_files.items()):
             if target.is_archive:
-                # new full archive available, just rename the file
+                # just ensure the full archive file is available
                 assert len(self.downloaded_target_files) == 1
-                file_path.replace(self.new_archive_path)
+                assert self.new_archive_local_path.exists()
             elif target.is_patch:
                 # create new archive by patching current archive (patches
                 # must be sorted by increasing version)
@@ -152,14 +151,16 @@ class Client(tuf.ngclient.Updater):
                 archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
         if archive_bytes:
             # verify the patched archive length and hash
-            self.new_archive_verify(data=archive_bytes)
+            self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
             # write the patched new archive
-            self.new_archive_path.write_bytes(archive_bytes)
+            self.new_archive_local_path.write_bytes(archive_bytes)
         # extract archive to temporary location
         with TemporaryDirectory() as temp_dir:
             # extract
             temp_dir_path = pathlib.Path(temp_dir)
-            shutil.unpack_archive(filename=self.new_archive_path, extract_dir=temp_dir_path)
+            shutil.unpack_archive(
+                filename=self.new_archive_local_path, extract_dir=temp_dir_path
+            )
             # replace files in install directory
             ...
 
