@@ -3,7 +3,7 @@ import logging
 import pathlib
 import shutil
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Optional, Callable
 
 import tuf.ngclient
 
@@ -33,6 +33,7 @@ class Client(tuf.ngclient.Updater):
         )
         self.current_archive = TargetPath(name=app_name, version=current_version)
         self.new_archive_path: Optional[pathlib.Path] = None
+        self.new_archive_verify: Optional[Callable] = None
         self.new_targets = {}
         self.downloaded_target_files = {}
 
