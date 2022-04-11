@@ -136,3 +136,19 @@ class ClientTests(TempDirTestCase):
                         self.assertTrue(all(
                             item.is_patch for item in client.new_targets.keys())
                         )
+
+    def test__download_updates(self):
+        client = Client(**self.client_kwargs)
+        client.new_targets = {Mock(): Mock()}
+        for cached_path, downloaded_path in [('cached', None), (None, 'downloaded')]:
+            with patch.multiple(
+                    client,
+                    find_cached_target=Mock(return_value=cached_path),
+                    download_target=Mock(return_value=downloaded_path),
+            ):
+                self.assertTrue(client._download_updates())
+                local_path = next(iter(client.downloaded_target_files.values()))
+                if cached_path:
+                    self.assertEqual(cached_path, str(local_path))
+                else:
+                    self.assertEqual(downloaded_path, str(local_path))
