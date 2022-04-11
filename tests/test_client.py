@@ -45,8 +45,8 @@ class ClientTests(TempDirTestCase):
         )
         # kwargs for client initializer
         self.client_kwargs = dict(
-            app_name='test_app',
-            current_version='1.0.0a0',
+            app_name='example_app',
+            current_version='1.0',
             metadata_dir=self.metadata_dir,
             metadata_base_url='http://localhost:8000/metadata/',
             target_dir=self.target_dir,
@@ -63,8 +63,7 @@ class ClientTests(TempDirTestCase):
     def get_refreshed_client(self):
         # make sure all metadata files are present (these would normally be
         # downloaded from the update server)
-        for filename in [TARGETS_FILENAME, SNAPSHOT_FILENAME,
-                         TIMESTAMP_FILENAME]:
+        for filename in [TARGETS_FILENAME, SNAPSHOT_FILENAME, TIMESTAMP_FILENAME]:
             shutil.copy(
                 src=TEST_REPO_DIR / 'metadata' / filename,
                 dst=self.metadata_dir / filename,
@@ -115,3 +114,25 @@ class ClientTests(TempDirTestCase):
             client = self.get_refreshed_client()
             client.update()
         self.assertEqual(3, mock_true.call_count)
+
+    def test__check_updates(self):
+        # expectations (based on targets in tests/data/repository):
+        # - pre=None: only full releases are included, so finds 2.0 patch
+        # - pre='a': finds all, but total patch size exceeds archive size
+        # - pre='b': there is no 'b' release, so this finds same as 'rc'
+        # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
+        client = self.get_refreshed_client()
+        with patch.object(client, 'refresh', Mock()):
+            for pre, expected in [(None, 1), ('a', 1), ('b', 2), ('rc', 2)]:
+                with self.subTest(msg=pre):
+                    self.assertTrue(client._check_updates(pre=pre))
+                    self.assertEqual(expected, len(client.new_targets))
+                    if pre == 'a':
+                        self.assertTrue(all(
+                            item.is_archive for item in
+                            client.new_targets.keys())
+                        )
+                    else:
+                        self.assertTrue(all(
+                            item.is_patch for item in client.new_targets.keys())
+                        )
