@@ -1,6 +1,7 @@
 import gzip
 import logging
 import pathlib
+import secrets  # from python 3.9+ we can use random.randbytes
 
 from notsotuf.common import Patcher, TargetPath
 from notsotuf.repo import Keys, Roles, ROOT, TARGETS
@@ -44,6 +45,7 @@ if roles.root is None:
     # initialize metadata
     roles.initialize(keys=keys)
     # save root metadata file
+    print('signing initial root metadata')
     roles.publish_root(keys_dirs=[KEYS_DIR])
 
 # Create dummy initial target file (normally using e.g. PyInstaller and gzip)
@@ -51,30 +53,42 @@ TARGETS_DIR.mkdir(exist_ok=True)
 initial_archive_path = TARGETS_DIR / TargetPath.compose_filename(
     name=APP_NAME, version='1.0', is_archive=True
 )
+# To illustrate patch updates vs full updates, the size of the dummy archive
+# is chosen here so that two consecutive patches are smaller, but three
+# consecutive patches are larger than the full update.
+number_of_bytes = 400
+dummy_archive_content = secrets.token_bytes(number_of_bytes)
 if not initial_archive_path.exists():
     # Note: for multi-file archives, we could use e.g. shutil.make_archive
     with gzip.open(initial_archive_path, 'wb') as gz_file:
-        gz_file.write(b'dummy archive content')
+        gz_file.write(dummy_archive_content)
 
 # Register the initial target file
 roles.add_or_update_target(local_path=initial_archive_path)
+print('signing initial targets metadata')
 roles.publish_targets(keys_dirs=[KEYS_DIR])
 
-# Time goes by
-...
+for version, modified_content in [
+    ('2.0', dummy_archive_content + b'2'),
+    ('3.0rc0', dummy_archive_content + b'3rc'),
+    ('4.0a0', dummy_archive_content + b'4a'),
+]:
+    # Time goes by
+    ...
 
-# Create target files for first update
-new_archive_path = TARGETS_DIR / TargetPath.compose_filename(
-    name=APP_NAME, version='2.0', is_archive=True
-)
-if not new_archive_path.exists():
-    with gzip.open(new_archive_path, 'wb') as gz_file:
-        gz_file.write(b'dummy archive content updated')
-new_patch_path = Patcher.create_patch(
-    src_path=initial_archive_path, dst_path=new_archive_path
-)
+    # Create target files for new update
+    new_archive_path = TARGETS_DIR / TargetPath.compose_filename(
+        name=APP_NAME, version=version, is_archive=True
+    )
+    if not new_archive_path.exists():
+        with gzip.open(new_archive_path, 'wb') as gz_file:
+            gz_file.write(modified_content)
+    new_patch_path = Patcher.create_patch(
+        src_path=initial_archive_path, dst_path=new_archive_path
+    )
 
-# Register the update files
-roles.add_or_update_target(local_path=new_archive_path)
-roles.add_or_update_target(local_path=new_patch_path)
-roles.publish_targets(keys_dirs=[KEYS_DIR])
+    # Register the new update files
+    roles.add_or_update_target(local_path=new_archive_path)
+    roles.add_or_update_target(local_path=new_patch_path)
+    print(f'signing updated metadata for version {version}')
+    roles.publish_targets(keys_dirs=[KEYS_DIR])

@@ -2,33 +2,57 @@
  "signatures": [
   {
    "keyid": "6b68651433998673dec4c3010862c94b897898e3eb71372c5a0e5f4764d4dfca",
-   "sig": "9231655883240cd4bad1d6aa41b6ab20ec1116f0c06a1d22291d1598a0ea72815dd111c80e77f02e111a6e85e776b4976e98ae24d91679af9f0b7188226f3b00"
+   "sig": "3a72b8732bd4cad6ff4e83cf14ad53b4afc8ca6f88de69d526c9b4a2417749fd42335d4dd14aed392c89c84c613dd9ebd4c28e32249cd332fcd5c9860d6c6906"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2022-04-15T14:30:46Z",
+  "expires": "2022-04-18T09:49:38Z",
   "spec_version": "1.0.28",
   "targets": {
    "example_app-1.0.gz": {
     "hashes": {
-     "sha256": "2ce7c99ebdb7f4f243208305f7083b056b6e31cf725c08d9e9cdeb8c0cdd1ec4"
+     "sha256": "972c17e4c19abdf09123e64e852c7528fceeb89bf36fdfc3e0751a936b778e95"
     },
-    "length": 57
+    "length": 439
    },
    "example_app-2.0.gz": {
     "hashes": {
-     "sha256": "8f61d124c77ca722326bbb31000ad4d1e6ee722eb5e8abb665d6a7f71b9ddf4d"
+     "sha256": "8cd210d8d18dd09877e8ef274cb278200f09e0fa039a5a5d49d76c0eed70c3f3"
     },
-    "length": 65
+    "length": 440
    },
    "example_app-2.0.patch": {
     "hashes": {
-     "sha256": "1fec9591cc02c5b89bda3fe934c8568548940b934f86de86cc0141449dc32f76"
+     "sha256": "63743ce02940f428b8f5cc8583a0c9c8681deee6382e05ba6ff5f3259f3cf548"
     },
-    "length": 183
+    "length": 181
+   },
+   "example_app-3.0rc0.gz": {
+    "hashes": {
+     "sha256": "453cf98e76f058362eba093cc3ea9ce8a6f860d565aec09b845edbcd01a66469"
+    },
+    "length": 445
+   },
+   "example_app-3.0rc0.patch": {
+    "hashes": {
+     "sha256": "0f1958be6872233e6385f06189430bdc23687d79e8f10bae400dd224b0eb082b"
+    },
+    "length": 198
+   },
+   "example_app-4.0a0.gz": {
+    "hashes": {
+     "sha256": "324ee86620d6f1daaff41cf1277ce06611e6b2b706c326da4ea044c0ad17c61d"
+    },
+    "length": 443
+   },
+   "example_app-4.0a0.patch": {
+    "hashes": {
+     "sha256": "324a8ac6896e6e5e52e3d47d771c20b5bf2af4cc213f2d9744ee40ea9dca80bc"
+    },
+    "length": 197
    }
   },
-  "version": 3
+  "version": 5
  }
 }
