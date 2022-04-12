@@ -6,7 +6,7 @@ from tests import TempDirTestCase
 
 DUMMY_APP_CONTENT = """
 import sys
-from notsotuf.utils import start_script_and_exit
+from notsotuf.utils.windows import start_script_and_exit
 start_script_and_exit(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
 
