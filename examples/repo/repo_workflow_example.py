@@ -101,6 +101,7 @@ for version, modified_content in [
 # Re-sign roles, before they expire
 roles.sign_role(
     role_name='timestamp',
-    expires=in_(1),
-    private_key_path=KEYS_DIR / 'timestamp',
+    expires=in_(2),
+    private_key_path=keys.private_key_path(role_name='timestamp'),
 )
+roles.persist_role(role_name='timestamp')

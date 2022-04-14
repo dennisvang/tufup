@@ -278,6 +278,7 @@ class Roles(Base):
             self, keys_dirs: List[Union[pathlib.Path, str]], expires: datetime
     ):
         """Call this whenever root has been modified (should be rare)."""
+        # todo: handle initial case, as we cannot set version=0
         # root content has changed, so increment version
         self.root.signed.version += 1
         # sign and save
