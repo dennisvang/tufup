@@ -33,7 +33,7 @@ https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_exam
 
 """
 
-__all__ = ['Keys', 'Roles', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON']
+__all__ = ['Keys', 'Roles', '_in', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON']
 
 # copied from python-tuf basic_repo.py
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
@@ -196,9 +196,11 @@ class Roles(Base):
                 if path.is_file() and path.stem in role_names:
                     setattr(self, path.stem, Metadata.from_file(str(path)))
 
-    def initialize(self, keys: Keys):
+    def initialize(self, keys: Keys, expires: Optional[Dict[str, datetime]] = None):
+        expires = expires or dict()
         # based on python-tuf basic_repo.py
         common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
+        # role-specific kwargs
         initial_data = {
             Root: dict(expires=_in(365), keys=keys.public(), roles=keys.roles(), consistent_snapshot=False),
             Targets: dict(expires=_in(7), targets=dict()),
@@ -206,9 +208,14 @@ class Roles(Base):
             Timestamp: dict(expires=_in(1), snapshot_meta=MetaFile(version=1)),
         }
         for role_class, role_kwargs in initial_data.items():
+            # update expiration date if provided
+            expiration_date = expires.get(role_class.type)
+            if expiration_date:
+                role_kwargs['expires'] = expiration_date
+            # intialize role
             setattr(
                 self,
-                role_class.__name__.lower(),
+                role_class.type,
                 Metadata(
                     signed=role_class(**common_kwargs, **role_kwargs),
                     signatures=dict(),
@@ -241,6 +248,9 @@ class Roles(Base):
 
     def set_signature_threshold(self, role_name: str, threshold: int):
         self.root.signed.roles[role_name].threshold = threshold
+
+    def set_expires(self, role_name: str, expires: datetime):
+        getattr(self, role_name).signed.expires = expires  # noqa
 
     def sign_role(
             self,

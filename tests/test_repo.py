@@ -8,7 +8,7 @@ from tuf.api.metadata import Metadata, Role, Root, TargetFile, TOP_LEVEL_ROLE_NA
 
 import notsotuf.repo  # for patching
 from notsotuf.repo import (
-    Base, Keys, Roles, SUFFIX_PUB, ROOT, TARGETS, SNAPSHOT, TIMESTAMP
+    Base, Keys, Roles, _in, SUFFIX_PUB, ROOT, TARGETS, SNAPSHOT, TIMESTAMP
 )
 from tests import TempDirTestCase
 
@@ -136,7 +136,7 @@ class RolesTests(TempDirTestCase):
         mock_keys.roles = Mock(return_value={n: None for n in TOP_LEVEL_ROLE_NAMES})
         roles = Roles(dir_path=self.temp_dir_path)
         # test
-        roles.initialize(keys=mock_keys)
+        roles.initialize(keys=mock_keys, expires=dict(root=_in(1)))
         self.assertTrue(
             all(isinstance(getattr(roles, n), Metadata) for n in TOP_LEVEL_ROLE_NAMES)
         )
@@ -186,6 +186,16 @@ class RolesTests(TempDirTestCase):
         # test
         roles.set_signature_threshold(role_name=role_name, threshold=threshold)
         self.assertEqual(threshold, roles.root.signed.roles[role_name].threshold)
+
+    def test_set_expires(self):
+        # prepare
+        role_name = 'targets'
+        expires = datetime.now() + timedelta(days=1)
+        roles = Roles(dir_path=self.temp_dir_path)
+        setattr(roles, role_name, Mock(signed=Mock(expires=None)))
+        # test
+        roles.set_expires(role_name=role_name, expires=expires)
+        self.assertEqual(expires, getattr(roles, role_name).signed.expires)
 
     def test_sign_role(self):
         # prepare
