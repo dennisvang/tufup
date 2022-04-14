@@ -45,25 +45,20 @@ def _in(days: float) -> datetime:
     return datetime.utcnow().replace(microsecond=0) + timedelta(days=days)
 
 
-ROOT = 'root'
-TARGETS = 'targets'
-SNAPSHOT = 'snapshot'
-TIMESTAMP = 'timestamp'
-
 DEFAULT_KEYS_DIR_NAME = 'keystore'
 DEFAULT_META_DIR_NAME = 'metadata'
 DEFAULT_TARGETS_DIR_NAME = 'targets'
 SUFFIX_JSON = '.json'
 SUFFIX_PUB = '.pub'
-FILENAME_ROOT = ROOT + SUFFIX_JSON
-FILENAME_TARGETS = TARGETS + SUFFIX_JSON
-FILENAME_SNAPSHOT = SNAPSHOT + SUFFIX_JSON
-FILENAME_TIMESTAMP = TIMESTAMP + SUFFIX_JSON
+FILENAME_ROOT = Root.type + SUFFIX_JSON
+FILENAME_TARGETS = Targets.type + SUFFIX_JSON
+FILENAME_SNAPSHOT = Snapshot.type + SUFFIX_JSON
+FILENAME_TIMESTAMP = Timestamp.type + SUFFIX_JSON
 
 
 class Base(object):
     dir_path = pathlib.Path.cwd()
-    encrypted = [ROOT, TARGETS]
+    encrypted = [Root.type, Targets.type]
 
     def __init__(self, dir_path: Union[pathlib.Path, str], encrypted: List[str]):
         if dir_path is not None:
@@ -78,7 +73,7 @@ class Base(object):
 
 class Keys(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
-    encrypted = [ROOT, TARGETS]
+    encrypted = [Root.type, Targets.type]
     filename_pattern = '{role_name}_key'
 
     def __init__(
