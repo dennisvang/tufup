@@ -4,7 +4,7 @@ import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
 
 from notsotuf.common import Patcher, TargetPath
-from notsotuf.repo import Keys, Roles, ROOT, TARGETS, _in
+from notsotuf.repo import Keys, Roles, in_
 
 """
 
@@ -34,7 +34,7 @@ META_DIR = CONTENT_DIR / 'metadata'
 TARGETS_DIR = CONTENT_DIR / 'targets'
 
 # Create key pairs for the top level tuf roles
-keys = Keys(dir_path=KEYS_DIR, encrypted=[ROOT, TARGETS])
+keys = Keys(dir_path=KEYS_DIR, encrypted=['root', 'targets'])
 if keys.root is None:
     # create key pair files and save to disk
     keys.create()
@@ -42,15 +42,11 @@ if keys.root is None:
 # Initialize top level tuf roles
 roles = Roles(dir_path=META_DIR)
 if roles.root is None:
-    # Specify custom expiration dates (optional)
-    expires = dict(
-        root=_in(365), targets=_in(7), snapshot=_in(7), timestamp=_in(1)
-    )
     # initialize metadata
-    roles.initialize(keys=keys, expires=expires)
+    roles.initialize(keys=keys)
     # save root metadata file
     print('signing initial root metadata')
-    roles.publish_root(keys_dirs=[KEYS_DIR])
+    roles.publish_root(keys_dirs=[KEYS_DIR], expires=in_(365))
 
 # Create dummy initial target file (normally using e.g. PyInstaller and gzip)
 TARGETS_DIR.mkdir(exist_ok=True)
@@ -70,8 +66,10 @@ if not initial_archive_path.exists():
 # Register the initial target file
 roles.add_or_update_target(local_path=initial_archive_path)
 print('signing initial targets metadata')
-roles.publish_targets(keys_dirs=[KEYS_DIR])
+expires = dict(targets=in_(7), snapshot=in_(7), timestamp=in_(1))
+roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
 
+# register additional target files (as updates become available over time)
 for version, modified_content in [
     ('2.0', dummy_archive_content + b'2'),
     ('3.0rc0', dummy_archive_content + b'3rc'),
@@ -95,4 +93,14 @@ for version, modified_content in [
     roles.add_or_update_target(local_path=new_archive_path)
     roles.add_or_update_target(local_path=new_patch_path)
     print(f'signing updated metadata for version {version}')
-    roles.publish_targets(keys_dirs=[KEYS_DIR])
+    roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
+
+# Time goes by
+...
+
+# Re-sign roles, before they expire
+roles.sign_role(
+    role_name='timestamp',
+    expires=in_(1),
+    private_key_path=KEYS_DIR / 'timestamp',
+)

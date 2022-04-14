@@ -33,15 +33,17 @@ https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_exam
 
 """
 
-__all__ = ['Keys', 'Roles', '_in', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON']
+__all__ = [
+    'Keys', 'Roles', 'in_', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON'
+]
 
 # copied from python-tuf basic_repo.py
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 
 
 # copied from python-tuf basic_repo.py
-def _in(days: float) -> datetime:
-    """Adds 'days' to now and returns datetime object w/o microseconds."""
+def in_(days: float) -> datetime:
+    """Returns a timestamp for the specified number of days from now."""
     return datetime.utcnow().replace(microsecond=0) + timedelta(days=days)
 
 
@@ -191,22 +193,24 @@ class Roles(Base):
                 if path.is_file() and path.stem in role_names:
                     setattr(self, path.stem, Metadata.from_file(str(path)))
 
-    def initialize(self, keys: Keys, expires: Optional[Dict[str, datetime]] = None):
-        expires = expires or dict()
+    def initialize(self, keys: Keys):
         # based on python-tuf basic_repo.py
         common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
         # role-specific kwargs
         initial_data = {
-            Root: dict(expires=_in(365), keys=keys.public(), roles=keys.roles(), consistent_snapshot=False),
-            Targets: dict(expires=_in(7), targets=dict()),
-            Snapshot: dict(expires=_in(7), meta={FILENAME_TARGETS: MetaFile(version=1)}),
-            Timestamp: dict(expires=_in(1), snapshot_meta=MetaFile(version=1)),
+            Root: dict(
+                expires=in_(0),
+                keys=keys.public(),
+                roles=keys.roles(),
+                consistent_snapshot=False,
+            ),
+            Targets: dict(expires=in_(0), targets=dict()),
+            Snapshot: dict(
+                expires=in_(0), meta={FILENAME_TARGETS: MetaFile(version=1)}
+            ),
+            Timestamp: dict(expires=in_(0), snapshot_meta=MetaFile(version=1)),
         }
         for role_class, role_kwargs in initial_data.items():
-            # update expiration date if provided
-            expiration_date = expires.get(role_class.type)
-            if expiration_date:
-                role_kwargs['expires'] = expiration_date
             # intialize role
             setattr(
                 self,
@@ -239,20 +243,22 @@ class Roles(Base):
         """Import a public key from file and add it to the specified role."""
         # based on python-tuf basic_repo.py
         ssl_key = import_ed25519_publickey_from_file(filepath=str(public_key_path))
-        self.root.signed.add_key(role=role_name, key=Key.from_securesystemslib_key(ssl_key))
+        self.root.signed.add_key(
+            role=role_name, key=Key.from_securesystemslib_key(ssl_key)
+        )
 
     def set_signature_threshold(self, role_name: str, threshold: int):
         self.root.signed.roles[role_name].threshold = threshold
-
-    def set_expires(self, role_name: str, expires: datetime):
-        getattr(self, role_name).signed.expires = expires  # noqa
 
     def sign_role(
             self,
             role_name: str,
             private_key_path: Union[pathlib.Path, str],
+            expires: datetime,
             encrypted: bool = False,
     ):
+        # set new expiration date
+        getattr(self, role_name).signed.expires = expires
         # based on python-tuf basic_repo.py
         ssl_key = import_ed25519_privatekey_from_file(
             filepath=str(private_key_path), prompt=encrypted
@@ -263,17 +269,27 @@ class Roles(Base):
     def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
-        file_path = self.dir_path / self.filename_pattern.format(role_name=role.signed.type)
+        file_path = self.dir_path / self.filename_pattern.format(
+            role_name=role.signed.type
+        )
         role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
-    def publish_root(self, keys_dirs: List[Union[pathlib.Path, str]]):
+    def publish_root(
+            self, keys_dirs: List[Union[pathlib.Path, str]], expires: datetime
+    ):
         """Call this whenever root has been modified (should be rare)."""
         # root content has changed, so increment version
         self.root.signed.version += 1
         # sign and save
-        self._publish_metadata(role_names=[ROOT], keys_dirs=keys_dirs)
+        self._publish_metadata(
+            role_names=[Root.type], keys_dirs=keys_dirs, expires=dict(root=expires)
+        )
 
-    def publish_targets(self, keys_dirs: List[Union[pathlib.Path, str]]):
+    def publish_targets(
+            self,
+            keys_dirs: List[Union[pathlib.Path, str]],
+            expires: Dict[str, datetime],
+    ):
         """Call this whenever new targets have been added."""
         # targets content has changed, so increment version
         self.targets.signed.version += 1
@@ -284,15 +300,27 @@ class Roles(Base):
         self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
         self.timestamp.signed.version += 1
         # sign and save
-        self._publish_metadata(role_names=[TARGETS, SNAPSHOT, TIMESTAMP], keys_dirs=keys_dirs)
+        self._publish_metadata(
+            role_names=[Targets.type, Snapshot.type, Timestamp.type],
+            keys_dirs=keys_dirs,
+            expires=expires,
+        )
 
-    def _publish_metadata(self, role_names: List[str], keys_dirs: List[Union[pathlib.Path, str]]):
+    def _publish_metadata(
+            self,
+            role_names: List[str],
+            keys_dirs: List[Union[pathlib.Path, str]],
+            expires: Dict[str, datetime],
+    ):
         # sign the metadata files and save to disk
         for role_name in role_names:
-            private_key_path = Keys.find_private(role_name=role_name, key_dirs=keys_dirs)
+            private_key_path = Keys.find_private(
+                role_name=role_name, key_dirs=keys_dirs
+            )
             self.sign_role(
                 role_name=role_name,
                 private_key_path=private_key_path,
+                expires=expires[role_name],
                 encrypted=role_name in self.encrypted,
             )
             self.persist_role(role_name=role_name)
