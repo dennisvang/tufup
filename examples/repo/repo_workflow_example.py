@@ -4,7 +4,7 @@ import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
 
 from notsotuf.common import Patcher, TargetPath
-from notsotuf.repo import Keys, Roles, ROOT, TARGETS
+from notsotuf.repo import Keys, Roles, ROOT, TARGETS, _in
 
 """
 
@@ -42,8 +42,12 @@ if keys.root is None:
 # Initialize top level tuf roles
 roles = Roles(dir_path=META_DIR)
 if roles.root is None:
+    # Specify custom expiration dates (optional)
+    expires = dict(
+        root=_in(365), targets=_in(7), snapshot=_in(7), timestamp=_in(1)
+    )
     # initialize metadata
-    roles.initialize(keys=keys)
+    roles.initialize(keys=keys, expires=expires)
     # save root metadata file
     print('signing initial root metadata')
     roles.publish_root(keys_dirs=[KEYS_DIR])
