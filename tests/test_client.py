@@ -32,6 +32,11 @@ class UnpackTests(TempDirTestCase):
 class ClientTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
+        # directory where the parent application is installed (e.g.
+        # %PROGRAMFILES%\MyApp or %LOCALAPPDATA%\Programs\MyApp on Windows 10)
+        # https://docs.microsoft.com/en-us/windows/win32/msi/installation-context
+        self.app_install_dir = self.temp_dir_path / 'programs' / 'example'
+        self.app_install_dir.mkdir(parents=True)
         # directories must be created by parent application
         self.metadata_dir = self.temp_dir_path / 'metadata'
         self.target_dir = self.temp_dir_path / 'targets'
@@ -46,6 +51,7 @@ class ClientTests(TempDirTestCase):
         # kwargs for client initializer
         self.client_kwargs = dict(
             app_name='example_app',
+            app_install_dir=self.app_install_dir,
             current_version='1.0',
             metadata_dir=self.metadata_dir,
             metadata_base_url='http://localhost:8000/metadata/',
@@ -152,3 +158,6 @@ class ClientTests(TempDirTestCase):
                     self.assertEqual(cached_path, str(local_path))
                 else:
                     self.assertEqual(downloaded_path, str(local_path))
+
+    def test__apply_updates(self):
+        pass

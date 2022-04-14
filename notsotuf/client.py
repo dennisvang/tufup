@@ -4,7 +4,7 @@ import logging
 import pathlib
 import shutil
 import sys
-from tempfile import TemporaryDirectory
+import tempfile
 from typing import Optional, Union
 
 import tuf.api.exceptions
@@ -12,11 +12,14 @@ from tuf.api.metadata import TargetFile
 import tuf.ngclient
 
 from notsotuf.common import TargetPath
+from notsotuf.utils.windows import start_script_and_exit
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'notsotuf'
 
-def unpack_gzip(archive_path, extract_dir):
+
+def extract_gzip(archive_path, extract_dir):
     """Unpack a gzip archive to the specified directory."""
     archive_path = pathlib.Path(archive_path)
     extract_dir = pathlib.Path(extract_dir)
@@ -27,18 +30,20 @@ def unpack_gzip(archive_path, extract_dir):
 
 # tell shutil how to unpack simple gzip files (it only knows .tar.gz)
 # https://docs.python.org/3/library/shutil.html#shutil.register_unpack_format
-shutil.register_unpack_format(name='gzip', extensions=['.gz'], function=unpack_gzip)
+shutil.register_unpack_format(name='gzip', extensions=['.gz'], function=extract_gzip)
 
 
 class Client(tuf.ngclient.Updater):
     def __init__(
             self,
             app_name: str,
+            app_install_dir: pathlib.Path,
             current_version: str,
             metadata_dir: pathlib.Path,
             metadata_base_url: str,
             target_dir: pathlib.Path,
             target_base_url: str,
+            extract_dir: Optional[pathlib.Path] = None,
             refresh_required: bool = False,
             **kwargs,
     ):
@@ -50,6 +55,8 @@ class Client(tuf.ngclient.Updater):
             target_base_url=target_base_url,
             **kwargs,
         )
+        self.app_install_dir = app_install_dir
+        self.extract_dir = extract_dir
         self.refresh_required = refresh_required
         self.current_archive = TargetPath(name=app_name, version=current_version)
         self.new_archive_local_path: Optional[pathlib.Path] = None
@@ -151,6 +158,10 @@ class Client(tuf.ngclient.Updater):
         return len(self.downloaded_target_files) == len(self.new_targets)
 
     def _apply_updates(self):
+        """
+        side-effect: if self.extract_dir is not specified, an extract_dir is
+        created in a platform-specific temporary location
+        """
         # patch current archive (if we have patches) or use new full archive
         archive_bytes = None
         for target, file_path in sorted(self.downloaded_target_files.items()):
@@ -169,13 +180,23 @@ class Client(tuf.ngclient.Updater):
             self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
             # write the patched new archive
             self.new_archive_local_path.write_bytes(archive_bytes)
-        # extract archive to temporary location
-        with TemporaryDirectory() as temp_dir:
-            # extract
-            temp_dir_path = pathlib.Path(temp_dir)
-            shutil.unpack_archive(
-                filename=self.new_archive_local_path, extract_dir=temp_dir_path
+        # extract archive to temporary directory
+        if self.extract_dir is None:
+            self.extract_dir = DEFAULT_EXTRACT_DIR
+            self.extract_dir.mkdir(exist_ok=True)
+            logger.debug(f'default extract dir created: {self.extract_dir}')
+        # extract
+        shutil.unpack_archive(
+            filename=self.new_archive_local_path, extract_dir=self.extract_dir
+        )
+        logger.debug(f'files extracted to {self.extract_dir}')
+        # install
+        confirmation_message = f'Install update in {self.app_install_dir}? [y]/n'
+        if input(confirmation_message) in ['y', '']:
+            # start a script that moves the extracted files to the app install
+            # directory (overwrites existing files), then exit current process
+            start_script_and_exit(
+                src_dir=self.extract_dir, dst_dir=self.app_install_dir
             )
-            # replace files in install directory
-            ...
-
+        else:
+            logger.warning('installation aborted')
