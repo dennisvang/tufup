@@ -1,8 +1,12 @@
+import platform
 import subprocess
 from time import sleep
+import unittest
 
 from tests import TempDirTestCase
 
+if not platform.system().lower().startswith('win'):
+    raise unittest.SkipTest('Only available on Windows')
 
 DUMMY_APP_CONTENT = """
 import sys
