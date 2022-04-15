@@ -89,6 +89,12 @@ class KeysTests(TempDirTestCase):
             # and the public keys should have been imported
             self.assertTrue(all(getattr(keys, n) for n in TOP_LEVEL_ROLE_NAMES))
 
+    def test_create_key_pair(self):
+        public_key_path = Keys.create_key_pair(
+            private_key_path=self.temp_dir_path / 'key_name', encrypted=False
+        )
+        self.assertTrue(public_key_path.exists())
+
     def test_public(self):
         keys = Keys(dir_path=self.temp_dir_path)
         # test empty

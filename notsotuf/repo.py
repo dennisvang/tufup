@@ -96,30 +96,46 @@ class Keys(Base):
         for role_name in role_names:
             public_key_path = self.public_key_path(role_name)
             if public_key_path.exists():
-                ssl_key = import_ed25519_publickey_from_file(filepath=str(public_key_path))
+                ssl_key = import_ed25519_publickey_from_file(
+                    filepath=str(public_key_path)
+                )
                 setattr(self, role_name, ssl_key)
                 logger.debug(f'public key imported: {public_key_path}')
             else:
                 logger.debug(f'file does not exist: {public_key_path}')
 
-    def create(self, role_names: Optional[Iterable[str]] = None):
+    def create(
+            self,
+            role_names: Optional[Iterable[str]] = None,
+            private_key_path: Optional[pathlib.Path] = None,
+    ):
         if role_names is None:
             role_names = TOP_LEVEL_ROLE_NAMES
         logger.debug(f'creating key-pairs for roles: {role_names}')
         for role_name in role_names:
-            private_key_path = self.private_key_path(role_name)
-            if role_name in self.encrypted:
-                # encrypt private key
-                logger.debug(f'set encryption password for {role_name} private key')
-                generate_and_write_ed25519_keypair_with_prompt(
-                    filepath=str(private_key_path))
-            else:
-                # do not encrypt private key (for automated signing)
-                generate_and_write_unencrypted_ed25519_keypair(
-                    filepath=str(private_key_path))
-            logger.debug(f'key-pair created: {private_key_path}')
+            default_private_key_path = self.private_key_path(role_name)
+            self.create_key_pair(
+                private_key_path=private_key_path or default_private_key_path,
+                encrypted=role_name in self.encrypted,
+            )
         # import the newly created public keys
         self._import_public(role_names=role_names)
+
+    @staticmethod
+    def create_key_pair(
+            private_key_path: pathlib.Path, encrypted: bool
+    ) -> pathlib.Path:
+        if encrypted:
+            # encrypt private key
+            logger.debug(f'set encryption password for private key')
+            generate_keypair = generate_and_write_ed25519_keypair_with_prompt
+        else:
+            # do not encrypt private key (for automated signing)
+            generate_keypair = generate_and_write_unencrypted_ed25519_keypair
+        file_path_str = generate_keypair(filepath=str(private_key_path))
+        public_key_path = private_key_path.with_suffix(SUFFIX_PUB)
+        logger.debug(f'key-pair created: {file_path_str}, {public_key_path}')
+        return public_key_path
 
     def private_key_path(self, role_name: str) -> pathlib.Path:
         return self.dir_path / self.filename_pattern.format(role_name=role_name)
@@ -138,7 +154,8 @@ class Keys(Base):
         # return a dict mapping role names to key ids and key thresholds
         return {
             role_name: Role(keyids=[ssl_key['keyid']], threshold=1)
-            for role_name, ssl_key in vars(self).items() if ssl_key is not None
+            if ssl_key is not None else None
+            for role_name, ssl_key in vars(self).items()
         }
 
     @classmethod
