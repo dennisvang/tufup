@@ -73,7 +73,10 @@ class ClientTests(TempDirTestCase):
         with patch.object(client, '_download_metadata', self.mock_download_metadata):
             client.refresh()
         # ensure current archive exists (dummy)
-        client.current_archive_local_path.touch()
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / str(client.current_archive),
+            dst=client.current_archive_local_path,
+        )
         return client
 
     def test_init_no_metadata(self):
@@ -166,4 +169,25 @@ class ClientTests(TempDirTestCase):
                     self.assertEqual(downloaded_path, str(local_path))
 
     def test__apply_updates(self):
-        pass
+        client = self.get_refreshed_client()
+        # directly use target files from test repo as downloaded files
+        client.downloaded_target_files = {
+            target_path: TEST_REPO_DIR / 'targets' / str(target_path)
+            for target_path in client.trusted_target_paths
+            if target_path.is_patch and str(target_path.version) in ['2.0', '3.0rc0']
+        }
+        # specify new archive (normally done in _check_updates)
+        archives = [
+            tp for tp in client.trusted_target_paths
+            if tp.is_archive and str(tp.version) == '3.0rc0'
+        ]
+        client.new_archive_info = client.get_targetinfo(archives[-1])
+        client.new_archive_local_path = pathlib.Path(
+            client.target_dir, client.new_archive_info.path
+        )
+        # test
+        mock_move = Mock()
+        with patch('builtins.input', Mock(return_value='y')):
+            client._apply_updates(move_and_exit=mock_move)
+        self.assertTrue(any(client.extract_dir.iterdir()))
+        self.assertTrue(mock_move.called)
