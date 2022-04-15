@@ -63,17 +63,11 @@ class ClientTests(TempDirTestCase):
         if rolename == 'root':
             # indicate current root is newest version
             raise tuf.api.exceptions.DownloadHTTPError(status_code=404, message='')
-        file_path = self.metadata_dir / f'{rolename}.json'
+        # read from the test repo dir, instead of actually downloading
+        file_path = TEST_REPO_DIR / 'metadata' / f'{rolename}.json'
         return file_path.read_bytes()
 
     def get_refreshed_client(self):
-        # make sure all metadata files are present (these would normally be
-        # downloaded from the update server)
-        for filename in [TARGETS_FILENAME, SNAPSHOT_FILENAME, TIMESTAMP_FILENAME]:
-            shutil.copy(
-                src=TEST_REPO_DIR / 'metadata' / filename,
-                dst=self.metadata_dir / filename,
-            )
         # refresh to load targets metadata (mock to prevent actual download)
         client = Client(**self.client_kwargs)
         with patch.object(client, '_download_metadata', self.mock_download_metadata):
