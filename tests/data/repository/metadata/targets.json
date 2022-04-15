@@ -2,55 +2,55 @@
  "signatures": [
   {
    "keyid": "cead8430b4d78fd7a866cde07123f79c88d4fb8f5ef5c869f2a6e58c62f6328b",
-   "sig": "18edd621079c75ca3325692d5f8d4aeb4e648767ab61c95af50a6365385380f323a76506d7029974b288610e43b88674d5f26530c4f56a15554b50c545ab5902"
+   "sig": "c27a92569436631f3ba3f9d41c43b15dc6e5cf7d7a30492c66aaa66afac94370326c3c7fca0c76de350d4b702f1632a55d5a5eb7158f02363783f8677b472507"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2032-04-11T14:07:12Z",
+  "expires": "2032-04-12T14:26:47Z",
   "spec_version": "1.0.28",
   "targets": {
    "example_app-1.0.gz": {
     "hashes": {
-     "sha256": "a87a52096b54b1d22fda93b3f2b5d0677245ff533c3baac8700ae518e14d4bc2"
+     "sha256": "f08d3ad83931537b6db6f4dd6b1482c136db214f57715505bffb9d4dbe13edc1"
     },
     "length": 439
    },
    "example_app-2.0.gz": {
     "hashes": {
-     "sha256": "44e645a9f3743ac7b0de76d02411464b7f3bced08cda07ef315f0b65145368d3"
+     "sha256": "795a522dc590bac6b2a5694ffc856e587153737ea6e1dcc5f16ea035a1d94f1b"
     },
     "length": 440
    },
    "example_app-2.0.patch": {
     "hashes": {
-     "sha256": "6ca27699649c771f4fb70dceca3b5e0828ceca2a0d906d6a04c0d16124f4cd71"
+     "sha256": "4c24d5496fcda7d39174123ce6651eb44295804d164410857fc02dab7ef2952f"
     },
-    "length": 179
+    "length": 184
    },
    "example_app-3.0rc0.gz": {
     "hashes": {
-     "sha256": "13603fa84879c441a4e47b871f96ae903ac00ddadf9435e8ad0a52c6f33eb98a"
+     "sha256": "cf899cdcae372176e4aecbdfd7ba4e390a1c76516ca1b23eda0f47e6baf3a8e5"
     },
     "length": 445
    },
    "example_app-3.0rc0.patch": {
     "hashes": {
-     "sha256": "dbf5057d6e108979ccb3f3e4ee6b10715ab94247d2ea022b6c4ffcb508370532"
+     "sha256": "13184252a3bc0bb73e56fc5575f55f94398472639522c59561d69e91e2b835e2"
     },
-    "length": 200
+    "length": 196
    },
    "example_app-4.0a0.gz": {
     "hashes": {
-     "sha256": "0de866eb3af90ad23be2753344fc584371df0bb93f9216268411ece5cd8fff9e"
+     "sha256": "0013a16fc83ef3af06fc5b6757c2982cc23638026f0c4f80edc46affec9a5546"
     },
     "length": 443
    },
    "example_app-4.0a0.patch": {
     "hashes": {
-     "sha256": "b2827e5bf6ac97a75891478a5bf3d357135f218458b279fbbb01387d00839ef1"
+     "sha256": "275b6434eb989f65a66ce0d3073799a1534228ebf579ff60ce0319406c6256b1"
     },
-    "length": 202
+    "length": 187
    }
   },
   "version": 5

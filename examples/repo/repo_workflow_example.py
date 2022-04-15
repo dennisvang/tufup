@@ -70,6 +70,7 @@ expires = dict(targets=in_(7), snapshot=in_(7), timestamp=in_(1))
 roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
 
 # register additional target files (as updates become available over time)
+current_archive_path = initial_archive_path
 for version, modified_content in [
     ('2.0', dummy_archive_content + b'2'),
     ('3.0rc0', dummy_archive_content + b'3rc'),
@@ -86,14 +87,15 @@ for version, modified_content in [
         with gzip.open(new_archive_path, 'wb') as gz_file:
             gz_file.write(modified_content)
     new_patch_path = Patcher.create_patch(
-        src_path=initial_archive_path, dst_path=new_archive_path
+        src_path=current_archive_path, dst_path=new_archive_path
     )
-
     # Register the new update files
     roles.add_or_update_target(local_path=new_archive_path)
     roles.add_or_update_target(local_path=new_patch_path)
     print(f'signing updated metadata for version {version}')
     roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
+    # next
+    current_archive_path = new_archive_path
 
 # Time goes by
 ...
