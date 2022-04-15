@@ -139,10 +139,14 @@ class Client(tuf.ngclient.Updater):
         total_patch_size = sum(
             target_file.length for target_file in new_patches.values()
         )
-        # use size to decide if we want to do a patch update or full update (
-        # if there are no patches, we must do a full update)
+        # use file size to decide if we want to do a patch update or a full
+        # update (if there are no patches, or if the current archive is not
+        # available, we must do a full update)
         self.new_targets = new_patches
-        if total_patch_size > self.new_archive_info.length or total_patch_size == 0:
+        no_patches = total_patch_size == 0
+        patches_too_big = total_patch_size > self.new_archive_info.length
+        current_archive_not_found = not self.current_archive.path.exists()
+        if no_patches or patches_too_big or current_archive_not_found:
             self.new_targets = {new_archive: self.new_archive_info}
         return len(self.new_targets) > 0
 
