@@ -145,6 +145,16 @@ class ClientTests(TempDirTestCase):
                             item.is_patch for item in client.new_targets.keys())
                         )
 
+    def test__check_updates_current_archive_missing(self):
+        client = self.get_refreshed_client()
+        # remove current archive dummy
+        client.current_archive_local_path.unlink()
+        with patch.object(client, 'refresh', Mock()):
+            for pre in [None, 'a', 'b', 'rc']:
+                self.assertTrue(client._check_updates(pre=pre))
+                target_path = next(iter(client.new_targets.keys()))
+                self.assertTrue(target_path.is_archive)
+
     def test__download_updates(self):
         client = Client(**self.client_kwargs)
         client.new_targets = {Mock(): Mock()}
