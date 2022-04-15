@@ -1,6 +1,10 @@
 # notsotuf
 
-A simple software updater for stand-alone Python *applications*, built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
+A simple software updater for stand-alone Python *applications* on Windows.
+
+The package can be used on other platforms, but these are not actively supported.
+
+The `notsotuf` package is built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
 
 ## About
 
@@ -35,14 +39,14 @@ See the [tuf docs][4] for more information.
 
 ## Archives and patches
 
-Notsotuf works with *archives* (gzipped PyInstaller bundles) and *patches* (binary differences between subsequent archives).
+Notsotuf works with *archives* (e.g. gzipped PyInstaller bundles) and *patches* (binary differences between subsequent archives).
 Each archive, except the first one, must have a corresponding patch file.
 
 Archive filenames and patch filenames follow the pattern
 
 `<name>-<version><suffix>` 
 
-where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.gz'` or `'.patch'`.
+where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.gz'` (including `'.tar.gz'`) or `'.patch'`.
 
 Patches are typically smaller than archives, so the notsotuf client will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
@@ -82,6 +86,14 @@ From here on, new updates will be deployed using `notsotuf`.
 4. Set up your `notsotuf` repository (on the same server or another server), but keep the `pyupdater` repository in place as long as necessary to allow all clients to update.
 5. From now on, build, package, sign and deploy using `notsotuf`, as described elsewhere in this document.
 
+## Platform support
+
+The `notsotuf` package is aimed primarily at **Windows** applications.
+Basic `notsotuf.client` functionality should also work on Mac or Linux, provided a custom `move_and_exit` hook is specified in `Client.update()`.
+However, these platforms are not actively supported.
+Moreover, Linux applications are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft.
+
+Read the [Python packaging overview][8] for more information.
 
 [1]: https://github.com/theupdateframework/python-tuf
 [2]: https://theupdateframework.io/
@@ -90,3 +102,4 @@ From here on, new updates will be deployed using `notsotuf`.
 [5]: https://peps.python.org/pep-0458/
 [6]: https://peps.python.org/pep-0440/
 [7]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_example/basic_repo.py
+[8]: https://packaging.python.org/en/latest/overview/
