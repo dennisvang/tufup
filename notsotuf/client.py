@@ -5,7 +5,7 @@ import pathlib
 import shutil
 import sys
 import tempfile
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
@@ -89,7 +89,11 @@ class Client(tuf.ngclient.Updater):
             target_path = target_path.target_path_str
         return super().get_targetinfo(target_path=target_path)
 
-    def update(self, pre: Optional[str] = None):
+    def update(
+            self,
+            pre: Optional[str] = None,
+            move_and_exit: Optional[Callable] = None,
+    ):
         """
         Check, download, and apply updates.
 
@@ -98,9 +102,15 @@ class Client(tuf.ngclient.Updater):
         the specified level. Pre-release identifiers follow the PEP440
         specification, i.e. 'a', 'b', or 'rc', for alpha, beta, and release
         candidate, respectively.
+
+        move_and_exit is an optional callable that can be used for platform
+        specific file
         """
+        if move_and_exit is None:
+            # use default script for Windows
+            move_and_exit = start_script_and_exit
         if self._check_updates(pre=pre) and self._download_updates():
-            self._apply_updates()
+            self._apply_updates(move_and_exit=move_and_exit)
 
     def _check_updates(self, pre: Optional[str]) -> bool:
         included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
@@ -161,7 +171,7 @@ class Client(tuf.ngclient.Updater):
             self.downloaded_target_files[target_path] = pathlib.Path(local_path_str)
         return len(self.downloaded_target_files) == len(self.new_targets)
 
-    def _apply_updates(self):
+    def _apply_updates(self, move_and_exit: Callable):
         """
         side-effect: if self.extract_dir is not specified, an extract_dir is
         created in a platform-specific temporary location
@@ -199,8 +209,7 @@ class Client(tuf.ngclient.Updater):
         if input(confirmation_message) in ['y', '']:
             # start a script that moves the extracted files to the app install
             # directory (overwrites existing files), then exit current process
-            start_script_and_exit(
-                src_dir=self.extract_dir, dst_dir=self.app_install_dir
-            )
+            move_and_exit(src_dir=self.extract_dir, dst_dir=self.app_install_dir)
         else:
             logger.warning('installation aborted')
+        # todo: clean up deprecated local archive
