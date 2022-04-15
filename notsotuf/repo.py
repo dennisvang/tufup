@@ -342,3 +342,29 @@ class Roles(Base):
                 encrypted=role_name in self.encrypted,
             )
             self.persist_role(role_name=role_name)
+
+    def replace_key(
+            self,
+            old_key_id: str,
+            new_public_key_path: Union[pathlib.Path, str],
+            keys_dirs: List[Union[pathlib.Path, str]],
+            root_expires: datetime,
+    ):
+        """Based on root key rotation example from tuf basic_repo.py."""
+        # a key may be used for multiple roles, so we check the key id for
+        # all roles
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            try:
+                # key id is removed from roles dict, if found, and key is
+                # removed from keys dict if it is no longer used by any roles
+                self.root.signed.remove_key(role=role_name, keyid=old_key_id)
+            except ValueError:
+                logger.debug(f'{role_name} does not have key {old_key_id}')
+            else:
+                # add the new key
+                self.add_public_key(
+                    role_name=role_name, public_key_path=new_public_key_path
+                )
+        # publish new version of root
+        self.publish_root(keys_dirs=keys_dirs, expires=root_expires)
+        # todo: sign with old *and* new key...

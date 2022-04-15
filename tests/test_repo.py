@@ -279,3 +279,25 @@ class RolesTests(TempDirTestCase):
             )
             self.assertTrue(Roles.sign_role.called)  # noqa
             self.assertTrue(Roles.persist_role.called)  # noqa
+
+    def test_replace_key(self):
+        # prepare
+        keys = Keys(dir_path=self.temp_dir_path, encrypted=[])
+        keys.create()
+        roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
+        roles.initialize(keys=keys)
+        # create new key pair to replace old one
+        new_private_key_path = self.temp_dir_path / 'new_key'
+        new_public_key_path = Keys.create_key_pair(
+            private_key_path=new_private_key_path, encrypted=False
+        )
+        # test
+        role_name = 'targets'
+        old_key_id = roles.root.signed.roles[role_name].keyids[0]
+        roles.replace_key(
+            old_key_id=old_key_id,
+            new_public_key_path=new_public_key_path,
+            keys_dirs=[keys.dir_path],
+            root_expires=in_(365),
+        )
+        self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)
