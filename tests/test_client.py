@@ -78,6 +78,8 @@ class ClientTests(TempDirTestCase):
         client = Client(**self.client_kwargs)
         with patch.object(client, '_download_metadata', self.mock_download_metadata):
             client.refresh()
+        # ensure current archive exists (dummy)
+        client.current_archive_local_path.touch()
         return client
 
     def test_init_no_metadata(self):

@@ -58,7 +58,10 @@ class Client(tuf.ngclient.Updater):
         self.app_install_dir = app_install_dir
         self.extract_dir = extract_dir
         self.refresh_required = refresh_required
-        self.current_archive = TargetPath(name=app_name, version=current_version)
+        self.current_archive = TargetPath(
+            name=app_name, version=current_version
+        )
+        self.current_archive_local_path = target_dir / self.current_archive.path
         self.new_archive_local_path: Optional[pathlib.Path] = None
         self.new_archive_info: Optional[TargetFile] = None
         self.new_targets = {}
@@ -155,7 +158,7 @@ class Client(tuf.ngclient.Updater):
         self.new_targets = new_patches
         no_patches = total_patch_size == 0
         patches_too_big = total_patch_size > self.new_archive_info.length
-        current_archive_not_found = not self.current_archive.path.exists()
+        current_archive_not_found = not self.current_archive_local_path.exists()
         if no_patches or patches_too_big or current_archive_not_found:
             self.new_targets = {new_archive: self.new_archive_info}
         return len(self.new_targets) > 0
@@ -187,7 +190,7 @@ class Client(tuf.ngclient.Updater):
                 # create new archive by patching current archive (patches
                 # must be sorted by increasing version)
                 if archive_bytes is None:
-                    archive_bytes = self.current_archive.path.read_bytes()
+                    archive_bytes = self.current_archive_local_path.read_bytes()
                 archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
         if archive_bytes:
             # verify the patched archive length and hash
