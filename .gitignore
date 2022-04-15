@@ -1,6 +1,7 @@
 # dirs
 __pycache__/
 examples/client/cache/
+examples/client/programs/
 examples/repo/keystore/
 examples/repo/content/
 
