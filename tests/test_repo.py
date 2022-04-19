@@ -107,7 +107,7 @@ class KeysTests(TempDirTestCase):
     def test_roles(self):
         keys = Keys(dir_path=self.temp_dir_path)
         # test empty
-        self.assertFalse(keys.roles())
+        self.assertSetEqual(set(TOP_LEVEL_ROLE_NAMES), set(keys.roles().keys()))
         # set a dummy key value
         keys.root = DUMMY_SSL_KEY
         # test
