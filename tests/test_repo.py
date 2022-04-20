@@ -43,6 +43,10 @@ DUMMY_ROOT = Root(
 DUMMY_EXPIRES = dict(
     root=in_(0), targets=in_(0), snapshot=in_(0), timestamp=in_(0)
 )
+DUMMY_PRIVATE_KEY_PATHS = dict(
+    (role_name, [pathlib.Path('dummy', role_name)])
+    for role_name in TOP_LEVEL_ROLE_NAMES
+)
 
 
 class CommonTests(TempDirTestCase):
@@ -241,7 +245,7 @@ class RolesTests(TempDirTestCase):
             roles.root = Mock(signed=Mock(version=1))
             roles.encrypted = []
             # test
-            roles.publish_root(keys_dirs=[], expires=in_(0))
+            roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(2, roles.root.signed.version)
             self.assertTrue(Roles._publish_metadata.called)  # noqa
 
@@ -260,7 +264,11 @@ class RolesTests(TempDirTestCase):
             # test
             expires = DUMMY_EXPIRES.copy()
             expires.pop('root')  # no need to sign root
-            roles.publish_targets(keys_dirs=[], expires=expires)
+            private_key_paths = DUMMY_PRIVATE_KEY_PATHS.copy()
+            private_key_paths.pop('root')
+            roles.publish_targets(
+                private_key_paths=private_key_paths, expires=expires
+            )
             role_names = [Targets.type, Snapshot.type, Timestamp.type]
             self.assertTrue(
                 all(getattr(roles, n).signed.version == 2 for n in role_names)
@@ -273,9 +281,8 @@ class RolesTests(TempDirTestCase):
             roles = Roles(dir_path=self.temp_dir_path)
             roles.encrypted = []
             # test
-            role_names = TOP_LEVEL_ROLE_NAMES
             roles._publish_metadata(
-                role_names=role_names, keys_dirs=[], expires=DUMMY_EXPIRES
+                private_key_paths=DUMMY_PRIVATE_KEY_PATHS, expires=DUMMY_EXPIRES
             )
             self.assertTrue(Roles.sign_role.called)  # noqa
             self.assertTrue(Roles.persist_role.called)  # noqa
@@ -296,8 +303,9 @@ class RolesTests(TempDirTestCase):
         old_key_id = roles.root.signed.roles[role_name].keyids[0]
         roles.replace_key(
             old_key_id=old_key_id,
+            old_private_key_path=keys.private_key_path(role_name=role_name),
+            new_private_key_path=new_private_key_path,
             new_public_key_path=new_public_key_path,
-            keys_dirs=[keys.dir_path],
             root_expires=in_(365),
         )
         self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)

@@ -46,7 +46,10 @@ if roles.root is None:
     roles.initialize(keys=keys)
     # save root metadata file
     print('signing initial root metadata')
-    roles.publish_root(keys_dirs=[KEYS_DIR], expires=in_(365))
+    roles.publish_root(
+        private_key_paths=[keys.private_key_path('root')],
+        expires=in_(365),
+    )
 
 # Create dummy initial target file (normally using e.g. PyInstaller and gzip)
 TARGETS_DIR.mkdir(exist_ok=True)
@@ -67,7 +70,13 @@ if not initial_archive_path.exists():
 roles.add_or_update_target(local_path=initial_archive_path)
 print('signing initial targets metadata')
 expires = dict(targets=in_(7), snapshot=in_(7), timestamp=in_(1))
-roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
+private_key_paths = {
+    role_name: [keys.private_key_path(role_name=role_name)]
+    for role_name in expires.keys()
+}
+roles.publish_targets(
+    private_key_paths=private_key_paths, expires=expires
+)
 
 # register additional target files (as updates become available over time)
 current_archive_path = initial_archive_path
@@ -93,7 +102,7 @@ for version, modified_content in [
     roles.add_or_update_target(local_path=new_archive_path)
     roles.add_or_update_target(local_path=new_patch_path)
     print(f'signing updated metadata for version {version}')
-    roles.publish_targets(keys_dirs=[KEYS_DIR], expires=expires)
+    roles.publish_targets(private_key_paths=private_key_paths, expires=expires)
     # next
     current_archive_path = new_archive_path
 

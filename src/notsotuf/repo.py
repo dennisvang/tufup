@@ -292,7 +292,9 @@ class Roles(Base):
         role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
     def publish_root(
-            self, keys_dirs: List[Union[pathlib.Path, str]], expires: datetime
+            self,
+            private_key_paths: List[Union[pathlib.Path, str]],
+            expires: datetime,
     ):
         """Call this whenever root has been modified (should be rare)."""
         # todo: handle initial case, as we cannot set version=0
@@ -300,12 +302,13 @@ class Roles(Base):
         self.root.signed.version += 1
         # sign and save
         self._publish_metadata(
-            role_names=[Root.type], keys_dirs=keys_dirs, expires=dict(root=expires)
+            private_key_paths={Root.type: private_key_paths},
+            expires=dict(root=expires),
         )
 
     def publish_targets(
             self,
-            keys_dirs: List[Union[pathlib.Path, str]],
+            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],
             expires: Dict[str, datetime],
     ):
         """Call this whenever new targets have been added."""
@@ -319,35 +322,32 @@ class Roles(Base):
         self.timestamp.signed.version += 1
         # sign and save
         self._publish_metadata(
-            role_names=[Targets.type, Snapshot.type, Timestamp.type],
-            keys_dirs=keys_dirs,
-            expires=expires,
+            private_key_paths=private_key_paths, expires=expires
         )
 
     def _publish_metadata(
             self,
-            role_names: List[str],
-            keys_dirs: List[Union[pathlib.Path, str]],
+            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],
             expires: Dict[str, datetime],
     ):
         # sign the metadata files and save to disk
-        for role_name in role_names:
-            private_key_path = Keys.find_private(
-                role_name=role_name, key_dirs=keys_dirs
-            )
-            self.sign_role(
-                role_name=role_name,
-                private_key_path=private_key_path,
-                expires=expires[role_name],
-                encrypted=role_name in self.encrypted,
-            )
+        for role_name, role_private_key_paths in private_key_paths.items():
+            # sign with each specified key
+            for private_key_path in role_private_key_paths:
+                self.sign_role(
+                    role_name=role_name,
+                    private_key_path=private_key_path,
+                    expires=expires[role_name],
+                    encrypted=role_name in self.encrypted,
+                )
             self.persist_role(role_name=role_name)
 
     def replace_key(
             self,
             old_key_id: str,
+            old_private_key_path: Union[pathlib.Path, str],
+            new_private_key_path: Union[pathlib.Path, str],
             new_public_key_path: Union[pathlib.Path, str],
-            keys_dirs: List[Union[pathlib.Path, str]],
             root_expires: datetime,
     ):
         """Based on root key rotation example from tuf basic_repo.py."""
@@ -365,6 +365,8 @@ class Roles(Base):
                 self.add_public_key(
                     role_name=role_name, public_key_path=new_public_key_path
                 )
-        # publish new version of root
-        self.publish_root(keys_dirs=keys_dirs, expires=root_expires)
-        # todo: sign with old *and* new key...
+        # publish new version of root, sign with both old key and new key
+        self.publish_root(
+            private_key_paths=[old_private_key_path, new_private_key_path],
+            expires=root_expires,
+        )
