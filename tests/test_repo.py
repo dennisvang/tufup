@@ -49,16 +49,16 @@ DUMMY_PRIVATE_KEY_PATHS = dict(
 )
 
 
-class CommonTests(TempDirTestCase):
+class BaseTests(TempDirTestCase):
     def test_init(self):
         with patch('builtins.input', mock_input):
             # dir exists
-            common = Base(dir_path=self.temp_dir_path, encrypted=[])
-            self.assertTrue(common.dir_path.exists())
+            base = Base(dir_path=self.temp_dir_path, encrypted=[])
+            self.assertTrue(base.dir_path.exists())
             # dir does not exist yet
-            common = Base(dir_path=self.temp_dir_path / 'new', encrypted=[])
-            self.assertTrue(common.dir_path.exists())
-            self.assertFalse(common.encrypted)
+            base = Base(dir_path=self.temp_dir_path / 'new', encrypted=[])
+            self.assertTrue(base.dir_path.exists())
+            self.assertFalse(base.encrypted)
 
 
 class KeysTests(TempDirTestCase):
