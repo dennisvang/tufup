@@ -76,7 +76,7 @@ class Base(object):
 class Keys(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
     encrypted = [Root.type, Targets.type]
-    filename_pattern = '{role_name}_key'
+    filename_pattern = '{key_name}'
 
     def __init__(
             self,
@@ -90,19 +90,22 @@ class Keys(Base):
         self.snapshot: Optional[Dict[str, Any]] = None
         self.timestamp: Optional[Dict[str, Any]] = None
         # import public keys from dir_path, if it exists
-        self._import_public(role_names=TOP_LEVEL_ROLE_NAMES)
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            self.import_public_key(role_name=role_name)
 
-    def _import_public(self, role_names: Iterable[str]):
-        for role_name in role_names:
-            public_key_path = self.public_key_path(role_name)
-            if public_key_path.exists():
-                ssl_key = import_ed25519_publickey_from_file(
-                    filepath=str(public_key_path)
-                )
-                setattr(self, role_name, ssl_key)
-                logger.debug(f'public key imported: {public_key_path}')
-            else:
-                logger.debug(f'file does not exist: {public_key_path}')
+    def import_public_key(self, role_name: str, key_name: Optional[str] = None):
+        """Import public key for specified role."""
+        if key_name is None:
+            key_name = role_name
+        public_key_path = self.public_key_path(key_name=key_name)
+        if public_key_path.exists():
+            ssl_key = import_ed25519_publickey_from_file(
+                filepath=str(public_key_path)
+            )
+            setattr(self, role_name, ssl_key)
+            logger.debug(f'public key imported: {public_key_path}')
+        else:
+            logger.debug(f'file does not exist: {public_key_path}')
 
     def create(
             self,
@@ -119,7 +122,8 @@ class Keys(Base):
                 encrypted=role_name in self.encrypted,
             )
         # import the newly created public keys
-        self._import_public(role_names=role_names)
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            self.import_public_key(role_name=role_name)
 
     @staticmethod
     def create_key_pair(
@@ -134,14 +138,14 @@ class Keys(Base):
             generate_keypair = generate_and_write_unencrypted_ed25519_keypair
         file_path_str = generate_keypair(filepath=str(private_key_path))
         public_key_path = private_key_path.with_suffix(SUFFIX_PUB)
-        logger.debug(f'key-pair created: {file_path_str}, {public_key_path}')
+        logger.info(f'key-pair created: {file_path_str}, {public_key_path}')
         return public_key_path
 
-    def private_key_path(self, role_name: str) -> pathlib.Path:
-        return self.dir_path / self.filename_pattern.format(role_name=role_name)
+    def private_key_path(self, key_name: str) -> pathlib.Path:
+        return self.dir_path / self.filename_pattern.format(key_name=key_name)
 
-    def public_key_path(self, role_name: str) -> pathlib.Path:
-        return self.private_key_path(role_name=role_name).with_suffix(SUFFIX_PUB)
+    def public_key_path(self, key_name: str) -> pathlib.Path:
+        return self.private_key_path(key_name=key_name).with_suffix(SUFFIX_PUB)
 
     def public(self):
         # return a dict mapping key ids to *public* key objects
@@ -159,9 +163,9 @@ class Keys(Base):
         }
 
     @classmethod
-    def find_private(cls, role_name: str, key_dirs: List[Union[pathlib.Path, str]]):
+    def find_private_key(cls, role_name: str, key_dirs: List[Union[pathlib.Path, str]]):
         private_key_path = None
-        private_key_filename = cls.filename_pattern.format(role_name=role_name)
+        private_key_filename = cls.filename_pattern.format(key_name=role_name)
         for key_dir in key_dirs:
             key_dir = pathlib.Path(key_dir)  # ensure Path
             for path in key_dir.iterdir():

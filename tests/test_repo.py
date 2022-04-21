@@ -68,16 +68,28 @@ class KeysTests(TempDirTestCase):
         for role_name in TOP_LEVEL_ROLE_NAMES:
             self.assertIsNone(getattr(keys, role_name))
 
-    def test_init_import_public(self):
+    def test_init_import_existing_public_keys(self):
         # create some key files
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            filename = Keys.filename_pattern.format(role_name=role_name) + SUFFIX_PUB
-            file_path = self.temp_dir_path / filename
+            private_key_filename = Keys.filename_pattern.format(key_name=role_name)
+            file_path = self.temp_dir_path / private_key_filename
             generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
         # test
         keys = Keys(dir_path=self.temp_dir_path)
         for role_name in TOP_LEVEL_ROLE_NAMES:
             self.assertIsInstance(getattr(keys, role_name), dict)
+
+    def test_import_public_key(self):
+        # create dummy key with name differing from role name
+        key_name = 'test'
+        role_name = 'targets'
+        private_key_filename = Keys.filename_pattern.format(key_name=key_name)
+        file_path = self.temp_dir_path / private_key_filename
+        generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
+        # test
+        keys = Keys(dir_path=self.temp_dir_path)
+        keys.import_public_key(role_name=role_name, key_name=key_name)
+        self.assertTrue(keys.targets)
 
     def test_create(self):
         with patch('getpass.getpass', mock_input):
@@ -86,7 +98,7 @@ class KeysTests(TempDirTestCase):
             # key pair files should now exist
             filenames = [item.name for item in keys.dir_path.iterdir()]
             for role_name in TOP_LEVEL_ROLE_NAMES:
-                private_key_filename = Keys.filename_pattern.format(role_name=role_name)
+                private_key_filename = Keys.filename_pattern.format(key_name=role_name)
                 public_key_filename = private_key_filename + SUFFIX_PUB
                 self.assertIn(private_key_filename, filenames)
                 self.assertIn(public_key_filename, filenames)
@@ -117,7 +129,7 @@ class KeysTests(TempDirTestCase):
         # test
         self.assertIn('root', keys.roles().keys())
 
-    def test_find_private(self):
+    def test_find_private_key(self):
         # create dummy private key files in separate folders
         key_names = [
             ('online', [Snapshot.type, Timestamp.type]),
@@ -129,11 +141,11 @@ class KeysTests(TempDirTestCase):
             dir_path.mkdir()
             key_dirs.append(dir_path)
             for role_name in role_names:
-                filename = Keys.filename_pattern.format(role_name=role_name)
+                filename = Keys.filename_pattern.format(key_name=role_name)
                 (dir_path / filename).touch()
         # test
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            key_path = Keys.find_private(role_name=role_name, key_dirs=key_dirs)
+            key_path = Keys.find_private_key(role_name=role_name, key_dirs=key_dirs)
             self.assertIn(role_name, str(key_path))
             self.assertTrue(key_path.exists())
 
@@ -289,12 +301,14 @@ class RolesTests(TempDirTestCase):
 
     def test_replace_key(self):
         # prepare
-        keys = Keys(dir_path=self.temp_dir_path, encrypted=[])
+        keys_dir = self.temp_dir_path / 'keystore'
+        keys_dir.mkdir()
+        keys = Keys(dir_path=keys_dir, encrypted=[])
         keys.create()
         roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
         roles.initialize(keys=keys)
         # create new key pair to replace old one
-        new_private_key_path = self.temp_dir_path / 'new_key'
+        new_private_key_path = keys_dir / 'new_key'
         new_public_key_path = Keys.create_key_pair(
             private_key_path=new_private_key_path, encrypted=False
         )
@@ -303,7 +317,7 @@ class RolesTests(TempDirTestCase):
         old_key_id = roles.root.signed.roles[role_name].keyids[0]
         roles.replace_key(
             old_key_id=old_key_id,
-            old_private_key_path=keys.private_key_path(role_name=role_name),
+            old_private_key_path=keys.private_key_path(key_name=role_name),
             new_private_key_path=new_private_key_path,
             new_public_key_path=new_public_key_path,
             root_expires=in_(365),

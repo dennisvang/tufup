@@ -71,7 +71,7 @@ roles.add_or_update_target(local_path=initial_archive_path)
 print('signing initial targets metadata')
 expires = dict(targets=in_(7), snapshot=in_(7), timestamp=in_(1))
 private_key_paths = {
-    role_name: [keys.private_key_path(role_name=role_name)]
+    role_name: [keys.private_key_path(key_name=role_name)]
     for role_name in expires.keys()
 }
 roles.publish_targets(
@@ -113,6 +113,6 @@ for version, modified_content in [
 roles.sign_role(
     role_name='timestamp',
     expires=in_(2),
-    private_key_path=keys.private_key_path(role_name='timestamp'),
+    private_key_path=keys.private_key_path(key_name='timestamp'),
 )
 roles.persist_role(role_name='timestamp')
