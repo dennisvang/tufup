@@ -76,9 +76,9 @@ def make_gztar_archive(
     )
     archive_path = dst_dir / archive_filename
     if archive_path.exists():
-        if input(f'{archive_path} exists. Overwrite? [n]/y') != 'y':
-            print('Archive aborted.')
-            return None
+        if input(f'Found existing archive: {archive_path}.\nOverwrite? [n]/y') != 'y':
+            print('Using existing archive.')
+            return archive_path
     # make archive
     base_name = str(dst_dir / archive_filename.replace(SUFFIX_ARCHIVE, ''))
     archive_path_str = shutil.make_archive(
