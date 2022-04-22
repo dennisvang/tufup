@@ -19,20 +19,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'notsotuf'
 
 
-def extract_gzip(archive_path, extract_dir):
-    """Unpack a gzip archive to the specified directory."""
-    archive_path = pathlib.Path(archive_path)
-    extract_dir = pathlib.Path(extract_dir)
-    extract_path = extract_dir / archive_path.stem
-    with gzip.open(archive_path, 'rb') as gz_file:
-        extract_path.write_bytes(gz_file.read())
-
-
-# tell shutil how to unpack simple gzip files (it only knows .tar.gz)
-# https://docs.python.org/3/library/shutil.html#shutil.register_unpack_format
-shutil.register_unpack_format(name='gzip', extensions=['.gz'], function=extract_gzip)
-
-
 class Client(tuf.ngclient.Updater):
     def __init__(
             self,

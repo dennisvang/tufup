@@ -37,7 +37,13 @@ https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_exam
 """
 
 __all__ = [
-    'Keys', 'Roles', 'in_', 'TOP_LEVEL_ROLE_NAMES', 'SUFFIX_PUB', 'SUFFIX_JSON'
+    'in_',
+    'Keys',
+    'make_gztar_archive',
+    'Roles',
+    'SUFFIX_JSON',
+    'SUFFIX_PUB',
+    'TOP_LEVEL_ROLE_NAMES',
 ]
 
 # copied from python-tuf basic_repo.py

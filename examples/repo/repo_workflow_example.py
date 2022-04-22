@@ -1,11 +1,10 @@
-import gzip
 import logging
 import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
-from notsotuf.common import Patcher, TargetPath
+from notsotuf.common import Patcher
 from notsotuf.repo import Keys, Roles, in_, make_gztar_archive
 
 """
