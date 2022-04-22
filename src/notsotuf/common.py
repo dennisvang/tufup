@@ -8,14 +8,14 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
-SUFFIX_ARCHIVE = '.gz'
+SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
 
 class TargetPath(object):
     filename_pattern = '{name}-{version}{suffix}'
     filename_regex = re.compile(
-        r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.gz|\.patch)$'
+        r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.tar\.gz|\.patch)$'
     )
 
     def __init__(
@@ -85,7 +85,7 @@ class TargetPath(object):
 
     @property
     def suffix(self) -> Optional[str]:
-        """Returns the filename suffix, either '.gz', '.patch', or None."""
+        """Returns the filename suffix, either '.tar.gz', '.patch', or None."""
         match_dict = self.parse_filename(self.filename)
         return match_dict.get('suffix')
 
@@ -126,7 +126,8 @@ class Patcher(object):
 
         Patch file path matches destination file path, except for suffix.
         """
-        patch_path = dst_path.with_suffix(SUFFIX_PATCH)
+        # replace suffix twice, in case we have a .tar.gz
+        patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
         bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
         return patch_path
 

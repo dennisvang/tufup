@@ -63,16 +63,22 @@ class ModuleTests(TempDirTestCase):
         sub_dir.mkdir()
         sub_file.touch()
         root_file.touch()
+        # archive already exists (to test overwrite confirmation)
+        existing_archive = self.temp_dir_path / f'{app_name}-{version}.tar.gz'
+        existing_archive.touch()
         # test
-        archive_path = make_gztar_archive(
-            src_dir=self.temp_dir_path,
-            dst_dir=self.temp_dir_path,
-            app_name=app_name,
-            version=version,
-            base_dir='.',  # this kwarg is allowed
-            root_dir='some path',  # this kwarg is removed
-        )
+        mock_input_yes = Mock(return_value='y')
+        with patch('builtins.input', mock_input_yes):
+            archive_path = make_gztar_archive(
+                src_dir=self.temp_dir_path,
+                dst_dir=self.temp_dir_path,
+                app_name=app_name,
+                version=version,
+                base_dir='.',  # this kwarg is allowed
+                root_dir='some path',  # this kwarg is removed
+            )
         self.assertTrue(archive_path.exists())
+        self.assertTrue(mock_input_yes.called)
         self.assertTrue(app_name in str(archive_path))
         self.assertTrue(version in str(archive_path))
 
@@ -213,7 +219,7 @@ class RolesTests(TempDirTestCase):
         roles = Roles(dir_path=self.temp_dir_path)
         roles.targets = Mock(signed=Mock(targets=dict()))
         # test
-        filename = 'my_app.gz'
+        filename = 'my_app.tar.gz'
         local_target_path = self.temp_dir_path / filename
         # path must exist
         with self.assertRaises(FileNotFoundError):

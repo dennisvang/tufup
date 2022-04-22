@@ -26,7 +26,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from notsotuf.common import TargetPath
+from notsotuf.common import TargetPath, SUFFIX_ARCHIVE
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ def make_gztar_archive(
         app_name: str,
         version: str,
         **kwargs,  # allowed kwargs are passed on to shutil.make_archive
-) -> pathlib.Path:
+) -> Optional[pathlib.Path]:
     # remove disallowed kwargs
     for key in ['base_name', 'root_dir', 'format']:
         if kwargs.pop(key, None):
@@ -64,14 +64,19 @@ def make_gztar_archive(
     # ensure paths
     src_dir = pathlib.Path(src_dir)
     dst_dir = pathlib.Path(dst_dir)
-    # compose archive name
+    # compose archive path and check existence
     archive_filename = TargetPath.compose_filename(
         name=app_name, version=version, is_archive=True
     )
-    archive_stem = archive_filename.replace('.tar', '').replace('.gz', '')
+    archive_path = dst_dir / archive_filename
+    if archive_path.exists():
+        if input(f'{archive_path} exists. Overwrite? [n]/y') != 'y':
+            print('Archive aborted.')
+            return None
     # make archive
+    base_name = str(dst_dir / archive_filename.replace(SUFFIX_ARCHIVE, ''))
     archive_path_str = shutil.make_archive(
-        base_name=str(dst_dir / archive_stem),  # archive file path, no suffix
+        base_name=base_name,  # archive file path, no suffix
         root_dir=str(src_dir),  # paths in archive will be relative to root_dir
         format='gztar',
         **kwargs,

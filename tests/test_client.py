@@ -100,7 +100,7 @@ class ClientTests(TempDirTestCase):
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()
-        target_path_str = 'example_app-1.0.gz'
+        target_path_str = 'example_app-1.0.tar.gz'
         target_path_obj = TargetPath(target_path=target_path_str)
         for target_path in [target_path_str, target_path_obj]:
             target_info = client.get_targetinfo(target_path=target_path)

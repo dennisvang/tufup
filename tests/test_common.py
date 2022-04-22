@@ -8,8 +8,8 @@ class PatcherTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
         # dummy paths
-        self.old_archive_path = self.temp_dir_path / 'my_app-1.0.gz'
-        self.new_archive_path = self.temp_dir_path / 'my_app-2.0.gz'
+        self.old_archive_path = self.temp_dir_path / 'my_app-1.0.tar.gz'
+        self.new_archive_path = self.temp_dir_path / 'my_app-2.0.tar.gz'
         self.new_patch_path = self.temp_dir_path / 'my_app-2.0.patch'
         # write dummy archive data to files
         self.old_archive_path.write_bytes(b'old archive data')
