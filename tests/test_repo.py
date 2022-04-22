@@ -270,6 +270,15 @@ class RolesTests(TempDirTestCase):
         )
         self.assertTrue(roles.root.signatures)
 
+    def test_file_path(self):
+        # prepare
+        roles = Roles(dir_path=self.temp_dir_path)
+        # test
+        self.assertEqual(
+            self.temp_dir_path / 'root.json',
+            roles.file_path(role_name='root'),
+        )
+
     def test_persist_role(self):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)

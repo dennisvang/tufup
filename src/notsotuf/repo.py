@@ -319,13 +319,16 @@ class Roles(Base):
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer)
 
+    def file_path(self, role_name: str):
+        return self.dir_path / self.filename_pattern.format(role_name=role_name)
+
     def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
-        file_path = self.dir_path / self.filename_pattern.format(
-            role_name=role.signed.type
+        role.to_file(
+            filename=str(self.file_path(role_name=role.signed.type)),
+            serializer=JSONSerializer(compact=False),
         )
-        role.to_file(filename=str(file_path), serializer=JSONSerializer(compact=False))
 
     def publish_root(
             self,
