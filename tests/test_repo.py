@@ -16,7 +16,7 @@ from tuf.api.metadata import (
 )
 
 import notsotuf.repo  # for patching
-from notsotuf.repo import Base, Keys, Roles, in_, SUFFIX_PUB
+from notsotuf.repo import Base, Keys, Roles, in_, SUFFIX_PUB, make_gztar_archive
 from tests import TempDirTestCase
 
 
@@ -47,6 +47,28 @@ DUMMY_PRIVATE_KEY_PATHS = dict(
     (role_name, [pathlib.Path('dummy', role_name)])
     for role_name in TOP_LEVEL_ROLE_NAMES
 )
+
+
+class ModuleTests(TempDirTestCase):
+    def test_in_(self):
+        self.assertIsInstance(in_(days=1), datetime)
+
+    def test_make_gztar_archive(self):
+        # prepare
+        sub_dir = self.temp_dir_path / 'sub'
+        sub_file = sub_dir / 'sub.txt'
+        root_file = self.temp_dir_path / 'root.txt'
+        sub_dir.mkdir()
+        sub_file.touch()
+        root_file.touch()
+        # test
+        archive_path = make_gztar_archive(
+            src_dir=self.temp_dir_path,
+            dst_dir=self.temp_dir_path,
+            dst_stem=None,  # use src_dir name as archive stem
+        )
+        self.assertTrue(archive_path.exists())
+        self.assertEqual(archive_path.stem, self.temp_dir_path.name + '.tar')
 
 
 class BaseTests(TempDirTestCase):

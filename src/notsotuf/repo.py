@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 import pathlib
+import shutil
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from securesystemslib.interface import (
@@ -45,6 +46,26 @@ SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 def in_(days: float) -> datetime:
     """Returns a timestamp for the specified number of days from now."""
     return datetime.utcnow().replace(microsecond=0) + timedelta(days=days)
+
+
+def make_gztar_archive(
+        src_dir: Union[pathlib.Path, str],
+        dst_dir: Union[pathlib.Path, str],
+        dst_stem: Optional[str] = None,
+) -> pathlib.Path:
+    # ensure paths
+    src_dir = pathlib.Path(src_dir)
+    dst_dir = pathlib.Path(dst_dir)
+    # make archive
+    if dst_stem is None:
+        dst_stem = src_dir.name
+    archive_filename = shutil.make_archive(
+        base_name=str(dst_dir / dst_stem),  # archive file path, without suffix
+        root_dir=str(src_dir),  # paths in archive will be relative to root_dir
+        base_dir=None,  # include everything from root_dir
+        format='gztar',
+    )
+    return pathlib.Path(archive_filename)
 
 
 DEFAULT_KEYS_DIR_NAME = 'keystore'
