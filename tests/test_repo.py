@@ -200,7 +200,7 @@ class RolesTests(TempDirTestCase):
             roles = Roles(dir_path=self.temp_dir_path)
             self.assertTrue(all(getattr(roles, n) for n in TOP_LEVEL_ROLE_NAMES))
 
-    def test_initialize(self):
+    def test_initialize_empty(self):
         # prepare
         mock_keys = Mock()
         mock_keys.public = Mock()
@@ -213,6 +213,20 @@ class RolesTests(TempDirTestCase):
         )
         # files do not exist yet, because the roles still need to be populated
         self.assertFalse(any(roles.dir_path.iterdir()))
+
+    def test_initialize_existing_root(self):
+        # prepare
+        mock_keys = Mock()
+        mock_keys.public = Mock()
+        mock_keys.roles = Mock(return_value={n: None for n in TOP_LEVEL_ROLE_NAMES})
+        roles = Roles(dir_path=self.temp_dir_path)
+        # set existing root role
+        mock_root_role = Mock()
+        roles.root = mock_root_role
+        # test
+        roles.initialize(keys=mock_keys)
+        # ensure the existing role has not been replaced
+        self.assertEqual(mock_root_role, roles.root)
 
     def test_add_or_update_target(self):
         # prepare

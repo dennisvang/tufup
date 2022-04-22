@@ -275,15 +275,17 @@ class Roles(Base):
             Timestamp: dict(expires=in_(0), snapshot_meta=MetaFile(version=1)),
         }
         for role_class, role_kwargs in initial_data.items():
-            # intialize role
-            setattr(
-                self,
-                role_class.type,
-                Metadata(
-                    signed=role_class(**common_kwargs, **role_kwargs),
-                    signatures=dict(),
-                ),
-            )
+            attr_name = role_class.type
+            if getattr(self, attr_name) is None:
+                # intialize role only if there is no role yet
+                setattr(
+                    self,
+                    attr_name,
+                    Metadata(
+                        signed=role_class(**common_kwargs, **role_kwargs),
+                        signatures=dict(),
+                    ),
+                )
 
     def add_or_update_target(
             self,
