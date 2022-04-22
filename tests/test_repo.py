@@ -54,6 +54,8 @@ class ModuleTests(TempDirTestCase):
         self.assertIsInstance(in_(days=1), datetime)
 
     def test_make_gztar_archive(self):
+        app_name = 'test'
+        version = '1.2.3'
         # prepare
         sub_dir = self.temp_dir_path / 'sub'
         sub_file = sub_dir / 'sub.txt'
@@ -65,10 +67,14 @@ class ModuleTests(TempDirTestCase):
         archive_path = make_gztar_archive(
             src_dir=self.temp_dir_path,
             dst_dir=self.temp_dir_path,
-            dst_stem=None,  # use src_dir name as archive stem
+            app_name=app_name,
+            version=version,
+            base_dir='.',  # this kwarg is allowed
+            root_dir='some path',  # this kwarg is removed
         )
         self.assertTrue(archive_path.exists())
-        self.assertEqual(archive_path.stem, self.temp_dir_path.name + '.tar')
+        self.assertTrue(app_name in str(archive_path))
+        self.assertTrue(version in str(archive_path))
 
 
 class BaseTests(TempDirTestCase):

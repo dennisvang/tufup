@@ -26,6 +26,8 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
+from notsotuf.common import TargetPath
+
 logger = logging.getLogger(__name__)
 
 """
@@ -51,21 +53,30 @@ def in_(days: float) -> datetime:
 def make_gztar_archive(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
-        dst_stem: Optional[str] = None,
+        app_name: str,
+        version: str,
+        **kwargs,  # allowed kwargs are passed on to shutil.make_archive
 ) -> pathlib.Path:
+    # remove disallowed kwargs
+    for key in ['base_name', 'root_dir', 'format']:
+        if kwargs.pop(key, None):
+            logger.warning(f'{key} ignored: using default')
     # ensure paths
     src_dir = pathlib.Path(src_dir)
     dst_dir = pathlib.Path(dst_dir)
-    # make archive
-    if dst_stem is None:
-        dst_stem = src_dir.name
-    archive_filename = shutil.make_archive(
-        base_name=str(dst_dir / dst_stem),  # archive file path, without suffix
-        root_dir=str(src_dir),  # paths in archive will be relative to root_dir
-        base_dir=None,  # include everything from root_dir
-        format='gztar',
+    # compose archive name
+    archive_filename = TargetPath.compose_filename(
+        name=app_name, version=version, is_archive=True
     )
-    return pathlib.Path(archive_filename)
+    archive_stem = archive_filename.replace('.tar', '').replace('.gz', '')
+    # make archive
+    archive_path_str = shutil.make_archive(
+        base_name=str(dst_dir / archive_stem),  # archive file path, no suffix
+        root_dir=str(src_dir),  # paths in archive will be relative to root_dir
+        format='gztar',
+        **kwargs,
+    )
+    return pathlib.Path(archive_path_str)
 
 
 DEFAULT_KEYS_DIR_NAME = 'keystore'
