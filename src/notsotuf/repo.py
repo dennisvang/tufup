@@ -249,6 +249,9 @@ class Roles(Base):
         self.timestamp: Optional[Metadata[Timestamp]] = None
         # import roles from dir_path, if it exists
         self._import_roles(role_names=TOP_LEVEL_ROLE_NAMES)
+        # flags
+        self.root_modified = False
+        self.targets_modified = False
 
     def _import_roles(self, role_names: Iterable[str]):
         """Import roles from metadata files."""
@@ -301,7 +304,10 @@ class Roles(Base):
         target_file_info = TargetFile.from_file(
             target_file_path=url_path, local_path=str(local_path)
         )
+        existing_target_file_info = self.targets.signed.targets.get(url_path)
         self.targets.signed.targets[url_path] = target_file_info
+        if existing_target_file_info != target_file_info:
+            self.targets_modified = True
 
     def add_public_key(
             self, role_name: str, public_key_path: Union[pathlib.Path, str]
@@ -312,9 +318,11 @@ class Roles(Base):
         self.root.signed.add_key(
             role=role_name, key=Key.from_securesystemslib_key(ssl_key)
         )
+        self.root_modified = True
 
     def set_signature_threshold(self, role_name: str, threshold: int):
         self.root.signed.roles[role_name].threshold = threshold
+        self.root_modified = True
 
     def sign_role(
             self,
@@ -350,13 +358,15 @@ class Roles(Base):
     ):
         """Call this whenever root has been modified (should be rare)."""
         # todo: handle initial case, as we cannot set version=0
-        # root content has changed, so increment version
-        self.root.signed.version += 1
-        # sign and save
-        self._publish_metadata(
-            private_key_paths={Root.type: private_key_paths},
-            expires=dict(root=expires),
-        )
+        if self.root_modified:
+            # root content has changed, so increment version
+            self.root.signed.version += 1
+            # sign and save
+            self._publish_metadata(
+                private_key_paths={Root.type: private_key_paths},
+                expires=dict(root=expires),
+            )
+            self.root_modified = False
 
     def publish_targets(
             self,
@@ -364,18 +374,20 @@ class Roles(Base):
             expires: Dict[str, datetime],
     ):
         """Call this whenever new targets have been added."""
-        # targets content has changed, so increment version
-        self.targets.signed.version += 1
-        # update snapshot content and increment version
-        self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
-        self.snapshot.signed.version += 1
-        # update timestamp content and increment version
-        self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
-        self.timestamp.signed.version += 1
-        # sign and save
-        self._publish_metadata(
-            private_key_paths=private_key_paths, expires=expires
-        )
+        if self.targets_modified:
+            # targets content has changed, so increment version
+            self.targets.signed.version += 1
+            # update snapshot content and increment version
+            self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
+            self.snapshot.signed.version += 1
+            # update timestamp content and increment version
+            self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
+            self.timestamp.signed.version += 1
+            # sign and save
+            self._publish_metadata(
+                private_key_paths=private_key_paths, expires=expires
+            )
+            self.targets_modified = False
 
     def _publish_metadata(
             self,

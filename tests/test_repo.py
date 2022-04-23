@@ -313,10 +313,12 @@ class RolesTests(TempDirTestCase):
             roles = Roles(dir_path=self.temp_dir_path)
             roles.root = Mock(signed=Mock(version=1))
             roles.encrypted = []
+            roles.root_modified = True
             # test
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(2, roles.root.signed.version)
             self.assertTrue(Roles._publish_metadata.called)  # noqa
+            self.assertFalse(roles.root_modified)
 
     def test_publish_targets(self):
         with patch.object(Roles, '_publish_metadata', Mock()):
@@ -330,6 +332,7 @@ class RolesTests(TempDirTestCase):
                 signed=Mock(snapshot_meta=Mock(version=1), version=1)
             )
             roles.encrypted = []
+            roles.targets_modified = True
             # test
             expires = DUMMY_EXPIRES.copy()
             expires.pop('root')  # no need to sign root
@@ -343,6 +346,7 @@ class RolesTests(TempDirTestCase):
                 all(getattr(roles, n).signed.version == 2 for n in role_names)
             )
             self.assertTrue(Roles._publish_metadata.called)  # noqa
+            self.assertFalse(roles.targets_modified)
 
     def test__publish_metadata(self):
         with patch.multiple(Roles, sign_role=Mock(), persist_role=Mock()):
