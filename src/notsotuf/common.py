@@ -53,6 +53,11 @@ class TargetMeta(object):
         """
         return hash(tuple(self.__dict__.items()))
 
+    def __eq__(self, other):
+        if type(other) != type(self):
+            return NotImplemented
+        return vars(self) == vars(other)
+
     def __lt__(self, other):
         """
         This makes the object sortable, based on the *version* property,
