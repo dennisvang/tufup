@@ -435,9 +435,9 @@ class Roles(Base):
             expires=root_expires,
         )
 
-    def get_latest_archive_path(self) -> Optional[pathlib.Path]:
+    def get_latest_archive(self) -> Optional[TargetPath]:
         """
-        Returns path to latest archive.
+        Returns TargetPath for latest archive.
 
         Note that all pre-release versions are always included: On the repo
         side, there is no difference between final releases an pre-releases.
@@ -447,13 +447,14 @@ class Roles(Base):
         # Note this is similar to the logic in Client._check_updates, but not
         # exactly the same. Merging the implementations would overcomplicate
         # things.
-        latest_archive_path = None
+        latest_archive = None
         # sort by version
+        signed_targets = self.targets.signed.targets if self.targets else dict()
         targets = sorted(
-            TargetPath(key) for key in self.targets.signed.targets.keys()
+            TargetPath(key) for key in signed_targets.keys()
         )
         # extract only the archives
         archives = [target for target in targets if target.is_archive]
         if archives:
-            latest_archive_path = archives[-1].path
-        return latest_archive_path
+            latest_archive = archives[-1]
+        return latest_archive

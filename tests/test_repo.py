@@ -385,8 +385,13 @@ class RolesTests(TempDirTestCase):
         )
         self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)
 
-    def test_get_latest_archive_path(self):
+    def test_get_latest_archive(self):
         roles = Roles(dir_path=TEST_REPO_DIR / 'metadata', encrypted=[])
         expected_filename = 'example_app-4.0a0.tar.gz'
-        latest_archive_path = roles.get_latest_archive_path()
-        self.assertEqual(expected_filename, latest_archive_path.name)
+        latest_archive = roles.get_latest_archive()
+        self.assertEqual(expected_filename, latest_archive.path.name)
+
+    def test_get_latest_archive_empty(self):
+        roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
+        self.assertIsNone(roles.get_latest_archive())
+
