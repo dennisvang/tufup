@@ -5,7 +5,7 @@ import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
 
 from notsotuf.client import Client, shutil
-from notsotuf.common import TargetPath
+from notsotuf.common import TargetMeta
 from tests import TempDirTestCase, TEST_REPO_DIR
 
 ROOT_FILENAME = 'root.json'
@@ -79,15 +79,15 @@ class ClientTests(TempDirTestCase):
         for role_name in ['targets', 'snapshot', 'timestamp']:
             self.assertIsNone(getattr(client._trusted_set, role_name))
 
-    def test_trusted_target_paths(self):
+    def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
-        self.assertTrue(client.trusted_target_paths)
+        self.assertTrue(client.trusted_target_metas)
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()
         target_path_str = 'example_app-1.0.tar.gz'
-        target_path_obj = TargetPath(target_path=target_path_str)
-        for target_path in [target_path_str, target_path_obj]:
+        target_meta = TargetMeta(target_path=target_path_str)
+        for target_path in [target_path_str, target_meta]:
             target_info = client.get_targetinfo(target_path=target_path)
             with self.subTest(msg=target_path):
                 self.assertIsInstance(target_info, TargetFile)
@@ -134,8 +134,8 @@ class ClientTests(TempDirTestCase):
         with patch.object(client, 'refresh', Mock()):
             for pre in [None, 'a', 'b', 'rc']:
                 self.assertTrue(client._check_updates(pre=pre))
-                target_path = next(iter(client.new_targets.keys()))
-                self.assertTrue(target_path.is_archive)
+                target_meta = next(iter(client.new_targets.keys()))
+                self.assertTrue(target_meta.is_archive)
 
     def test__download_updates(self):
         client = Client(**self.client_kwargs)
@@ -157,13 +157,14 @@ class ClientTests(TempDirTestCase):
         client = self.get_refreshed_client()
         # directly use target files from test repo as downloaded files
         client.downloaded_target_files = {
-            target_path: TEST_REPO_DIR / 'targets' / str(target_path)
-            for target_path in client.trusted_target_paths
-            if target_path.is_patch and str(target_path.version) in ['2.0', '3.0rc0']
+            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
+            for target_meta in client.trusted_target_metas
+            if target_meta.is_patch
+            and str(target_meta.version) in ['2.0', '3.0rc0']
         }
         # specify new archive (normally done in _check_updates)
         archives = [
-            tp for tp in client.trusted_target_paths
+            tp for tp in client.trusted_target_metas
             if tp.is_archive and str(tp.version) == '3.0rc0'
         ]
         client.new_archive_info = client.get_targetinfo(archives[-1])

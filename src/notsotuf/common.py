@@ -12,7 +12,7 @@ SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
 
-class TargetPath(object):
+class TargetMeta(object):
     filename_pattern = '{name}-{version}{suffix}'
     filename_regex = re.compile(
         r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.tar\.gz|\.patch)$'
@@ -31,7 +31,7 @@ class TargetPath(object):
         """
         super().__init__()
         if target_path is None:
-            target_path = TargetPath.compose_filename(
+            target_path = TargetMeta.compose_filename(
                 name=name, version=version, is_archive=is_archive
             )
         self.target_path_str = target_path  # keep the original for reference

@@ -26,7 +26,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from notsotuf.common import TargetPath, SUFFIX_ARCHIVE
+from notsotuf.common import TargetMeta, SUFFIX_ARCHIVE
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def make_gztar_archive(
         app_name: str,
         version: str,
         **kwargs,  # allowed kwargs are passed on to shutil.make_archive
-) -> Optional[TargetPath]:
+) -> Optional[TargetMeta]:
     # remove disallowed kwargs
     for key in ['base_name', 'root_dir', 'format']:
         if kwargs.pop(key, None):
@@ -71,7 +71,7 @@ def make_gztar_archive(
     src_dir = pathlib.Path(src_dir)
     dst_dir = pathlib.Path(dst_dir)
     # compose archive path and check existence
-    archive_filename = TargetPath.compose_filename(
+    archive_filename = TargetMeta.compose_filename(
         name=app_name, version=version, is_archive=True
     )
     archive_path = dst_dir / archive_filename
@@ -87,7 +87,7 @@ def make_gztar_archive(
         format='gztar',
         **kwargs,
     )
-    return TargetPath(target_path=archive_path_str)
+    return TargetMeta(target_path=archive_path_str)
 
 
 DEFAULT_KEYS_DIR_NAME = 'keystore'
@@ -439,9 +439,9 @@ class Roles(Base):
             expires=root_expires,
         )
 
-    def get_latest_archive(self) -> Optional[TargetPath]:
+    def get_latest_archive(self) -> Optional[TargetMeta]:
         """
-        Returns TargetPath for latest archive.
+        Returns TargetMeta for latest archive.
 
         Note that all pre-release versions are always included: On the repo
         side, there is no difference between final releases an pre-releases.
@@ -455,7 +455,7 @@ class Roles(Base):
         # sort by version
         signed_targets = self.targets.signed.targets if self.targets else dict()
         targets = sorted(
-            TargetPath(key) for key in signed_targets.keys()
+            TargetMeta(key) for key in signed_targets.keys()
         )
         # extract only the archives
         archives = [target for target in targets if target.is_archive]
