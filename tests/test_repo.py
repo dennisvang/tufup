@@ -15,6 +15,7 @@ from tuf.api.metadata import (
     TOP_LEVEL_ROLE_NAMES
 )
 
+from notsotuf.common import TargetMeta
 import notsotuf.repo  # for patching
 from notsotuf.repo import Base, Keys, Roles, in_, SUFFIX_PUB, make_gztar_archive
 from tests import TempDirTestCase, TEST_REPO_DIR
@@ -63,24 +64,23 @@ class ModuleTests(TempDirTestCase):
         sub_dir.mkdir()
         sub_file.touch()
         root_file.touch()
-        # archive already exists (to test overwrite confirmation)
-        existing_archive = self.temp_dir_path / f'{app_name}-{version}.tar.gz'
-        existing_archive.touch()
         # test
-        mock_input_yes = Mock(return_value='y')
-        with patch('builtins.input', mock_input_yes):
-            archive = make_gztar_archive(
-                src_dir=self.temp_dir_path,
-                dst_dir=self.temp_dir_path,
-                app_name=app_name,
-                version=version,
-                base_dir='.',  # this kwarg is allowed
-                root_dir='some path',  # this kwarg is removed
-            )
-        self.assertTrue(archive.path.exists())
-        self.assertTrue(mock_input_yes.called)
-        self.assertTrue(app_name in str(archive.path))
-        self.assertTrue(version in str(archive.path))
+        mock_input_no = Mock(return_value='n')
+        for exists in [False, True]:
+            with patch('builtins.input', mock_input_no):
+                archive = make_gztar_archive(
+                    src_dir=self.temp_dir_path,
+                    dst_dir=self.temp_dir_path,
+                    app_name=app_name,
+                    version=version,
+                    base_dir='.',  # this kwarg is allowed
+                    root_dir='some path',  # this kwarg is removed
+                )
+            self.assertIsInstance(archive, TargetMeta)
+            self.assertEqual(exists, mock_input_no.called)
+            self.assertTrue(archive.path.exists())
+            self.assertTrue(app_name in str(archive.path))
+            self.assertTrue(version in str(archive.path))
 
 
 class BaseTests(TempDirTestCase):
