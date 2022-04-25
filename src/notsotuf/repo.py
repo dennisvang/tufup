@@ -434,3 +434,26 @@ class Roles(Base):
             private_key_paths=[old_private_key_path, new_private_key_path],
             expires=root_expires,
         )
+
+    def get_latest_archive_path(self) -> Optional[pathlib.Path]:
+        """
+        Returns path to latest archive.
+
+        Note that all pre-release versions are always included: On the repo
+        side, there is no difference between final releases an pre-releases.
+        Pre-release specifiers are only used on the Client side, to filter
+        available updates).
+        """
+        # Note this is similar to the logic in Client._check_updates, but not
+        # exactly the same. Merging the implementations would overcomplicate
+        # things.
+        latest_archive_path = None
+        # sort by version
+        targets = sorted(
+            TargetPath(key) for key in self.targets.signed.targets.keys()
+        )
+        # extract only the archives
+        archives = [target for target in targets if target.is_archive]
+        if archives:
+            latest_archive_path = archives[-1].path
+        return latest_archive_path
