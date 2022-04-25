@@ -62,7 +62,7 @@ def make_gztar_archive(
         app_name: str,
         version: str,
         **kwargs,  # allowed kwargs are passed on to shutil.make_archive
-) -> Optional[pathlib.Path]:
+) -> Optional[TargetPath]:
     # remove disallowed kwargs
     for key in ['base_name', 'root_dir', 'format']:
         if kwargs.pop(key, None):
@@ -87,7 +87,7 @@ def make_gztar_archive(
         format='gztar',
         **kwargs,
     )
-    return pathlib.Path(archive_path_str)
+    return TargetPath(target_path=archive_path_str)
 
 
 DEFAULT_KEYS_DIR_NAME = 'keystore'

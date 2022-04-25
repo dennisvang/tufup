@@ -66,7 +66,7 @@ dummy_file_content = secrets.token_bytes(dummy_file_size)
 dummy_file_path = dummy_bundle_dir / 'dummy.exe'
 dummy_file_path.write_bytes(dummy_file_content)
 # create archive
-current_archive_path = make_gztar_archive(
+current_archive = make_gztar_archive(
     src_dir=dummy_bundle_dir,
     dst_dir=TARGETS_DIR,
     app_name=APP_NAME,
@@ -74,7 +74,7 @@ current_archive_path = make_gztar_archive(
 )
 
 # Register the initial target file
-roles.add_or_update_target(local_path=current_archive_path)
+roles.add_or_update_target(local_path=current_archive.path)
 print('signing initial targets metadata')
 expires = dict(targets=in_(100), snapshot=in_(7), timestamp=in_(1))
 private_key_paths = {
@@ -99,22 +99,22 @@ for new_version in new_versions:
         # small change
         dummy_file_content += secrets.token_bytes(dummy_delta_size)
     dummy_file_path.write_bytes(dummy_file_content)
-    new_archive_path = make_gztar_archive(
+    new_archive = make_gztar_archive(
         src_dir=dummy_bundle_dir,
         dst_dir=TARGETS_DIR,
         app_name=APP_NAME,
         version=new_version,
     )
     new_patch_path = Patcher.create_patch(
-        src_path=current_archive_path, dst_path=new_archive_path
+        src_path=current_archive.path, dst_path=new_archive.path
     )
     # Register the new update files
-    roles.add_or_update_target(local_path=new_archive_path)
+    roles.add_or_update_target(local_path=new_archive.path)
     roles.add_or_update_target(local_path=new_patch_path)
     print(f'signing updated metadata for version {new_version}')
     roles.publish_targets(private_key_paths=private_key_paths, expires=expires)
     # next
-    current_archive_path = new_archive_path
+    current_archive = new_archive
 
 # Time goes by
 ...

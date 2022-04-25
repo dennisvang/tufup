@@ -69,7 +69,7 @@ class ModuleTests(TempDirTestCase):
         # test
         mock_input_yes = Mock(return_value='y')
         with patch('builtins.input', mock_input_yes):
-            archive_path = make_gztar_archive(
+            archive = make_gztar_archive(
                 src_dir=self.temp_dir_path,
                 dst_dir=self.temp_dir_path,
                 app_name=app_name,
@@ -77,10 +77,10 @@ class ModuleTests(TempDirTestCase):
                 base_dir='.',  # this kwarg is allowed
                 root_dir='some path',  # this kwarg is removed
             )
-        self.assertTrue(archive_path.exists())
+        self.assertTrue(archive.path.exists())
         self.assertTrue(mock_input_yes.called)
-        self.assertTrue(app_name in str(archive_path))
-        self.assertTrue(version in str(archive_path))
+        self.assertTrue(app_name in str(archive.path))
+        self.assertTrue(version in str(archive.path))
 
 
 class BaseTests(TempDirTestCase):
