@@ -59,7 +59,7 @@ class ClientTests(TempDirTestCase):
             client.refresh()
         # ensure current archive exists (dummy)
         shutil.copy(
-            src=TEST_REPO_DIR / 'targets' / str(client.current_archive),
+            src=TEST_REPO_DIR / 'targets' / client.current_archive.path.name,
             dst=client.current_archive_local_path,
         )
         return client
@@ -126,6 +126,12 @@ class ClientTests(TempDirTestCase):
                         self.assertTrue(all(
                             item.is_patch for item in client.new_targets.keys())
                         )
+
+    def test__check_updates_already_up_to_date(self):
+        self.client_kwargs['current_version'] = '4.0a0'
+        client = self.get_refreshed_client()
+        with patch.object(client, 'refresh', Mock()):
+            self.assertFalse(client._check_updates(pre='a'))
 
     def test__check_updates_current_archive_missing(self):
         client = self.get_refreshed_client()

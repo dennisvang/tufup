@@ -123,30 +123,33 @@ class Client(tuf.ngclient.Updater):
             if item[0].is_archive
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
-        new_archive_meta, self.new_archive_info = sorted(new_archives.items())[-1]
-        self.new_archive_local_path = pathlib.Path(
-            self.target_dir, new_archive_meta.path.name
-        )
-        # patches must include all pre-releases and final releases up to,
-        # and including, the latest archive as determined above
-        new_patches = dict(
-            item for item in all_new_targets.items()
-            if item[0].is_patch
-            and item[0].version <= new_archive_meta.version
-        )
-        # determine size of patch update and archive update
-        total_patch_size = sum(
-            target_file.length for target_file in new_patches.values()
-        )
-        # use file size to decide if we want to do a patch update or a full
-        # update (if there are no patches, or if the current archive is not
-        # available, we must do a full update)
-        self.new_targets = new_patches
-        no_patches = total_patch_size == 0
-        patches_too_big = total_patch_size > self.new_archive_info.length
-        current_archive_not_found = not self.current_archive_local_path.exists()
-        if no_patches or patches_too_big or current_archive_not_found:
-            self.new_targets = {new_archive_meta: self.new_archive_info}
+        if new_archives:
+            new_archive_meta, self.new_archive_info = sorted(
+                new_archives.items()
+            )[-1]
+            self.new_archive_local_path = pathlib.Path(
+                self.target_dir, new_archive_meta.path.name
+            )
+            # patches must include all pre-releases and final releases up to,
+            # and including, the latest archive as determined above
+            new_patches = dict(
+                item for item in all_new_targets.items()
+                if item[0].is_patch
+                and item[0].version <= new_archive_meta.version
+            )
+            # determine size of patch update and archive update
+            total_patch_size = sum(
+                target_file.length for target_file in new_patches.values()
+            )
+            # use file size to decide if we want to do a patch update or a
+            # full update (if there are no patches, or if the current archive
+            # is not available, we must do a full update)
+            self.new_targets = new_patches
+            no_patches = total_patch_size == 0
+            patches_too_big = total_patch_size > self.new_archive_info.length
+            current_archive_not_found = not self.current_archive_local_path.exists()
+            if no_patches or patches_too_big or current_archive_not_found:
+                self.new_targets = {new_archive_meta: self.new_archive_info}
         return len(self.new_targets) > 0
 
     def _download_updates(self) -> bool:
