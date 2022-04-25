@@ -289,6 +289,10 @@ class Roles(Base):
                         signatures=dict(),
                     ),
                 )
+                if attr_name == 'root':
+                    self.root_modified = True
+                else:
+                    self.targets_modified = True
 
     def add_or_update_target(
             self,
