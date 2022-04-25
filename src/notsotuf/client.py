@@ -150,6 +150,11 @@ class Client(tuf.ngclient.Updater):
             current_archive_not_found = not self.current_archive_local_path.exists()
             if no_patches or patches_too_big or current_archive_not_found:
                 self.new_targets = {new_archive_meta: self.new_archive_info}
+                logger.debug('performing full update')
+            else:
+                logger.debug('performing patch update')
+        else:
+            logger.debug('no new archives found')
         return len(self.new_targets) > 0
 
     def _download_updates(self) -> bool:
