@@ -77,6 +77,7 @@ class TestTargetMeta(TempDirTestCase):
 
     def test_parse_filename(self):
         cases = [
+            # PEP440 versions are allowed (we do not parse them here...)
             ('app-1.patch', ('app', '1', '.patch')),
             ('app-1.tar.gz', ('app', '1', '.tar.gz')),
             ('app-1.2.tar.gz', ('app', '1.2', '.tar.gz')),
@@ -86,12 +87,14 @@ class TestTargetMeta(TempDirTestCase):
             ('app-1rc.tar.gz', ('app', '1rc', '.tar.gz')),
             ('app-1rc0.tar.gz', ('app', '1rc0', '.tar.gz')),
             ('app-2022.0.tar.gz', ('app', '2022.0', '.tar.gz')),
-            ('app-name---1.tar.gz', ('app-name--', '1', '.tar.gz')),
-            ('CAPS-1.tar.gz', ('CAPS', '1', '.tar.gz')),
-            ('un_der-1.tar.gz', ('un_der', '1', '.tar.gz')),
             # we don't impose a specific version format at this point (that
             # is deferred to packaging.Version)
             ('app-invalidversion.tar.gz', ('app', 'invalidversion', '.tar.gz')),
+            # underscores, dashes, capitals, etc.
+            ('app-name---1.tar.gz', ('app-name--', '1', '.tar.gz')),
+            ('CAPS-1.tar.gz', ('CAPS', '1', '.tar.gz')),
+            ('un_der_scores-1.0.tar.gz', ('un_der_scores', '1.0', '.tar.gz')),
+            # invalid filenames
             ('sp ac es-1.zip', ()),
             ('app-1.gz', ()),
             ('app-1.xz', ()),
@@ -99,7 +102,8 @@ class TestTargetMeta(TempDirTestCase):
         ]
         for filename, expected in cases:
             match_dict = TargetMeta.parse_filename(filename=filename)
-            self.assertEqual(expected, tuple(match_dict.values()))
+            with self.subTest(msg=filename):
+                self.assertEqual(expected, tuple(match_dict.values()))
 
     def test_compose_filename(self):
         filename = TargetMeta.compose_filename(
