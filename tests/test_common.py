@@ -1,5 +1,3 @@
-import pathlib
-
 import bsdiff4
 from packaging.version import Version
 
@@ -36,10 +34,14 @@ class TestTargetMeta(TempDirTestCase):
         info_list = [version_2, version_1]
         self.assertEqual([version_1, version_2], sorted(info_list))
 
-    def test_path(self):
-        filename = 'something'
-        target_meta = TargetMeta(target_path=filename)
-        self.assertEqual(pathlib.Path(filename), target_meta.path)
+    def test_filename(self):
+        target_path = 'url/path/somefile'
+        target_meta = TargetMeta(target_path=target_path)
+        self.assertEqual('somefile', target_meta.filename)
+
+    def test_name(self):
+        target_meta = TargetMeta(target_path='url/path/my-app-1.0.tar.gz')
+        self.assertEqual('my-app', target_meta.name)
 
     def test_version(self):
         for version_str in ['1.2.3a4', '']:
@@ -58,7 +60,7 @@ class TestTargetMeta(TempDirTestCase):
                 else:
                     self.assertIsNone(target_meta.suffix)
 
-    def test_is_archive_is_patch(self):
+    def test_is_archive(self):
         self.assertTrue(TargetMeta(target_path='my-app-1.0.tar.gz').is_archive)
         self.assertFalse(TargetMeta(target_path='my-app-1.0.patch').is_archive)
         self.assertFalse(TargetMeta(target_path='my-app-1.0.zip').is_archive)
@@ -67,6 +69,11 @@ class TestTargetMeta(TempDirTestCase):
         self.assertTrue(TargetMeta(target_path='my-app-1.0.patch').is_patch)
         self.assertFalse(TargetMeta(target_path='my-app-1.0.tar.gz').is_patch)
         self.assertFalse(TargetMeta(target_path='my-app-1.0.zip').is_patch)
+
+    def test_is_other(self):
+        self.assertTrue(TargetMeta(target_path='my-app-1.0.zip').is_other)
+        self.assertFalse(TargetMeta(target_path='my-app-1.0.patch').is_other)
+        self.assertFalse(TargetMeta(target_path='my-app-1.0.tar.gz').is_other)
 
     def test_parse_filename(self):
         cases = [
@@ -93,6 +100,12 @@ class TestTargetMeta(TempDirTestCase):
         for filename, expected in cases:
             match_dict = TargetMeta.parse_filename(filename=filename)
             self.assertEqual(expected, tuple(match_dict.values()))
+
+    def test_compose_filename(self):
+        filename = TargetMeta.compose_filename(
+            name='app', version='1.0', is_archive=True
+        )
+        self.assertEqual('app-1.0.tar.gz', filename)
 
 
 class PatcherTests(TempDirTestCase):
