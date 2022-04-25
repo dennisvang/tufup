@@ -1,4 +1,3 @@
-import gzip
 import pathlib
 from unittest.mock import Mock, patch
 
@@ -7,10 +6,8 @@ from tuf.api.metadata import TargetFile
 
 from notsotuf.client import Client, shutil
 from notsotuf.common import TargetPath
-from tests import TempDirTestCase
+from tests import TempDirTestCase, TEST_REPO_DIR
 
-BASE_DIR = pathlib.Path(__file__).resolve().parent
-TEST_REPO_DIR = BASE_DIR / 'data' / 'repository'
 ROOT_FILENAME = 'root.json'
 TARGETS_FILENAME = 'targets.json'
 SNAPSHOT_FILENAME = 'snapshot.json'

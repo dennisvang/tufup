@@ -17,7 +17,7 @@ from tuf.api.metadata import (
 
 import notsotuf.repo  # for patching
 from notsotuf.repo import Base, Keys, Roles, in_, SUFFIX_PUB, make_gztar_archive
-from tests import TempDirTestCase
+from tests import TempDirTestCase, TEST_REPO_DIR
 
 
 mock_input = Mock(return_value='')

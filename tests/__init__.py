@@ -2,6 +2,9 @@ import pathlib
 from tempfile import TemporaryDirectory
 import unittest
 
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+TEST_REPO_DIR = BASE_DIR / 'data' / 'repository'
+
 
 class TempDirTestCase(unittest.TestCase):
     """Provides a temporary directory with pathlib Path, for convenience."""
