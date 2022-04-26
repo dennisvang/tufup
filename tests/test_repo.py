@@ -351,10 +351,20 @@ class RolesTests(TempDirTestCase):
             )
             role_names = [Targets.type, Snapshot.type, Timestamp.type]
             self.assertTrue(
-                all(getattr(roles, n).signed.version == 2 for n in role_names)
+                all(getattr(roles, n).signed.version == 1 for n in role_names)
             )
             self.assertTrue(Roles._publish_metadata.called)  # noqa
             self.assertFalse(roles.targets_modified)
+            # test version increment
+            roles.targets_modified = True
+            for role_name in role_names:
+                roles.file_path(role_name=role_name).touch()
+            roles.publish_targets(
+                private_key_paths=private_key_paths, expires=expires
+            )
+            self.assertTrue(
+                all(getattr(roles, n).signed.version == 2 for n in role_names)
+            )
 
     def test__publish_metadata(self):
         with patch.multiple(Roles, sign_role=Mock(), persist_role=Mock()):

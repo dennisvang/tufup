@@ -380,13 +380,16 @@ class Roles(Base):
         """Call this whenever new targets have been added."""
         if self.targets_modified:
             # targets content has changed, so increment version
-            self.targets.signed.version += 1
+            if self.file_path(role_name=Targets.type).exists():
+                self.targets.signed.version += 1
             # update snapshot content and increment version
             self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
-            self.snapshot.signed.version += 1
+            if self.file_path(role_name=Snapshot.type).exists():
+                self.snapshot.signed.version += 1
             # update timestamp content and increment version
             self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
-            self.timestamp.signed.version += 1
+            if self.file_path(role_name=Timestamp.type).exists():
+                self.timestamp.signed.version += 1
             # sign and save
             self._publish_metadata(
                 private_key_paths=private_key_paths, expires=expires
