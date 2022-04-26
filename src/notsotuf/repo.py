@@ -260,15 +260,11 @@ class Roles(Base):
         if self.dir_path.exists():
             file_paths = [p for p in self.dir_path.iterdir() if p.is_file()]
         for role_name in role_names:
-            role_paths = [p for p in file_paths if role_name in p.name]
-            if role_name == Root.type:
-                # sort by file version, ascending
-                role_paths = sorted(
-                    role_paths, key=lambda path: int(path.name.split('.')[0])
-                )
-            # import latest version for this role
+            # exclude (root) filenames starting with a version
+            role_paths = [p for p in file_paths if p.name.startswith(role_name)]
             if role_paths:
-                setattr(self, role_name, Metadata.from_file(str(role_paths[-1])))
+                # there should be only one for each role
+                setattr(self, role_name, Metadata.from_file(str(role_paths[0])))
 
     def initialize(self, keys: Keys):
         # based on python-tuf basic_repo.py
@@ -357,7 +353,7 @@ class Roles(Base):
 
     def file_path(self, role_name: str, version: Optional[int] = None):
         version_str = ''
-        if role_name == Root.type:
+        if role_name == Root.type and version is not None:
             # "... all released versions of root metadata files MUST always
             # be provided so that outdated clients can update to the latest
             # available root."
@@ -404,6 +400,17 @@ class Roles(Base):
                 private_key_paths={Root.type: private_key_paths},
                 expires={Root.type: expires},
             )
+            # Copy the latest root metadata to 'root.json' (without version),
+            # to use as trusted root metadata to be distributed with the
+            # client. This is convenient, otherwise we would need to modify
+            # the version in the filename every time root is updated.
+            latest_root_file_path = self.file_path(
+                role_name=Root.type, version=self.root.signed.version
+            )
+            client_root_file_path = self.file_path(role_name=Root.type)
+            client_root_file_path.unlink(missing_ok=True)
+            shutil.copy(src=latest_root_file_path, dst=client_root_file_path)
+            # reset flag
             self.root_modified = False
 
     def publish_targets(

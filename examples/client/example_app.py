@@ -49,7 +49,7 @@ def main():
     # specified metadata_dir. The root metadata file lists all trusted keys
     # and TUF roles. In this example we copy the root.json file from the
     # repo, but normally it would be included in the app distribution.
-    source_path = REPO_METADATA_DIR / '1.root.json'
+    source_path = REPO_METADATA_DIR / 'root.json'
     destination_path = METADATA_DIR / 'root.json'
     if not destination_path.exists():
         shutil.copy(src=source_path, dst=destination_path)

@@ -192,22 +192,20 @@ class RolesTests(TempDirTestCase):
         def mock_from_file(filename, *args, **kwargs):
             file_path = pathlib.Path(filename)
             assert file_path.exists()
-            return file_path.name[0]
+            return file_path.stem
 
         # create dummy metadata files
-        versions = [2, 3, 1]
         for role_name in TOP_LEVEL_ROLE_NAMES:
             filenames = [f'{role_name}.json']
             if role_name == 'root':
-                filenames = [f'{v}.{role_name}.json' for v in versions]
+                filenames.extend(f'{v}.{role_name}.json' for v in [1, 2, 3])
             for filename in filenames:
                 (self.temp_dir_path / filename).touch()
         # test
         with patch.object(notsotuf.repo.Metadata, 'from_file', mock_from_file):
             roles = Roles(dir_path=self.temp_dir_path)
             for role_name in TOP_LEVEL_ROLE_NAMES:
-                expected = str(max(versions)) if role_name == 'root' else role_name[0]
-                self.assertEqual(expected, getattr(roles, role_name))
+                self.assertEqual(role_name, getattr(roles, role_name))
 
     def test_initialize_empty(self):
         # prepare
@@ -311,12 +309,12 @@ class RolesTests(TempDirTestCase):
             roles.file_path(role_name='root', version=1),
         )
         self.assertEqual(
-            self.temp_dir_path / 'targets.json',
-            roles.file_path(role_name='targets', version=1),
+            self.temp_dir_path / 'root.json',
+            roles.file_path(role_name='root'),
         )
         self.assertEqual(
-            self.temp_dir_path / 'timestamp.json',
-            roles.file_path(role_name='timestamp'),
+            self.temp_dir_path / 'targets.json',
+            roles.file_path(role_name='targets', version=1),
         )
 
     def test_file_exists(self):
@@ -337,7 +335,12 @@ class RolesTests(TempDirTestCase):
         self.assertTrue((self.temp_dir_path / expected_filename).exists())
 
     def test_publish_root(self):
-        with patch.object(Roles, '_publish_metadata', Mock()):
+        def mock_publish_metadata(roles_, **kwargs):
+            roles_.file_path(
+                role_name='root', version=roles_.root.signed.version
+            ).touch()
+
+        with patch.object(Roles, '_publish_metadata', mock_publish_metadata):
             # prepare
             roles = Roles(dir_path=self.temp_dir_path)
             roles.root = Mock(signed=Mock(version=1))
@@ -346,13 +349,17 @@ class RolesTests(TempDirTestCase):
             # test
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(1, roles.root.signed.version)
-            self.assertTrue(Roles._publish_metadata.called)  # noqa
             self.assertFalse(roles.root_modified)
+            self.assertTrue(roles.file_path(role_name='root', version=1).exists())
             # ensure version is incremented if file exists
             roles.root_modified = True
-            roles.file_path(role_name='root', version=1).touch()
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(2, roles.root.signed.version)
+            self.assertTrue(roles.file_path(role_name='root', version=2).exists())
+            # ensure a copy of the latest version exists, without version in
+            # the filename, to be used as trusted root metadata for the
+            # client distribution
+            self.assertTrue(roles.file_path(role_name='root').exists())
 
     def test_publish_targets(self):
         with patch.object(Roles, '_publish_metadata', Mock()):
