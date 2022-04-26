@@ -319,9 +319,14 @@ class RolesTests(TempDirTestCase):
             roles.root_modified = True
             # test
             roles.publish_root(private_key_paths=[], expires=in_(0))
-            self.assertEqual(2, roles.root.signed.version)
+            self.assertEqual(1, roles.root.signed.version)
             self.assertTrue(Roles._publish_metadata.called)  # noqa
             self.assertFalse(roles.root_modified)
+            # ensure version is incremented if file exists
+            roles.root_modified = True
+            roles.file_path(role_name='root').touch()
+            roles.publish_root(private_key_paths=[], expires=in_(0))
+            self.assertEqual(2, roles.root.signed.version)
 
     def test_publish_targets(self):
         with patch.object(Roles, '_publish_metadata', Mock()):
@@ -373,6 +378,7 @@ class RolesTests(TempDirTestCase):
         old_private_key_path = keys.private_key_path(key_name=role_name)
         roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
         roles.initialize(keys=keys)
+        roles.file_path(role_name='root').touch()
         # create new key pair to replace old one
         new_private_key_path = keys_dir / 'new_key'
         new_public_key_path = Keys.create_key_pair(

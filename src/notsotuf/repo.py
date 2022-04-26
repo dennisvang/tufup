@@ -361,14 +361,14 @@ class Roles(Base):
             expires: datetime,
     ):
         """Call this whenever root has been modified (should be rare)."""
-        # todo: handle initial case, as we cannot set version=0
         if self.root_modified:
-            # root content has changed, so increment version
-            self.root.signed.version += 1
+            # root content has changed, so increment version (if not initial)
+            if self.file_path(role_name=Root.type).exists():
+                self.root.signed.version += 1
             # sign and save
             self._publish_metadata(
                 private_key_paths={Root.type: private_key_paths},
-                expires=dict(root=expires),
+                expires={Root.type: expires},
             )
             self.root_modified = False
 
