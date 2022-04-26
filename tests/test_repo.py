@@ -190,15 +190,24 @@ class RolesTests(TempDirTestCase):
 
     def test_init_import_roles(self):
         def mock_from_file(filename, *args, **kwargs):
-            return pathlib.Path(filename).exists()
+            file_path = pathlib.Path(filename)
+            assert file_path.exists()
+            return file_path.name[0]
 
         # create dummy metadata files
+        versions = [2, 3, 1]
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            (self.temp_dir_path / f'{role_name}.json').touch()
+            for version in versions:
+                filename = f'{version}.{role_name}.json'
+                if role_name == 'timestamp':
+                    filename = 'timestamp.json'
+                (self.temp_dir_path / filename).touch()
         # test
         with patch.object(notsotuf.repo.Metadata, 'from_file', mock_from_file):
             roles = Roles(dir_path=self.temp_dir_path)
-            self.assertTrue(all(getattr(roles, n) for n in TOP_LEVEL_ROLE_NAMES))
+            for role_name in TOP_LEVEL_ROLE_NAMES:
+                expected = 't' if role_name == 'timestamp' else str(max(versions))
+                self.assertEqual(expected, getattr(roles, role_name))
 
     def test_initialize_empty(self):
         # prepare
@@ -347,6 +356,7 @@ class RolesTests(TempDirTestCase):
             roles = Roles(dir_path=self.temp_dir_path)
             roles.targets = Mock(signed=Mock(version=1))
             roles.snapshot = Mock(
+                # note no version in filename
                 signed=Mock(meta={'targets.json': Mock(version=1)}, version=1)
             )
             roles.timestamp = Mock(

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 import pathlib
+import re
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -221,6 +222,12 @@ class Keys(Base):
 class Roles(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
     filename_pattern = '{version}{role_name}{suffix}'
+    filename_regex = re.compile(
+        r'^(?P<version>\d*)'
+        r'\.?'
+        r'(?P<role_name>root|targets|snapshot|timestamp)'
+        r'.json$'
+    )
 
     def __init__(
             self,
@@ -257,8 +264,10 @@ class Roles(Base):
         """Import roles from metadata files."""
         if self.dir_path.exists():
             for path in self.dir_path.iterdir():
-                if path.is_file() and path.stem in role_names:
-                    setattr(self, path.stem, Metadata.from_file(str(path)))
+                match = self.filename_regex.search(string=path.name)
+                role_name = match.groupdict().get('role_name') if match else None
+                if role_name in role_names:
+                    setattr(self, role_name, Metadata.from_file(str(path)))
 
     def initialize(self, keys: Keys):
         # based on python-tuf basic_repo.py
