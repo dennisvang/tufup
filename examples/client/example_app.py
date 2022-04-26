@@ -21,6 +21,9 @@ CURRENT_VERSION = '1.0'
 # %PROGRAMDATA%\MyApp (per-machine), or %LOCALAPPDATA%\MyApp (per-user).
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 
+# For this example, we copy the trusted root metadate directly from the repo dir
+REPO_METADATA_DIR = BASE_DIR.parent / 'repo' / 'content' / 'metadata'
+
 # On Windows 10, typical app installation locations are %PROGRAMFILES%\MyApp
 # (per-machine) or %LOCALAPPDATA%\Programs\MyApp (per-user). Also see:
 # https://docs.microsoft.com/en-us/windows/win32/msi/installation-context
@@ -46,7 +49,7 @@ def main():
     # specified metadata_dir. The root metadata file lists all trusted keys
     # and TUF roles. In this example we copy the root.json file from the
     # repo, but normally it would be included in the app distribution.
-    source_path = BASE_DIR.parent / 'repo' / 'content' / 'metadata' / 'root.json'
+    source_path = REPO_METADATA_DIR / '1.root.json'
     destination_path = METADATA_DIR / 'root.json'
     if not destination_path.exists():
         shutil.copy(src=source_path, dst=destination_path)
