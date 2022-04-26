@@ -261,7 +261,7 @@ class Roles(Base):
             file_paths = [p for p in self.dir_path.iterdir() if p.is_file()]
         for role_name in role_names:
             role_paths = [p for p in file_paths if role_name in p.name]
-            if role_name != 'timestamp':
+            if role_name == Root.type:
                 # sort by file version, ascending
                 role_paths = sorted(
                     role_paths, key=lambda path: int(path.name.split('.')[0])
@@ -279,6 +279,7 @@ class Roles(Base):
                 expires=in_(0),
                 keys=keys.public(),
                 roles=keys.roles(),
+                # repo is relatively static, no need for consistent snapshots
                 consistent_snapshot=False,
             ),
             Targets: dict(expires=in_(0), targets=dict()),
@@ -354,19 +355,22 @@ class Roles(Base):
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer, append=True)
 
-    def file_path(self, role_name: str, version: int):
-        version = f'{version}.'
-        if role_name == Timestamp.type:
-            # timestamp file has no version
-            version = ''
+    def file_path(self, role_name: str, version: Optional[int] = None):
+        version_str = ''
+        if role_name == Root.type:
+            # "... all released versions of root metadata files MUST always
+            # be provided so that outdated clients can update to the latest
+            # available root."
+            # https://theupdateframework.github.io/specification/latest/#writing-consistent-snapshots
+            version_str = f'{version}.'
         return self.dir_path / self.filename_pattern.format(
-            version=version, role_name=role_name, suffix=SUFFIX_JSON
+            version=version_str, role_name=role_name, suffix=SUFFIX_JSON
         )
 
     def file_exists(self, role_name: str):
         """
         Return True if any metadata file exists for the specified role,
-        ignoring version.
+        ignoring any versions in the filename.
         """
         return any(
             path.exists() for path in self.dir_path.iterdir()

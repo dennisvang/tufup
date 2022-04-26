@@ -1,4 +1,5 @@
 import pathlib
+from typing import Optional
 from unittest.mock import Mock, patch
 
 import tuf.api.exceptions
@@ -28,9 +29,9 @@ class ClientTests(TempDirTestCase):
         self.metadata_dir.mkdir()
         self.target_dir.mkdir()
         # parent application must be shipped with root metadata, and must
-        # ensure it is placed in the metadata_dir
+        # ensure it is placed in the metadata_dir (without version in filename)
         shutil.copy(
-            src=TEST_REPO_DIR / 'metadata' / ROOT_FILENAME,
+            src=TEST_REPO_DIR / 'metadata' / ('1.' + ROOT_FILENAME),
             dst=self.metadata_dir / ROOT_FILENAME,
         )
         # kwargs for client initializer
@@ -44,12 +45,17 @@ class ClientTests(TempDirTestCase):
             target_base_url='http://localhost:8000/targets/',
         )
 
-    def mock_download_metadata(self, rolename: str, *args, **kwargs) -> bytes:
+    def mock_download_metadata(
+            self, rolename: str, length: int, version: Optional[int] = None
+    ) -> bytes:
         if rolename == 'root':
             # indicate current root is newest version
             raise tuf.api.exceptions.DownloadHTTPError(status_code=404, message='')
         # read from the test repo dir, instead of actually downloading
-        file_path = TEST_REPO_DIR / 'metadata' / f'{rolename}.json'
+        filename = f'{rolename}.json'
+        if version:
+            filename = f'{version}.{filename}'
+        file_path = TEST_REPO_DIR / 'metadata' / filename
         return file_path.read_bytes()
 
     def get_refreshed_client(self):

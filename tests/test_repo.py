@@ -197,16 +197,16 @@ class RolesTests(TempDirTestCase):
         # create dummy metadata files
         versions = [2, 3, 1]
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            for version in versions:
-                filename = f'{version}.{role_name}.json'
-                if role_name == 'timestamp':
-                    filename = 'timestamp.json'
+            filenames = [f'{role_name}.json']
+            if role_name == 'root':
+                filenames = [f'{v}.{role_name}.json' for v in versions]
+            for filename in filenames:
                 (self.temp_dir_path / filename).touch()
         # test
         with patch.object(notsotuf.repo.Metadata, 'from_file', mock_from_file):
             roles = Roles(dir_path=self.temp_dir_path)
             for role_name in TOP_LEVEL_ROLE_NAMES:
-                expected = 't' if role_name == 'timestamp' else str(max(versions))
+                expected = str(max(versions)) if role_name == 'root' else role_name[0]
                 self.assertEqual(expected, getattr(roles, role_name))
 
     def test_initialize_empty(self):
@@ -311,8 +311,12 @@ class RolesTests(TempDirTestCase):
             roles.file_path(role_name='root', version=1),
         )
         self.assertEqual(
+            self.temp_dir_path / 'targets.json',
+            roles.file_path(role_name='targets', version=1),
+        )
+        self.assertEqual(
             self.temp_dir_path / 'timestamp.json',
-            roles.file_path(role_name='timestamp', version=1),
+            roles.file_path(role_name='timestamp'),
         )
 
     def test_file_exists(self):
