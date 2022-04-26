@@ -301,6 +301,10 @@ class RolesTests(TempDirTestCase):
             self.temp_dir_path / '1.root.json',
             roles.file_path(role_name='root', version=1),
         )
+        self.assertEqual(
+            self.temp_dir_path / 'timestamp.json',
+            roles.file_path(role_name='timestamp', version=1),
+        )
 
     def test_file_exists(self):
         # prepare

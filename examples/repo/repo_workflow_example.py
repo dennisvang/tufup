@@ -58,7 +58,7 @@ temp_dir = tempfile.TemporaryDirectory()  # no need for context manager
 dummy_bundle_dir = pathlib.Path(temp_dir.name)
 # include the root metadata file with the bundle (this is normally done
 # using the pyinstaller .spec file)
-shutil.copy(src=roles.file_path(role_name='root'), dst=dummy_bundle_dir)
+shutil.copy(src=roles.file_path(role_name='root', version=1), dst=dummy_bundle_dir)
 # create dummy app file
 dummy_file_size = int(1e5)  # bytes
 dummy_delta_size = int(1e2)  # bytes

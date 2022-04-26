@@ -220,7 +220,7 @@ class Keys(Base):
 
 class Roles(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
-    filename_pattern = '{version}.{role_name}' + SUFFIX_JSON
+    filename_pattern = '{version}{role_name}{suffix}'
 
     def __init__(
             self,
@@ -345,13 +345,17 @@ class Roles(Base):
         getattr(self, role_name).sign(signer, append=True)
 
     def file_path(self, role_name: str, version: int):
+        version = f'{version}.'
+        if role_name == Timestamp.type:
+            # timestamp file has no version
+            version = ''
         return self.dir_path / self.filename_pattern.format(
-            role_name=role_name, version=version
+            version=version, role_name=role_name, suffix=SUFFIX_JSON
         )
 
     def file_exists(self, role_name: str):
         """
-        Return true if any metadata file exists for the specified role,
+        Return True if any metadata file exists for the specified role,
         ignoring version.
         """
         return any(
