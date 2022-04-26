@@ -34,6 +34,10 @@ CONTENT_DIR = BASE_DIR / 'content'
 META_DIR = CONTENT_DIR / 'metadata'
 TARGETS_DIR = CONTENT_DIR / 'targets'
 
+# Expiration settings
+ROOT_EXPIRES = in_(365)
+EXPIRES = dict(targets=in_(100), snapshot=in_(7), timestamp=in_(1))
+
 # Create key pairs for the top level tuf roles
 keys = Keys(dir_path=KEYS_DIR, encrypted=['root', 'targets'])
 if keys.root is None:
@@ -49,7 +53,7 @@ if roles.root is None:
     print('signing initial root metadata')
     roles.publish_root(
         private_key_paths=[keys.private_key_path('root')],
-        expires=in_(365),
+        expires=ROOT_EXPIRES,
     )
 
 # Create dummy initial target file (normally a gzipped PyInstaller bundle)
@@ -76,14 +80,11 @@ current_archive = make_gztar_archive(
 # Register the initial target file
 roles.add_or_update_target(local_path=current_archive.path)
 print('signing initial targets metadata')
-expires = dict(targets=in_(100), snapshot=in_(7), timestamp=in_(1))
 private_key_paths = {
     role_name: [keys.private_key_path(key_name=role_name)]
-    for role_name in expires.keys()
+    for role_name in EXPIRES.keys()
 }
-roles.publish_targets(
-    private_key_paths=private_key_paths, expires=expires
-)
+roles.publish_targets(private_key_paths=private_key_paths, expires=EXPIRES)
 
 # register additional target files (as updates become available over time)
 new_versions = ['2.0', '3.0rc0', '4.0a0']
@@ -112,7 +113,7 @@ for new_version in new_versions:
     roles.add_or_update_target(local_path=new_archive.path)
     roles.add_or_update_target(local_path=new_patch_path)
     print(f'signing updated metadata for version {new_version}')
-    roles.publish_targets(private_key_paths=private_key_paths, expires=expires)
+    roles.publish_targets(private_key_paths=private_key_paths, expires=EXPIRES)
     # next
     current_archive = new_archive
 
@@ -122,7 +123,7 @@ for new_version in new_versions:
 # Re-sign roles, before they expire
 roles.sign_role(
     role_name='timestamp',
-    expires=in_(2),
+    expires=EXPIRES['timestamp'],
     private_key_path=keys.private_key_path(key_name='timestamp'),
 )
 roles.persist_role(role_name='timestamp')
