@@ -220,7 +220,7 @@ class Keys(Base):
 
 class Roles(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
-    filename_pattern = '{role_name}' + SUFFIX_JSON
+    filename_pattern = '{version}.{role_name}' + SUFFIX_JSON
 
     def __init__(
             self,
@@ -344,14 +344,30 @@ class Roles(Base):
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer, append=True)
 
-    def file_path(self, role_name: str):
-        return self.dir_path / self.filename_pattern.format(role_name=role_name)
+    def file_path(self, role_name: str, version: int):
+        return self.dir_path / self.filename_pattern.format(
+            role_name=role_name, version=version
+        )
+
+    def file_exists(self, role_name: str):
+        """
+        Return true if any metadata file exists for the specified role,
+        ignoring version.
+        """
+        return any(
+            path.exists() for path in self.dir_path.iterdir()
+            if path.is_file() and role_name in path.name
+        )
 
     def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
         role.to_file(
-            filename=str(self.file_path(role_name=role.signed.type)),
+            filename=str(
+                self.file_path(
+                    role_name=role.signed.type, version=role.signed.version
+                )
+            ),
             serializer=JSONSerializer(compact=False),
         )
 
@@ -363,7 +379,7 @@ class Roles(Base):
         """Call this whenever root has been modified (should be rare)."""
         if self.root_modified:
             # root content has changed, so increment version (if not initial)
-            if self.file_path(role_name=Root.type).exists():
+            if self.file_exists(role_name=Root.type):
                 self.root.signed.version += 1
             # sign and save
             self._publish_metadata(
@@ -380,15 +396,15 @@ class Roles(Base):
         """Call this whenever new targets have been added."""
         if self.targets_modified:
             # targets content has changed, so increment version
-            if self.file_path(role_name=Targets.type).exists():
+            if self.file_exists(role_name=Targets.type):
                 self.targets.signed.version += 1
             # update snapshot content and increment version
             self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
-            if self.file_path(role_name=Snapshot.type).exists():
+            if self.file_exists(role_name=Snapshot.type):
                 self.snapshot.signed.version += 1
             # update timestamp content and increment version
             self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
-            if self.file_path(role_name=Timestamp.type).exists():
+            if self.file_exists(role_name=Timestamp.type):
                 self.timestamp.signed.version += 1
             # sign and save
             self._publish_metadata(

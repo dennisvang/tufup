@@ -298,17 +298,26 @@ class RolesTests(TempDirTestCase):
         roles = Roles(dir_path=self.temp_dir_path)
         # test
         self.assertEqual(
-            self.temp_dir_path / 'root.json',
-            roles.file_path(role_name='root'),
+            self.temp_dir_path / '1.root.json',
+            roles.file_path(role_name='root', version=1),
         )
+
+    def test_file_exists(self):
+        # prepare
+        roles = Roles(dir_path=self.temp_dir_path)
+        (self.temp_dir_path / '1.root.json').touch()
+        # test
+        self.assertTrue(roles.file_exists(role_name='root'))
+        self.assertFalse(roles.file_exists(role_name='targets'))
 
     def test_persist_role(self):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)
         roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
+        expected_filename = f'{DUMMY_ROOT.version}.root.json'
         # test
         roles.persist_role(role_name='root')
-        self.assertTrue((self.temp_dir_path / 'root.json').exists())
+        self.assertTrue((self.temp_dir_path / expected_filename).exists())
 
     def test_publish_root(self):
         with patch.object(Roles, '_publish_metadata', Mock()):
@@ -324,7 +333,7 @@ class RolesTests(TempDirTestCase):
             self.assertFalse(roles.root_modified)
             # ensure version is incremented if file exists
             roles.root_modified = True
-            roles.file_path(role_name='root').touch()
+            roles.file_path(role_name='root', version=1).touch()
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(2, roles.root.signed.version)
 
@@ -358,7 +367,7 @@ class RolesTests(TempDirTestCase):
             # test version increment
             roles.targets_modified = True
             for role_name in role_names:
-                roles.file_path(role_name=role_name).touch()
+                roles.file_path(role_name=role_name, version=1).touch()
             roles.publish_targets(
                 private_key_paths=private_key_paths, expires=expires
             )
@@ -388,14 +397,14 @@ class RolesTests(TempDirTestCase):
         old_private_key_path = keys.private_key_path(key_name=role_name)
         roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
         roles.initialize(keys=keys)
-        roles.file_path(role_name='root').touch()
+        old_root_version = roles.root.signed.version
+        roles.file_path(role_name='root', version=old_root_version).touch()
         # create new key pair to replace old one
         new_private_key_path = keys_dir / 'new_key'
         new_public_key_path = Keys.create_key_pair(
             private_key_path=new_private_key_path, encrypted=False
         )
         # test
-        old_root_version = roles.root.signed.version
         old_key_id = roles.root.signed.roles[role_name].keyids[0]
         roles.replace_key(
             old_key_id=old_key_id,
