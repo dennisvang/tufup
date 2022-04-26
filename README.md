@@ -1,10 +1,11 @@
 # notsotuf
 
-A simple software updater for stand-alone Python *applications* on Windows.
+A simple software updater for stand-alone Python *applications*.
 
+The `notsotuf` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework).
+
+The initial implementation is focused on Windows.
 The package can be used on other platforms, but these are not actively supported.
-
-The `notsotuf` package is built on top of [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework).
 
 ## About
 
