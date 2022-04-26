@@ -342,7 +342,7 @@ class Roles(Base):
             filepath=str(private_key_path), prompt=encrypted
         )
         signer = SSlibSigner(ssl_key)
-        getattr(self, role_name).sign(signer)
+        getattr(self, role_name).sign(signer, append=True)
 
     def file_path(self, role_name: str):
         return self.dir_path / self.filename_pattern.format(role_name=role_name)

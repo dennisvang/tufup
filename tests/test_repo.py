@@ -274,21 +274,24 @@ class RolesTests(TempDirTestCase):
 
     def test_sign_role(self):
         # prepare
-        role_name = 'root'
-        private_key_path = self.temp_dir_path / 'root_key'
-        generate_and_write_unencrypted_ed25519_keypair(
-            filepath=str(private_key_path)
-        )
         roles = Roles(dir_path=self.temp_dir_path)
         roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
-        # test
-        roles.sign_role(
-            role_name=role_name,
-            private_key_path=private_key_path,
-            expires=in_(0),
-            encrypted=False,
-        )
-        self.assertTrue(roles.root.signatures)
+        role_name = 'root'
+        signature_count = 2
+        for index in range(signature_count):
+            private_key_path = self.temp_dir_path / f'{index}.{role_name}'
+            # create key pair
+            generate_and_write_unencrypted_ed25519_keypair(
+                filepath=str(private_key_path)
+            )
+            # test
+            roles.sign_role(
+                role_name=role_name,
+                private_key_path=private_key_path,
+                expires=in_(0),
+                encrypted=False,
+            )
+        self.assertEqual(signature_count, len(roles.root.signatures))
 
     def test_file_path(self):
         # prepare
@@ -360,12 +363,14 @@ class RolesTests(TempDirTestCase):
             self.assertTrue(Roles.sign_role.called)  # noqa
             self.assertTrue(Roles.persist_role.called)  # noqa
 
-    def test_replace_key(self):
+    def test_replace_root_key(self):
+        role_name = 'root'
         # prepare
         keys_dir = self.temp_dir_path / 'keystore'
         keys_dir.mkdir()
         keys = Keys(dir_path=keys_dir, encrypted=[])
         keys.create()
+        old_private_key_path = keys.private_key_path(key_name=role_name)
         roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
         roles.initialize(keys=keys)
         # create new key pair to replace old one
@@ -374,16 +379,20 @@ class RolesTests(TempDirTestCase):
             private_key_path=new_private_key_path, encrypted=False
         )
         # test
-        role_name = 'targets'
+        old_root_version = roles.root.signed.version
         old_key_id = roles.root.signed.roles[role_name].keyids[0]
         roles.replace_key(
             old_key_id=old_key_id,
-            old_private_key_path=keys.private_key_path(key_name=role_name),
+            old_private_key_path=old_private_key_path,
             new_private_key_path=new_private_key_path,
             new_public_key_path=new_public_key_path,
             root_expires=in_(365),
         )
         self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)
+        # root version must be incremented
+        self.assertEqual(old_root_version + 1, roles.root.signed.version)
+        # root should be signed using both the old key and the new key
+        self.assertEqual(2, len(roles.root.signatures))
 
     def test_get_latest_archive(self):
         roles = Roles(dir_path=TEST_REPO_DIR / 'metadata', encrypted=[])
