@@ -222,12 +222,6 @@ class Keys(Base):
 class Roles(Base):
     dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
     filename_pattern = '{version}{role_name}{suffix}'
-    filename_regex = re.compile(
-        r'^(?P<version>\d*)'
-        r'\.?'
-        r'(?P<role_name>root|targets|snapshot|timestamp)'
-        r'.json$'
-    )
 
     def __init__(
             self,
@@ -262,12 +256,19 @@ class Roles(Base):
 
     def _import_roles(self, role_names: Iterable[str]):
         """Import roles from metadata files."""
+        file_paths = []
         if self.dir_path.exists():
-            for path in self.dir_path.iterdir():
-                match = self.filename_regex.search(string=path.name)
-                role_name = match.groupdict().get('role_name') if match else None
-                if role_name in role_names:
-                    setattr(self, role_name, Metadata.from_file(str(path)))
+            file_paths = [p for p in self.dir_path.iterdir() if p.is_file()]
+        for role_name in role_names:
+            role_paths = [p for p in file_paths if role_name in p.name]
+            if role_name != 'timestamp':
+                # sort by file version, ascending
+                role_paths = sorted(
+                    role_paths, key=lambda path: int(path.name.split('.')[0])
+                )
+            # import latest version for this role
+            if role_paths:
+                setattr(self, role_name, Metadata.from_file(str(role_paths[-1])))
 
     def initialize(self, keys: Keys):
         # based on python-tuf basic_repo.py
