@@ -1,5 +1,4 @@
 import bsdiff4
-import gzip
 import logging
 import pathlib
 import shutil
@@ -7,7 +6,7 @@ import sys
 import tempfile
 from typing import Optional, Union, Callable
 
-import tuf.api.exceptions
+from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
 
@@ -104,7 +103,7 @@ class Client(tuf.ngclient.Updater):
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         try:
             self.refresh()
-        except tuf.api.exceptions.DownloadError as e:
+        except (DownloadError, UnsignedMetadataError) as e:
             logger.warning(f'Cannot refresh metadata: {e}')
             if self.refresh_required:
                 logger.warning('Exiting: refresh is required')
