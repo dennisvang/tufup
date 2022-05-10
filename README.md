@@ -22,7 +22,7 @@ Hence the name *"notsotuf"*.
 
 *Disclaimer: It turns out there was once another package called [No-So-TUF][9] created by the author of PyUpdater.
 These packages are not related, and the matching name is a pure coincidence.
-The name did not appear on PyPi at the time our repo was created, nor did it appear on GitHub, as far as I know.*
+The name did not appear on PyPI at the time our repo was created, nor did it appear on GitHub, as far as I know.*
 
 ## Overview
 
@@ -52,7 +52,7 @@ Archive filenames and patch filenames follow the pattern
 
 `<name>-<version><suffix>` 
 
-where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` (including `'.tar.gz'`) or `'.patch'`.
+where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
 
 Patches are typically smaller than archives, so the notsotuf client will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
