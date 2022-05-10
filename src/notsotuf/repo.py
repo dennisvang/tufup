@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import logging
 import pathlib
-import re
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, Union
 
