@@ -14,10 +14,15 @@ The `notsotuf` package was inspired by [PyUpdater][3], and uses a general approa
 However, whereas PyUpdater implements a *custom* security mechanism to ensure authenticity (and integrity) of downloaded update files, `notsotuf` is built on top of the security mechanisms implemented in the [python-tuf][1] package, a.k.a. `tuf`.
 By entrusting the design of security measures to the security professionals, `notsotuf` can focus on high-level tools.
 
-Although `tuf` supports highly complex security infrastructures, it also offers sufficient flexibility to allow application developers to tailor the security level to their use case.
+Although `tuf` supports highly complex security infrastructures, see e.g. [PEP458][5], it also offers sufficient flexibility to allow *application* developers to tailor the security level to their use case.
 For details and best practices, refer to the [tuf docs][2].
 
-A detailed discussion of the intricacies of TUF adoption can be found in [PEP458][5].
+Based on the intended use, the `notsotuf` package supports only the top-level roles offered by `tuf`. At this time we do not support delegations.
+Hence the name *"notsotuf"*.
+
+*Disclaimer: It turns out there was once another package called [No-So-TUF][9] created by the author of PyUpdater.
+These packages are not related, and the matching name is a pure coincidence.
+The name did not appear on PyPi at the time our repo was created, nor did it appear on GitHub, as far as I know.*
 
 ## Overview
 
@@ -104,3 +109,4 @@ Read the [Python packaging overview][8] for more information.
 [6]: https://peps.python.org/pep-0440/
 [7]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_example/basic_repo.py
 [8]: https://packaging.python.org/en/latest/overview/
+[9]: https://pythonhosted.org/not-so-tuf/
