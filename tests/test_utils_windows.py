@@ -3,13 +3,14 @@ import subprocess
 from time import sleep
 import unittest
 
-from tests import TempDirTestCase
+from tests import BASE_DIR, TempDirTestCase
 
 if not platform.system().lower().startswith('win'):
     raise unittest.SkipTest('Only available on Windows')
 
-DUMMY_APP_CONTENT = """
+DUMMY_APP_CONTENT = f"""
 import sys
+sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from notsotuf.utils.windows import start_script_and_exit
 start_script_and_exit(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """

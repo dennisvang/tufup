@@ -1,9 +1,13 @@
 import pathlib
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 TEST_REPO_DIR = BASE_DIR / 'data' / 'repository'
+
+# facilitate running tests from command line using `python -m unittest`
+sys.path.append(str(BASE_DIR.parent / 'src'))
 
 
 class TempDirTestCase(unittest.TestCase):
