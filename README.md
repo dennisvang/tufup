@@ -1,5 +1,8 @@
 # notsotuf
 
+![Build](https://github.com/dennisvang/notsotuf/actions/workflows/python-package.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/notsotuf)
+
 A simple software updater for stand-alone Python *applications*.
 
 The `notsotuf` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework).
