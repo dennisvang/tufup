@@ -1,11 +1,14 @@
 import pathlib
+import shutil
 from typing import Optional
+import unittest
 from unittest.mock import Mock, patch
 
+from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
 
-from notsotuf.client import Client, shutil
+from notsotuf.client import AuthRequestsFetcher, Client
 from notsotuf.common import TargetMeta
 from tests import TempDirTestCase, TEST_REPO_DIR
 
@@ -43,6 +46,7 @@ class ClientTests(TempDirTestCase):
             metadata_base_url='http://localhost:8000/metadata/',
             target_dir=self.target_dir,
             target_base_url='http://localhost:8000/targets/',
+            session_auth={'http://localhost:8000': ('username', 'password')}
         )
 
     def mock_download_metadata(
@@ -189,3 +193,26 @@ class ClientTests(TempDirTestCase):
             client._apply_updates(move_and_exit=mock_move)
         self.assertTrue(any(client.extract_dir.iterdir()))
         self.assertTrue(mock_move.called)
+
+
+class AuthRequestsFetcherTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.session_auth = {
+            'https://example.net': None,
+            'https://example.com': ('username', 'password'),
+            'https://example.org': HTTPBasicAuth(username='name', password='pw'),
+        }
+
+    def test_init(self):
+        # drop-in replacement for default RequestsFetcher, without args
+        self.assertTrue(AuthRequestsFetcher())
+        # if authentication is required, specify arg
+        fetcher = AuthRequestsFetcher(session_auth=self.session_auth)
+        self.assertEqual(self.session_auth, fetcher.session_auth)
+
+    def test__get_session(self):
+        fetcher = AuthRequestsFetcher(session_auth=self.session_auth)
+        for url, auth in self.session_auth.items():
+            with self.subTest(msg=url):
+                session = fetcher._get_session(url=url)
+                self.assertEqual(auth, session.auth)

@@ -4,11 +4,15 @@ import pathlib
 import shutil
 import sys
 import tempfile
-from typing import Optional, Union, Callable
+from typing import Callable, Dict, Optional, Tuple, Union
 
+import requests
+from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
+# RequestsFetcher is "private", but we'll just have to live with that, for now.
+from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
 from notsotuf.common import TargetMeta
 from notsotuf.utils.windows import start_script_and_exit
@@ -30,6 +34,7 @@ class Client(tuf.ngclient.Updater):
             target_base_url: str,
             extract_dir: Optional[pathlib.Path] = None,
             refresh_required: bool = False,
+            session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
             **kwargs,
     ):
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
@@ -38,6 +43,7 @@ class Client(tuf.ngclient.Updater):
             metadata_base_url=metadata_base_url,
             target_dir=str(target_dir),
             target_base_url=target_base_url,
+            fetcher=AuthRequestsFetcher(session_auth=session_auth),
             **kwargs,
         )
         self.app_install_dir = app_install_dir
@@ -209,3 +215,34 @@ class Client(tuf.ngclient.Updater):
         else:
             logger.warning('installation aborted')
         # todo: clean up deprecated local archive
+
+
+class AuthRequestsFetcher(RequestsFetcher):
+    def __init__(
+            self,
+            session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
+    ) -> None:
+        """
+        This extends the default tuf RequestsFetcher, so we can specify
+        authentication tuples (or custom authentication objects) for each
+        session.
+
+        session_auth (optional):
+
+            dict of the form {<url>: (<username>, <password>), ...}
+            or {<url>: <requests.auth.AuthBase>, ...} or a combination
+
+        Also see session authentication example in requests docs:
+
+        https://docs.python-requests.org/en/master/user/advanced/#session-objects
+        https://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
+        https://docs.python-requests.org/en/master/api/#sessionapi
+        """
+        super().__init__()
+        self.session_auth = session_auth or {}
+
+    def _get_session(self, url: str) -> requests.Session:
+        # set the Session.auth attribute for the specified url, if available
+        session = super()._get_session(url=url)
+        session.auth = self.session_auth.get(url)
+        return session
