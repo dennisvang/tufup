@@ -1,7 +1,7 @@
 import logging
 import pathlib
 import re
-from typing import Optional
+from typing import Optional, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
@@ -20,7 +20,7 @@ class TargetMeta(object):
 
     def __init__(
             self,
-            target_path: Optional[str] = None,
+            target_path: Union[None, str, pathlib.Path] = None,
             name: Optional[str] = None,
             version: Optional[str] = None,
             is_archive: Optional[bool] = True,
@@ -34,11 +34,11 @@ class TargetMeta(object):
             target_path = TargetMeta.compose_filename(
                 name=name, version=version, is_archive=is_archive
             )
-        self.target_path_str = target_path  # keep the original for reference
+        self.target_path_str = str(target_path)  # keep the original for reference
         self.path = pathlib.Path(target_path)
 
     def __str__(self):
-        return self.target_path_str
+        return str(self.target_path_str)
 
     def __repr__(self):
         return f'{self.__class__.__name__}(target_path="{self.target_path_str}")'

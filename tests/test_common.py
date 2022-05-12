@@ -1,3 +1,5 @@
+import pathlib
+
 import bsdiff4
 from packaging.version import Version
 
@@ -21,6 +23,14 @@ class TestTargetMeta(TempDirTestCase):
         target_meta = TargetMeta(target_path='some.file')
         # the input to eval is known and trusted, so that should be safe, right?
         self.assertEqual(eval(repr(target_meta)), target_meta)
+
+    def test_str(self):
+        # see issue #3
+        for target_path in ['str_path', pathlib.Path('pathlib_path')]:
+            with self.subTest(msg=target_path):
+                self.assertIsInstance(
+                    TargetMeta(target_path=target_path).__str__(), str
+                )
 
     def test_hashable(self):
         obj = TargetMeta()
