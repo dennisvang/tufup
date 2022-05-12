@@ -4,6 +4,7 @@ import pathlib
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, Union
 
+from securesystemslib.exceptions import CryptoError
 from securesystemslib.interface import (
     generate_and_write_ed25519_keypair_with_prompt,
     generate_and_write_unencrypted_ed25519_keypair,
@@ -102,14 +103,16 @@ FILENAME_TIMESTAMP = Timestamp.type + SUFFIX_JSON
 
 
 class Base(object):
-    dir_path = pathlib.Path.cwd()
-    encrypted = [Root.type, Targets.type]
-
-    def __init__(self, dir_path: Union[pathlib.Path, str], encrypted: List[str]):
-        if dir_path is not None:
-            self.__class__.dir_path = pathlib.Path(dir_path)
-        if encrypted is not None:
-            self.__class__.encrypted = encrypted
+    def __init__(self, dir_path: Union[pathlib.Path, str, None]):
+        """
+        dir_path: directory where all key files are stored
+        encrypted: names of the keys that are (to be) encrypted
+        key_map: maps top-level role names to key names
+        """
+        if dir_path is None:
+            dir_path = pathlib.Path.cwd()
+        # enforce pathlib.Path
+        self.dir_path = pathlib.Path(dir_path)
         if not self.dir_path.exists():
             if input(f'Create directory {self.dir_path}? [y]/n') in ['y', '']:
                 self.dir_path.mkdir(parents=True)
@@ -117,24 +120,34 @@ class Base(object):
 
 
 class Keys(Base):
-    dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
-    encrypted = [Root.type, Targets.type]
     filename_pattern = '{key_name}'
 
     def __init__(
             self,
             dir_path: Union[pathlib.Path, str, None] = None,
             encrypted: Optional[List[str]] = None,
+            key_map: Optional[Dict[str, str]] = None,
     ):
-        super().__init__(dir_path=dir_path, encrypted=encrypted)
-        # default roles
+        if dir_path is None:
+            dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+        super().__init__(dir_path=dir_path)
+        if encrypted is None:
+            encrypted = []
+        if key_map is None:
+            key_map = dict(zip(TOP_LEVEL_ROLE_NAMES, TOP_LEVEL_ROLE_NAMES))
+        self.encrypted = encrypted
+        self.key_map = key_map
+        # top-level roles
         self.root: Optional[Dict[str, Any]] = None
         self.targets: Optional[Dict[str, Any]] = None
         self.snapshot: Optional[Dict[str, Any]] = None
         self.timestamp: Optional[Dict[str, Any]] = None
         # import public keys from dir_path, if it exists
-        for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.import_public_key(role_name=role_name)
+        self.import_all_public_keys()
+
+    def import_all_public_keys(self):
+        for role_name, key_name in self.key_map.items():
+            self.import_public_key(role_name=role_name, key_name=key_name)
 
     def import_public_key(self, role_name: str, key_name: Optional[str] = None):
         """Import public key for specified role."""
@@ -150,23 +163,17 @@ class Keys(Base):
         else:
             logger.debug(f'file does not exist: {public_key_path}')
 
-    def create(
-            self,
-            role_names: Optional[Iterable[str]] = None,
-            private_key_path: Optional[pathlib.Path] = None,
-    ):
-        if role_names is None:
-            role_names = TOP_LEVEL_ROLE_NAMES
-        logger.debug(f'creating key-pairs for roles: {role_names}')
-        for role_name in role_names:
-            default_private_key_path = self.private_key_path(role_name)
+    def create(self):
+        unique_key_names = set(self.key_map.values())
+        logger.debug(f'creating key-pairs: {unique_key_names}')
+        for key_name in unique_key_names:
+            default_private_key_path = self.private_key_path(key_name=key_name)
             self.create_key_pair(
-                private_key_path=private_key_path or default_private_key_path,
-                encrypted=role_name in self.encrypted,
+                private_key_path=default_private_key_path,
+                encrypted=key_name in self.encrypted,
             )
         # import the newly created public keys
-        for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.import_public_key(role_name=role_name)
+        self.import_all_public_keys()
 
     @staticmethod
     def create_key_pair(
@@ -191,24 +198,26 @@ class Keys(Base):
         return self.private_key_path(key_name=key_name).with_suffix(SUFFIX_PUB)
 
     def public(self):
-        # return a dict mapping key ids to *public* key objects
+        # return a dict that maps key ids to *public* key objects
         return {
             ssl_key['keyid']: Key.from_securesystemslib_key(key_dict=ssl_key)
-            for ssl_key in vars(self).values() if ssl_key is not None
+            for attr_name, ssl_key in vars(self).items()
+            if attr_name in TOP_LEVEL_ROLE_NAMES and ssl_key is not None
         }
 
     def roles(self):
-        # return a dict mapping role names to key ids and key thresholds
+        # return a dict that maps role names to key ids and key thresholds
         return {
-            role_name: Role(keyids=[ssl_key['keyid']], threshold=1)
+            attr_name: Role(keyids=[ssl_key['keyid']], threshold=1)
             if ssl_key is not None else None
-            for role_name, ssl_key in vars(self).items()
+            for attr_name, ssl_key in vars(self).items()
+            if attr_name in TOP_LEVEL_ROLE_NAMES
         }
 
     @classmethod
-    def find_private_key(cls, role_name: str, key_dirs: List[Union[pathlib.Path, str]]):
+    def find_private_key(cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]):
         private_key_path = None
-        private_key_filename = cls.filename_pattern.format(key_name=role_name)
+        private_key_filename = cls.filename_pattern.format(key_name=key_name)
         for key_dir in key_dirs:
             key_dir = pathlib.Path(key_dir)  # ensure Path
             for path in key_dir.iterdir():
@@ -219,14 +228,9 @@ class Keys(Base):
 
 
 class Roles(Base):
-    dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
     filename_pattern = '{version}{role_name}{suffix}'
 
-    def __init__(
-            self,
-            dir_path: Union[pathlib.Path, str, None] = None,
-            encrypted: Optional[List[str]] = None,
-    ):
+    def __init__(self, dir_path: Union[pathlib.Path, str, None] = None):
         """
         TUF roles
 
@@ -242,7 +246,10 @@ class Roles(Base):
             + which version of the snapshot-metadata file to expect
 
         """
-        super().__init__(dir_path=dir_path, encrypted=encrypted)
+        if dir_path is None:
+            dir_path = pathlib.Path.cwd() / DEFAULT_META_DIR_NAME
+        super().__init__(dir_path=dir_path)
+        # top-level roles
         self.root: Optional[Metadata[Root]] = None
         self.targets: Optional[Metadata[Targets]] = None
         self.snapshot: Optional[Metadata[Snapshot]] = None
@@ -339,14 +346,21 @@ class Roles(Base):
             role_name: str,
             private_key_path: Union[pathlib.Path, str],
             expires: datetime,
-            encrypted: bool = False,
     ):
         # set new expiration date
         getattr(self, role_name).signed.expires = expires
         # based on python-tuf basic_repo.py
-        ssl_key = import_ed25519_privatekey_from_file(
-            filepath=str(private_key_path), prompt=encrypted
-        )
+        try:
+            # assume unencrypted
+            ssl_key = import_ed25519_privatekey_from_file(
+                filepath=str(private_key_path), prompt=False
+            )
+        except CryptoError as e:
+            # possibly encrypted: try to import with password
+            logger.debug(f'private key import attempt without password failed: {e}')
+            ssl_key = import_ed25519_privatekey_from_file(
+                filepath=str(private_key_path), prompt=True
+            )
         signer = SSlibSigner(ssl_key)
         getattr(self, role_name).sign(signer, append=True)
 
@@ -449,7 +463,6 @@ class Roles(Base):
                     role_name=role_name,
                     private_key_path=private_key_path,
                     expires=expires[role_name],
-                    encrypted=role_name in self.encrypted,
                 )
             self.persist_role(role_name=role_name)
 

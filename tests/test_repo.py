@@ -3,7 +3,10 @@ import json
 import pathlib
 from unittest.mock import patch, Mock
 
-from securesystemslib.interface import generate_and_write_unencrypted_ed25519_keypair
+from securesystemslib.interface import (
+    generate_and_write_unencrypted_ed25519_keypair,
+    generate_and_write_ed25519_keypair,
+)
 from tuf.api.metadata import (
     Metadata,
     Role,
@@ -87,12 +90,11 @@ class BaseTests(TempDirTestCase):
     def test_init(self):
         with patch('builtins.input', mock_input):
             # dir exists
-            base = Base(dir_path=self.temp_dir_path, encrypted=[])
+            base = Base(dir_path=self.temp_dir_path)
             self.assertTrue(base.dir_path.exists())
             # dir does not exist yet
-            base = Base(dir_path=self.temp_dir_path / 'new', encrypted=[])
+            base = Base(dir_path=self.temp_dir_path / 'new')
             self.assertTrue(base.dir_path.exists())
-            self.assertFalse(base.encrypted)
 
 
 class KeysTests(TempDirTestCase):
@@ -102,7 +104,7 @@ class KeysTests(TempDirTestCase):
         for role_name in TOP_LEVEL_ROLE_NAMES:
             self.assertIsNone(getattr(keys, role_name))
 
-    def test_init_import_existing_public_keys(self):
+    def test_init_and_import_all_public_keys(self):
         # create some key files
         for role_name in TOP_LEVEL_ROLE_NAMES:
             private_key_filename = Keys.filename_pattern.format(key_name=role_name)
@@ -110,6 +112,37 @@ class KeysTests(TempDirTestCase):
             generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
         # test
         keys = Keys(dir_path=self.temp_dir_path)
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            self.assertIsInstance(getattr(keys, role_name), dict)
+
+    def test_init_and_import_all_public_keys_with_key_map(self):
+        # create a single key-pair
+        key_name = 'single'
+        private_key_filename = Keys.filename_pattern.format(key_name=key_name)
+        file_path = self.temp_dir_path / private_key_filename
+        generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
+        key_map = {role_name: key_name for role_name in TOP_LEVEL_ROLE_NAMES}
+        # test
+        keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            self.assertIsInstance(getattr(keys, role_name), dict)
+            # all keys should be equal
+            self.assertEqual(keys.root, getattr(keys, role_name))
+
+    def test_import_all_public_keys(self):
+        # note: import_all_public_keys is also (implicitly) tested via __init__
+        keys = Keys(dir_path=self.temp_dir_path)
+        # create some key files
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            private_key_filename = Keys.filename_pattern.format(
+                key_name=role_name)
+            file_path = self.temp_dir_path / private_key_filename
+            generate_and_write_unencrypted_ed25519_keypair(
+                filepath=str(file_path))
+        # test
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            self.assertIsNone(getattr(keys, role_name))
+        keys.import_all_public_keys()
         for role_name in TOP_LEVEL_ROLE_NAMES:
             self.assertIsInstance(getattr(keys, role_name), dict)
 
@@ -127,7 +160,7 @@ class KeysTests(TempDirTestCase):
 
     def test_create(self):
         with patch('getpass.getpass', mock_input):
-            keys = Keys(dir_path=self.temp_dir_path)
+            keys = Keys(dir_path=self.temp_dir_path, encrypted=['root'])
             keys.create()
             # key pair files should now exist
             filenames = [item.name for item in keys.dir_path.iterdir()]
@@ -138,6 +171,23 @@ class KeysTests(TempDirTestCase):
                 self.assertIn(public_key_filename, filenames)
             # and the public keys should have been imported
             self.assertTrue(all(getattr(keys, n) for n in TOP_LEVEL_ROLE_NAMES))
+
+    def test_create_with_key_map(self):
+        # prepare
+        key_name = 'single'
+        key_map = {role_name: key_name for role_name in TOP_LEVEL_ROLE_NAMES}
+        keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
+        private_key_filename = Keys.filename_pattern.format(key_name=key_name)
+        public_key_filename = private_key_filename + SUFFIX_PUB
+        # test
+        keys.create()
+        # a single key pair should now exist
+        filenames = [item.name for item in keys.dir_path.iterdir()]
+        self.assertEqual(2, len(filenames))
+        self.assertIn(private_key_filename, filenames)
+        self.assertIn(public_key_filename, filenames)
+        # and the public keys should have been imported
+        self.assertTrue(all(getattr(keys, n) for n in TOP_LEVEL_ROLE_NAMES))
 
     def test_create_key_pair(self):
         public_key_path = Keys.create_key_pair(
@@ -179,7 +229,7 @@ class KeysTests(TempDirTestCase):
                 (dir_path / filename).touch()
         # test
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            key_path = Keys.find_private_key(role_name=role_name, key_dirs=key_dirs)
+            key_path = Keys.find_private_key(key_name=role_name, key_dirs=key_dirs)
             self.assertIn(role_name, str(key_path))
             self.assertTrue(key_path.exists())
 
@@ -285,19 +335,25 @@ class RolesTests(TempDirTestCase):
         roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
         role_name = 'root'
         signature_count = 2
-        for index in range(signature_count):
-            private_key_path = self.temp_dir_path / f'{index}.{role_name}'
-            # create key pair
-            generate_and_write_unencrypted_ed25519_keypair(
-                filepath=str(private_key_path)
-            )
-            # test
-            roles.sign_role(
-                role_name=role_name,
-                private_key_path=private_key_path,
-                expires=in_(0),
-                encrypted=False,
-            )
+        password = 'mock-password'
+        with patch('getpass.getpass', Mock(return_value=password)):
+            for index in range(signature_count):
+                private_key_path = self.temp_dir_path / f'{index}.{role_name}'
+                # create key pair
+                if index == 0:
+                    generate_and_write_unencrypted_ed25519_keypair(
+                        filepath=str(private_key_path)
+                    )
+                else:
+                    generate_and_write_ed25519_keypair(
+                        password=password, filepath=str(private_key_path)
+                    )
+                # test
+                roles.sign_role(
+                    role_name=role_name,
+                    private_key_path=private_key_path,
+                    expires=in_(0),
+                )
         self.assertEqual(signature_count, len(roles.root.signatures))
 
     def test_file_path(self):
@@ -417,10 +473,10 @@ class RolesTests(TempDirTestCase):
         # prepare
         keys_dir = self.temp_dir_path / 'keystore'
         keys_dir.mkdir()
-        keys = Keys(dir_path=keys_dir, encrypted=[])
+        keys = Keys(dir_path=keys_dir, encrypted=None)
         keys.create()
         old_private_key_path = keys.private_key_path(key_name=role_name)
-        roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
+        roles = Roles(dir_path=self.temp_dir_path)
         roles.initialize(keys=keys)
         old_root_version = roles.root.signed.version
         roles.file_path(role_name='root', version=old_root_version).touch()
@@ -445,12 +501,12 @@ class RolesTests(TempDirTestCase):
         self.assertEqual(2, len(roles.root.signatures))
 
     def test_get_latest_archive(self):
-        roles = Roles(dir_path=TEST_REPO_DIR / 'metadata', encrypted=[])
+        roles = Roles(dir_path=TEST_REPO_DIR / 'metadata')
         expected_filename = 'example_app-4.0a0.tar.gz'
         latest_archive = roles.get_latest_archive()
         self.assertEqual(expected_filename, latest_archive.path.name)
 
     def test_get_latest_archive_empty(self):
-        roles = Roles(dir_path=self.temp_dir_path, encrypted=[])
+        roles = Roles(dir_path=self.temp_dir_path)
         self.assertIsNone(roles.get_latest_archive())
 
