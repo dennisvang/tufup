@@ -195,6 +195,21 @@ class KeysTests(TempDirTestCase):
         )
         self.assertTrue(public_key_path.exists())
 
+    def test_create_key_pair_do_not_overwrite(self):
+        # create dummy key pair
+        key_name = 'dummy'
+        private_key_filename = Keys.filename_pattern.format(key_name=key_name)
+        private_key_path = self.temp_dir_path / private_key_filename
+        generate_and_write_unencrypted_ed25519_keypair(
+            filepath=str(private_key_path)
+        )
+        original_private_key = private_key_path.read_bytes()
+        with patch('builtins.input', Mock(return_value='n')):
+            Keys.create_key_pair(
+                private_key_path=private_key_path, encrypted=False
+            )
+        self.assertEqual(original_private_key, private_key_path.read_bytes())
+
     def test_public(self):
         keys = Keys(dir_path=self.temp_dir_path)
         # test empty

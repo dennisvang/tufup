@@ -186,9 +186,14 @@ class Keys(Base):
         else:
             # do not encrypt private key (for automated signing)
             generate_keypair = generate_and_write_unencrypted_ed25519_keypair
-        file_path_str = generate_keypair(filepath=str(private_key_path))
         public_key_path = private_key_path.with_suffix(SUFFIX_PUB)
-        logger.info(f'key-pair created: {file_path_str}, {public_key_path}')
+        proceed = True
+        if public_key_path.exists():
+            logger.warning(f'Public key already exists: {public_key_path}')
+            proceed = input(f'Overwrite key pair? [n]/y') == 'y'
+        if proceed:
+            file_path_str = generate_keypair(filepath=str(private_key_path))
+            logger.info(f'key-pair created: {file_path_str}, {public_key_path}')
         return public_key_path
 
     def private_key_path(self, key_name: str) -> pathlib.Path:
