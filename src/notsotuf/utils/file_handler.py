@@ -52,7 +52,9 @@ def _start_script_and_exit_win(
     logger.debug('exiting')
     sys.exit(0)
 
-def _start_script_and_exit_mac(src, dst):
+def _start_script_and_exit_mac(
+        src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
+):
     logger.debug(f"Moving content of {src} to {dst}.")
     shutil(src, dst)
     logger.debug(f"Restarting application, running {sys.executable}.")
