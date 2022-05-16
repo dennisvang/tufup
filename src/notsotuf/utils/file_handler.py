@@ -67,5 +67,10 @@ def _start_script_and_exit_mac(
 def _remove_any(file_or_dir):
     try:
         shutil.rmtree(file_or_dir)
-    except:
+    except FileNotFoundError:
+        pass
+    try:
         os.remove(file_or_dir)
+    except FileNotFoundError:
+        pass
+
