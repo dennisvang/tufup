@@ -15,7 +15,7 @@ import tuf.ngclient
 from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
 from notsotuf.common import TargetMeta
-from notsotuf.utils.windows import start_script_and_exit
+from notsotuf.utils.file_handler import handle_update
 
 logger = logging.getLogger(__name__)
 
@@ -99,8 +99,8 @@ class Client(tuf.ngclient.Updater):
         specific file
         """
         if move_and_exit is None:
-            # use default script for Windows
-            move_and_exit = start_script_and_exit
+            # use our handle_update util function, that will take care of Windows and MacOS
+            move_and_exit = handle_update
         if self._check_updates(pre=pre) and self._download_updates():
             self._apply_updates(move_and_exit=move_and_exit)
 
