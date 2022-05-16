@@ -48,5 +48,3 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue((dst_dir / src_file_name).exists())
         # original src file no longer exists
         self.assertFalse(src_file_path.exists())
-        # stale dst content has been removed (robocopy /purge)
-        self.assertFalse(dst_subdir.exists())
