@@ -53,7 +53,7 @@ def _start_script_and_exit_win(
     sys.exit(0)
 
 def _start_script_and_exit_mac(src, dst):
-    logger.debug(f"Moving content of {src} to {{dst}.")
+    logger.debug(f"Moving content of {src} to {dst}.")
     shutil(src, dst)
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec
