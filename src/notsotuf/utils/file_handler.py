@@ -56,7 +56,7 @@ def _start_script_and_exit_mac(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
-    shutil(src_dir, dst_dir)
+    shutil.move(src_dir, dst_dir)
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec
     sys.exit(0)
