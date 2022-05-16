@@ -1,0 +1,16 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+src/notsotuf/__init__.py
+src/notsotuf/client.py
+src/notsotuf/common.py
+src/notsotuf/repo.py
+src/notsotuf.egg-info/PKG-INFO
+src/notsotuf.egg-info/SOURCES.txt
+src/notsotuf.egg-info/dependency_links.txt
+src/notsotuf.egg-info/requires.txt
+src/notsotuf.egg-info/top_level.txt
+src/notsotuf/utils/__init__.py
+src/notsotuf/utils/file_handler.py
