@@ -1,5 +1,8 @@
 # dirs
 __pycache__/
+build/
+dist/
+*.egg-info/
 examples/client/cache/
 examples/client/programs/
 examples/repo/keystore/
