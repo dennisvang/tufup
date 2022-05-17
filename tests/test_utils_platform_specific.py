@@ -9,15 +9,15 @@ if platform.system().lower().startswith('win'):
     DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
-from notsotuf.utils.file_handler import _start_script_and_exit_win
-_start_script_and_exit_win(src_dir=sys.argv[1], dst_dir=sys.argv[2])
+from notsotuf.utils.platform_specific import _install_update_win
+_install_update_win(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
 if platform.system().lower().startswith('darw'):
     DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
-from notsotuf.utils.file_handler import _start_script_and_exit_mac
-_start_script_and_exit_mac(src_dir=sys.argv[1], dst_dir=sys.argv[2])
+from notsotuf.utils.platform_specific import _install_update_mac
+_install_update_mac(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
 
 
