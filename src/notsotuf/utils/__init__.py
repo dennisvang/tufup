@@ -1,11 +1,12 @@
 import logging
 import pathlib
 import shutil
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
 
-def remove_path(path: pathlib.Path) -> bool:
+def remove_path(path: Union[pathlib.Path, str]) -> bool:
     """
     Recursively remove directory or file at specified path.
 
@@ -14,6 +15,8 @@ def remove_path(path: pathlib.Path) -> bool:
         for path in my_dir_path.iterdir():
             remove_path(path)
     """
+    # enforce pathlib.Path
+    path = pathlib.Path(path)
     try:
         if path.is_dir():
             shutil.rmtree(path=path)
