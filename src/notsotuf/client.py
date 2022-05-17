@@ -53,7 +53,7 @@ class Client(tuf.ngclient.Updater):
         self.current_archive_local_path = target_dir / self.current_archive.path
         self.new_archive_local_path: Optional[pathlib.Path] = None
         self.new_archive_info: Optional[TargetFile] = None
-        self.new_targets = {}
+        self.new_targets: Optional[dict] = None
         self.downloaded_target_files = {}
 
     @property
@@ -81,13 +81,37 @@ class Client(tuf.ngclient.Updater):
             target_path = target_path.target_path_str
         return super().get_targetinfo(target_path=target_path)
 
-    def update(
-            self,
-            pre: Optional[str] = None,
-            move_and_exit: Optional[Callable] = None,
-    ):
+    @property
+    def updates_available(self):
+        if self.new_targets is None:
+            logger.warning('Please call check_for_updates first.')
+            return False
+        else:
+            return len(self.new_targets) > 0
+
+    def download_and_apply_update(self, install: Optional[Callable] = None):
         """
-        Check, download, and apply updates.
+        Download and apply available updates.
+
+        Note that `check_for_updates` must be called first.
+
+        This downloads the files found by `check_for_updates`, applies any
+        patches, and extracts the resulting archive to the `extract_dir`. At
+        that point, the update is ready to be installed (i.e. moved into
+        place). This is done by calling `install`.
+
+        The default `install` callable purges the `app_install_dir`,
+        moves the files from `extract_dir` to `app_install_dir`, and exits
+        the application (not necessarily in that order).
+        """
+        if install is None:
+            install = start_script_and_exit
+        if self.updates_available and self._download_updates():
+            self._apply_updates(install=install)
+
+    def check_for_updates(self, pre: Optional[str] = None, patch: bool = True) -> bool:
+        """
+        Check if any updates are available, based on current app version.
 
         Final releases are always included. Pre-releases are excluded by
         default. If `pre` is specified, pre-releases are included, down to
@@ -95,16 +119,8 @@ class Client(tuf.ngclient.Updater):
         specification, i.e. 'a', 'b', or 'rc', for alpha, beta, and release
         candidate, respectively.
 
-        move_and_exit is an optional callable that can be used for platform
-        specific file
+        If `patch` is `False`, a full update is enforced.
         """
-        if move_and_exit is None:
-            # use default script for Windows
-            move_and_exit = start_script_and_exit
-        if self._check_updates(pre=pre) and self._download_updates():
-            self._apply_updates(move_and_exit=move_and_exit)
-
-    def _check_updates(self, pre: Optional[str]) -> bool:
         included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         try:
@@ -153,17 +169,17 @@ class Client(tuf.ngclient.Updater):
             no_patches = total_patch_size == 0
             patches_too_big = total_patch_size > self.new_archive_info.length
             current_archive_not_found = not self.current_archive_local_path.exists()
-            if no_patches or patches_too_big or current_archive_not_found:
+            if not patch or no_patches or patches_too_big or current_archive_not_found:
                 self.new_targets = {new_archive_meta: self.new_archive_info}
-                logger.debug('performing full update')
+                logger.debug('full update available')
             else:
-                logger.debug('performing patch update')
+                logger.debug('patch update(s) available')
         else:
             logger.debug('no new archives found')
-        return len(self.new_targets) > 0
+        return self.updates_available
 
     def _download_updates(self) -> bool:
-        # download the new targets selected in _check_updates
+        # download the new targets selected in check_for_updates
         for target_meta, target_file in self.new_targets.items():
             # check if the target file has already been downloaded
             local_path_str = self.find_cached_target(targetinfo=target_file)
@@ -173,10 +189,10 @@ class Client(tuf.ngclient.Updater):
             self.downloaded_target_files[target_meta] = pathlib.Path(local_path_str)
         return len(self.downloaded_target_files) == len(self.new_targets)
 
-    def _apply_updates(self, move_and_exit: Callable):
+    def _apply_updates(self, install: Callable):
         """
-        side-effect: if self.extract_dir is not specified, an extract_dir is
-        created in a platform-specific temporary location
+        Note this has a side-effect: if self.extract_dir is not specified,
+        an extract_dir is created in a platform-specific temporary location.
         """
         # patch current archive (if we have patches) or use new full archive
         archive_bytes = None
@@ -211,7 +227,7 @@ class Client(tuf.ngclient.Updater):
         if input(confirmation_message) in ['y', '']:
             # start a script that moves the extracted files to the app install
             # directory (overwrites existing files), then exit current process
-            move_and_exit(src_dir=self.extract_dir, dst_dir=self.app_install_dir)
+            install(src_dir=self.extract_dir, dst_dir=self.app_install_dir)
         else:
             logger.warning('installation aborted')
         # todo: clean up deprecated local archive

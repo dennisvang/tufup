@@ -68,7 +68,8 @@ def main():
     )
 
     # Perform update
-    client.update()
+    if client.check_for_updates():
+        client.download_and_apply_update()
 
 
 if __name__ == '__main__':
