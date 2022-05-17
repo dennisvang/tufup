@@ -1,5 +1,4 @@
 import logging
-import os
 import pathlib
 import shutil
 import subprocess
@@ -7,6 +6,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from typing import Union
 import platform
+from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
 
@@ -57,20 +57,8 @@ def _start_script_and_exit_mac(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
-    for new_file_name in os.listdir(src_dir):
-        _remove_any(os.path.join(dst_dir, new_file_name))
+	remove_path(dst_dir)
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec
     sys.exit(0)
-
-def _remove_any(file_or_dir):
-    try:
-        shutil.rmtree(file_or_dir)
-    except FileNotFoundError:
-        pass
-    try:
-        os.remove(file_or_dir)
-    except FileNotFoundError:
-        pass
-
