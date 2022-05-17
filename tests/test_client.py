@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import shutil
 from typing import Optional
@@ -102,20 +103,32 @@ class ClientTests(TempDirTestCase):
             with self.subTest(msg=target_path):
                 self.assertIsInstance(target_info, TargetFile)
 
-    def test_update(self):
+    def test_updates_available(self):
+        client = Client(**self.client_kwargs)
+        # test check_for_updates not called
+        with self.assertLogs(logger='notsotuf.client', level=logging.WARNING) as cm:
+            self.assertFalse(client.updates_available)
+        self.assertIn('check_for_updates', cm.output[0])
+        # test check_for_updates called and update available
+        client.new_targets = {'dummy': None}
+        self.assertTrue(client.updates_available)
+
+    def test_download_and_apply_update(self):
         # just for completeness...
-        mock_true = Mock(return_value=True)
+        mock_download = Mock(return_value=True)
+        mock_apply = Mock(return_value=True)
+        mock_install = Mock()
         with patch.multiple(
-                Client,
-                _check_updates=mock_true,
-                _download_updates=mock_true,
-                _apply_updates=mock_true
+                Client, _download_updates=mock_download, _apply_updates=mock_apply
         ):
             client = self.get_refreshed_client()
-            client.update()
-        self.assertEqual(3, mock_true.call_count)
+            client.new_targets = {'dummy': None}
+            client.download_and_apply_update(install=mock_install)
+        self.assertTrue(mock_download.called)
+        self.assertTrue(mock_apply.called)
+        self.assertIn(mock_install, mock_apply.call_args.kwargs.values())
 
-    def test__check_updates(self):
+    def test_check_for_updates(self):
         # expectations (based on targets in tests/data/repository):
         # - pre=None: only full releases are included, so finds 2.0 patch
         # - pre='a': finds all, but total patch size exceeds archive size
@@ -125,7 +138,7 @@ class ClientTests(TempDirTestCase):
         with patch.object(client, 'refresh', Mock()):
             for pre, expected in [(None, 1), ('a', 1), ('b', 2), ('rc', 2)]:
                 with self.subTest(msg=pre):
-                    self.assertTrue(client._check_updates(pre=pre))
+                    self.assertTrue(client.check_for_updates(pre=pre))
                     self.assertEqual(expected, len(client.new_targets))
                     if pre == 'a':
                         self.assertTrue(all(
@@ -137,19 +150,19 @@ class ClientTests(TempDirTestCase):
                             item.is_patch for item in client.new_targets.keys())
                         )
 
-    def test__check_updates_already_up_to_date(self):
+    def test_check_for_updates_already_up_to_date(self):
         self.client_kwargs['current_version'] = '4.0a0'
         client = self.get_refreshed_client()
         with patch.object(client, 'refresh', Mock()):
-            self.assertFalse(client._check_updates(pre='a'))
+            self.assertFalse(client.check_for_updates(pre='a'))
 
-    def test__check_updates_current_archive_missing(self):
+    def test_check_for_updates_current_archive_missing(self):
         client = self.get_refreshed_client()
         # remove current archive dummy
         client.current_archive_local_path.unlink()
         with patch.object(client, 'refresh', Mock()):
             for pre in [None, 'a', 'b', 'rc']:
-                self.assertTrue(client._check_updates(pre=pre))
+                self.assertTrue(client.check_for_updates(pre=pre))
                 target_meta = next(iter(client.new_targets.keys()))
                 self.assertTrue(target_meta.is_archive)
 
@@ -188,11 +201,11 @@ class ClientTests(TempDirTestCase):
             client.target_dir, client.new_archive_info.path
         )
         # test
-        mock_move = Mock()
+        mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
-            client._apply_updates(move_and_exit=mock_move)
+            client._apply_updates(install=mock_install)
         self.assertTrue(any(client.extract_dir.iterdir()))
-        self.assertTrue(mock_move.called)
+        self.assertTrue(mock_install.called)
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):
