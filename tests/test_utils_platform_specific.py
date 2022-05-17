@@ -23,7 +23,7 @@ _install_update_mac(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 
 
 class UtilsTests(TempDirTestCase):
-    def test_file_handler(self):
+    def test_install_update(self):
         # create src dir with dummy app file, and dst dir with stale subdir
         test_dir = self.temp_dir_path / 'notsotuf_tests'
         src_dir = test_dir / 'src'
@@ -46,5 +46,3 @@ class UtilsTests(TempDirTestCase):
         # ensure file has been moved from src to dst
         self.assertTrue(any(dst_dir.iterdir()))
         self.assertTrue((dst_dir / src_file_name).exists())
-        # original src file no longer exists
-        self.assertFalse(src_file_path.exists())
