@@ -10,13 +10,13 @@ from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
 
-def handle_update(
+def install_update(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     if platform.system() == "Windows":
-        return _start_script_and_exit_win(src_dir, dst_dir)
+        return _install_update_win(src_dir, dst_dir)
     if platform.system() == "Darwin":
-        return _start_script_and_exit_mac(src_dir, dst_dir)
+        return _install_update_mac(src_dir, dst_dir)
     else:
         raise RuntimeError("This platform is not supported!")
 
@@ -30,7 +30,7 @@ rem Delete self (https://stackoverflow.com/a/20333575)
 """
 
 
-def _start_script_and_exit_win(
+def _install_update_win(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     """
@@ -53,11 +53,11 @@ def _start_script_and_exit_win(
     logger.debug('exiting')
     sys.exit(0)
 
-def _start_script_and_exit_mac(
+def _install_update_mac(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
-	remove_path(dst_dir)
+    remove_path(dst_dir)
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec

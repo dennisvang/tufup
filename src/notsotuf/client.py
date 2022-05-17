@@ -15,7 +15,7 @@ import tuf.ngclient
 from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
 from notsotuf.common import TargetMeta
-from notsotuf.utils.file_handler import handle_update
+from notsotuf.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class Client(tuf.ngclient.Updater):
         the application (not necessarily in that order).
         """
         if install is None:
-            install = start_script_and_exit
+            install = install_update
         if self.updates_available and self._download_updates():
             self._apply_updates(install=install)
 
@@ -121,13 +121,6 @@ class Client(tuf.ngclient.Updater):
 
         If `patch` is `False`, a full update is enforced.
         """
-        if move_and_exit is None:
-            # use our handle_update util function, that will take care of Windows and MacOS
-            move_and_exit = handle_update
-        if self._check_updates(pre=pre) and self._download_updates():
-            self._apply_updates(move_and_exit=move_and_exit)
-
-    def _check_updates(self, pre: Optional[str]) -> bool:
         included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         try:
