@@ -60,7 +60,6 @@ def _start_script_and_exit_mac(
     for new_file_name in os.listdir(src_dir):
         _remove_any(os.path.join(dst_dir, new_file_name))
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    _remove_any(src_dir)
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec
     sys.exit(0)
