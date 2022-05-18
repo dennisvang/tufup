@@ -97,12 +97,16 @@ From here on, new updates will be deployed using `notsotuf`.
 
 ## Platform support
 
-The `notsotuf` package is aimed primarily at **Windows** and **macOS** applications.
-Basic `notsotuf.client` functionality should also work on Mac or Linux, provided a custom `move_and_exit` hook is specified in `Client.update()`.
-However, these platforms are not actively supported.
-Moreover, Linux applications are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft.
+The `notsotuf` package is aimed primarily at **Windows** and **macOS** applications. 
 
+Although `notsotuf` could also be used on Linux, Linux applications are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft. 
 Read the [Python packaging overview][8] for more information.
+
+The `notsotuf.repo` functionality is platform independent, as it is just a thin layer on top of `python-tuf`. 
+Platform dependence for `notsotuf.client` is mainly related to file handling and process handling during the installation procedure.
+A custom, platform dependent, installation procedure can be specified via the optional `install` argument for the `Client.update()` method.
+
+
 
 [1]: https://github.com/theupdateframework/python-tuf
 [2]: https://theupdateframework.io/
