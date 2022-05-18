@@ -7,7 +7,7 @@ A simple software updater for stand-alone Python *applications*.
 
 The `notsotuf` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework).
 
-The initial implementation is focused on Windows.
+The initial implementation is focused on Windows and macOS.
 The package can be used on other platforms, but these are not actively supported.
 
 ## About
@@ -97,7 +97,7 @@ From here on, new updates will be deployed using `notsotuf`.
 
 ## Platform support
 
-The `notsotuf` package is aimed primarily at **Windows** applications.
+The `notsotuf` package is aimed primarily at **Windows** and **macOS** applications.
 Basic `notsotuf.client` functionality should also work on Mac or Linux, provided a custom `move_and_exit` hook is specified in `Client.update()`.
 However, these platforms are not actively supported.
 Moreover, Linux applications are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft.
