@@ -5,6 +5,3 @@ packaging==21.*
 requests
 securesystemslib[crypto,pynacl]==0.22.*
 tuf==1.1.*
-sphinx==4.4.0
-sphinx-rtd-theme
-sphinx-sitemap
