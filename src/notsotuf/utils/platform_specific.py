@@ -59,6 +59,8 @@ def _install_update_mac(
     logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
     remove_path(pathlib.Path(dst_dir))
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+    logger.debug(f"Removing src directory {src_dir}.")
+    remove_path(pathlib.Path(src_dir))
     logger.debug(f"Restarting application, running {sys.executable}.")
     subprocess.Popen(sys.executable, shell=True) # nosec
     sys.exit(0)
