@@ -1,23 +1,18 @@
-import platform
 import subprocess
 from time import sleep
 import unittest
 
 from tests import BASE_DIR, TempDirTestCase
 
-if not platform.system().lower().startswith('win'):
-    raise unittest.SkipTest('Only available on Windows')
-
 DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
-from notsotuf.utils.windows import start_script_and_exit
-start_script_and_exit(src_dir=sys.argv[1], dst_dir=sys.argv[2])
+from notsotuf.utils.platform_specific import install_update
+install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
 
-
 class UtilsTests(TempDirTestCase):
-    def test_start_script_and_exit(self):
+    def test_install_update(self):
         # create src dir with dummy app file, and dst dir with stale subdir
         test_dir = self.temp_dir_path / 'notsotuf_tests'
         src_dir = test_dir / 'src'

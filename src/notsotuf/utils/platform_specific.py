@@ -1,11 +1,24 @@
 import logging
 import pathlib
+import shutil
 import subprocess
 import sys
 from tempfile import NamedTemporaryFile
 from typing import Union
+import platform
+from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
+
+def install_update(
+        src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
+):
+    if platform.system() == "Windows":
+        return _install_update_win(src_dir, dst_dir)
+    if platform.system() == "Darwin":
+        return _install_update_mac(src_dir, dst_dir)
+    else:
+        raise RuntimeError("This platform is not supported!")
 
 MOVE_FILES_BAT = """@echo off
 rem /e: include subdirs, /move: move files and dirs, /v: verbose, /purge: delete stale files and dirs in destination folder
@@ -17,7 +30,7 @@ rem Delete self (https://stackoverflow.com/a/20333575)
 """
 
 
-def start_script_and_exit(
+def _install_update_win(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
     """
@@ -38,4 +51,16 @@ def start_script_and_exit(
     logger.debug(f'starting script in new console: {script_path}')
     subprocess.Popen([script_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
     logger.debug('exiting')
+    sys.exit(0)
+
+def _install_update_mac(
+        src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
+):
+    logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
+    remove_path(pathlib.Path(dst_dir))
+    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+    logger.debug(f"Removing src directory {src_dir}.")
+    remove_path(pathlib.Path(src_dir))
+    logger.debug(f"Restarting application, running {sys.executable}.")
+    subprocess.Popen(sys.executable, shell=True) # nosec
     sys.exit(0)

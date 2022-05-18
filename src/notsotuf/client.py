@@ -15,7 +15,7 @@ import tuf.ngclient
 from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
 from notsotuf.common import TargetMeta
-from notsotuf.utils.windows import start_script_and_exit
+from notsotuf.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class Client(tuf.ngclient.Updater):
         the application (not necessarily in that order).
         """
         if install is None:
-            install = start_script_and_exit
+            install = install_update
         if self.updates_available and self._download_updates():
             self._apply_updates(install=install)
 
