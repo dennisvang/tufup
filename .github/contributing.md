@@ -21,6 +21,10 @@
 ## Some specific preferences
 
 - use `pathlib` instead of `os.path`, whenever possible
+- group imports as follows (separate groups by blank line, sort alphabetically):
+  - standard library
+  - 3rd party
+  - custom 
 - ...
 
 
