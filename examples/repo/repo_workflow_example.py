@@ -40,9 +40,8 @@ EXPIRES = dict(targets=in_(100), snapshot=in_(7), timestamp=in_(1))
 
 # Create key pairs for the top level tuf roles
 keys = Keys(dir_path=KEYS_DIR, encrypted=['root', 'targets'])
-if keys.root is None:
-    # create key pair files and save to disk
-    keys.create()
+# create key pair files and save to disk
+keys.create()
 
 # Initialize top level tuf roles
 roles = Roles(dir_path=META_DIR)
