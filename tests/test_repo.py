@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 import json
 import pathlib
-from unittest.mock import patch, Mock
+from time import sleep
+from unittest.mock import Mock, patch
 
 from securesystemslib.interface import (
     generate_and_write_unencrypted_ed25519_keypair,

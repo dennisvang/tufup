@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+import inspect
+import json
 import logging
 import pathlib
 import shutil
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 
 from securesystemslib.exceptions import CryptoError
 from securesystemslib.interface import (
@@ -38,6 +40,11 @@ https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_exam
 """
 
 __all__ = [
+    'DEFAULT_KEY_MAP',
+    'DEFAULT_KEYS_DIR_NAME',
+    'DEFAULT_META_DIR_NAME',
+    'DEFAULT_REPO_DIR_NAME',
+    'DEFAULT_TARGETS_DIR_NAME',
     'in_',
     'Keys',
     'make_gztar_archive',
@@ -91,9 +98,19 @@ def make_gztar_archive(
     return TargetMeta(target_path=archive_path_str)
 
 
+class RolesDict(TypedDict):
+    root: Any
+    targets: Any
+    snapshot: Any
+    timestamp: Any
+
+
+DEFAULT_REPO_DIR_NAME = 'repo'
 DEFAULT_KEYS_DIR_NAME = 'keystore'
 DEFAULT_META_DIR_NAME = 'metadata'
 DEFAULT_TARGETS_DIR_NAME = 'targets'
+DEFAULT_KEY_MAP = RolesDict((key, key) for key in TOP_LEVEL_ROLE_NAMES)  # noqa
+DEFAULT_EXPIRATION_DAYS = RolesDict(root=365, targets=7, snapshot=7, timestamp=1)
 SUFFIX_JSON = '.json'
 SUFFIX_PUB = '.pub'
 FILENAME_ROOT = Root.type + SUFFIX_JSON
@@ -126,7 +143,7 @@ class Keys(Base):
             self,
             dir_path: Union[pathlib.Path, str, None] = None,
             encrypted: Optional[List[str]] = None,
-            key_map: Optional[Dict[str, str]] = None,
+            key_map: Optional[RolesDict] = None,
     ):
         if dir_path is None:
             dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
@@ -134,7 +151,7 @@ class Keys(Base):
         if encrypted is None:
             encrypted = []
         if key_map is None:
-            key_map = dict(zip(TOP_LEVEL_ROLE_NAMES, TOP_LEVEL_ROLE_NAMES))
+            key_map = DEFAULT_KEY_MAP
         self.encrypted = encrypted
         self.key_map = key_map
         # top-level roles
@@ -326,6 +343,7 @@ class Roles(Base):
         target_file_info = TargetFile.from_file(
             target_file_path=url_path, local_path=str(local_path)
         )
+        # note we assume self.targets has been initialized
         existing_target_file_info = self.targets.signed.targets.get(url_path)
         self.targets.signed.targets[url_path] = target_file_info
         if existing_target_file_info != target_file_info:
@@ -446,8 +464,8 @@ class Roles(Base):
 
     def publish_targets(
             self,
-            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],
-            expires: Dict[str, datetime],
+            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
+            expires: Dict[str, datetime],  # RolesDict...
     ):
         """Call this whenever new targets have been added."""
         if self.targets_modified:
@@ -470,8 +488,8 @@ class Roles(Base):
 
     def _publish_metadata(
             self,
-            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],
-            expires: Dict[str, datetime],
+            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
+            expires: Dict[str, datetime],  # RolesDict...
     ):
         # sign the metadata files and save to disk
         for role_name, role_private_key_paths in private_key_paths.items():
