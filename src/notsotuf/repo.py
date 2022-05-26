@@ -642,7 +642,15 @@ class Repository(object):
                 expires=in_(self.expiration_days['root']),
             )
 
-    def add_target(self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]):
+    def add_bundle(self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]):
+        """
+        Adds a new application bundle to the repository.
+
+        An archive file is created from the app bundle, and this file is
+        added to the tuf repository. If a previous archive version is
+        found, a patch file is also created and added to the repository.
+
+        """
         # enforce path object
         new_bundle_dir = pathlib.Path(new_bundle_dir)
         # create archive from latest app bundle

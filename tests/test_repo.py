@@ -631,7 +631,7 @@ class RepositoryTests(TempDirTestCase):
             all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
         )
 
-    def test_add_target(self):
+    def test_add_bundle(self):
         # prepare
         bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
         bundle_dir.mkdir(parents=True)
@@ -644,7 +644,7 @@ class RepositoryTests(TempDirTestCase):
         )
         repo.initialize()  # todo: make test independent...
         # test
-        repo.add_target(new_version='1.0', new_bundle_dir=bundle_dir)
+        repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
 
     def test_sign(self):

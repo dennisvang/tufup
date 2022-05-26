@@ -74,7 +74,7 @@ dummy_file_path = dummy_bundle_dir / 'dummy.exe'
 dummy_file_path.write_bytes(dummy_file_content)
 
 # Create archive from app bundle and register metadata
-repo.add_target(new_version='1.0', new_bundle_dir=dummy_bundle_dir)
+repo.add_bundle(new_version='1.0', new_bundle_dir=dummy_bundle_dir)
 
 # register additional target files (as updates become available over time)
 new_versions = ['2.0', '3.0rc0', '4.0a0']
@@ -95,7 +95,7 @@ for new_version in new_versions:
     dummy_file_path.write_bytes(dummy_file_content)
 
     # Create archive and patch and register the new update
-    repo.add_target(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
+    repo.add_bundle(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
 
 # Time goes by
 ...
