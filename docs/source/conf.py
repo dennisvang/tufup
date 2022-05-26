@@ -58,6 +58,7 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Settings from the theme. See https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
 html_theme_options = {
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
@@ -77,5 +78,5 @@ autodoc_default_options = {
     'inherited-members': True,
 }
 
-html_baseurl = 'https://notsotuf.rtd.org'
+html_baseurl = 'https://notsotuf.readthedocs.org'
 html_extra_path = ['robots.txt']

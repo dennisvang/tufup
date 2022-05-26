@@ -1,7 +1,7 @@
 .. API Documentation
 
 ********************
-API Documentation!
+API Documentation
 ********************
 
 
