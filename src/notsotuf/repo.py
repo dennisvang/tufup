@@ -106,7 +106,7 @@ class RolesDict(TypedDict):
     timestamp: Any
 
 
-DEFAULT_REPO_DIR_NAME = 'repo'
+DEFAULT_REPO_DIR_NAME = 'repository'
 DEFAULT_KEYS_DIR_NAME = 'keystore'
 DEFAULT_META_DIR_NAME = 'metadata'
 DEFAULT_TARGETS_DIR_NAME = 'targets'

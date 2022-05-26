@@ -4,8 +4,13 @@ import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
-from notsotuf.common import Patcher
-from notsotuf.repo import Keys, Roles, in_, make_gztar_archive
+from notsotuf.repo import (
+    DEFAULT_KEYS_DIR_NAME,
+    DEFAULT_META_DIR_NAME,
+    DEFAULT_REPO_DIR_NAME,
+    DEFAULT_TARGETS_DIR_NAME,
+    Repository,
+)
 
 """
 
@@ -29,61 +34,47 @@ APP_NAME = 'example_app'
 
 # Specify local paths
 BASE_DIR = pathlib.Path(__file__).resolve().parent
-KEYS_DIR = BASE_DIR / 'keystore'
-CONTENT_DIR = BASE_DIR / 'content'
-META_DIR = CONTENT_DIR / 'metadata'
-TARGETS_DIR = CONTENT_DIR / 'targets'
+KEYS_DIR = BASE_DIR / DEFAULT_KEYS_DIR_NAME
+REPO_DIR = BASE_DIR / DEFAULT_REPO_DIR_NAME
+META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
+TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
-# Expiration settings
-ROOT_EXPIRES = in_(365)
-EXPIRES = dict(targets=in_(100), snapshot=in_(7), timestamp=in_(1))
+# Settings
+EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
+ENCRYPTED_KEYS = ['root', 'targets']
 
-# Create key pairs for the top level tuf roles
-keys = Keys(dir_path=KEYS_DIR, encrypted=['root', 'targets'])
-# create key pair files and save to disk
-keys.create()
+# Create repository instance
+repo = Repository(
+    app_name=APP_NAME,
+    repo_dir=REPO_DIR,
+    keys_dir=KEYS_DIR,
+    key_map=None,  # use default key map
+    expiration_days=EXPIRATION_DAYS,
+    encrypted_keys=ENCRYPTED_KEYS,
+)
 
-# Initialize top level tuf roles
-roles = Roles(dir_path=META_DIR)
-if roles.root is None:
-    # initialize metadata
-    roles.initialize(keys=keys)
-    # save root metadata file
-    print('signing initial root metadata')
-    roles.publish_root(
-        private_key_paths=[keys.private_key_path('root')],
-        expires=ROOT_EXPIRES,
-    )
+# Save configuration (JSON file)
+repo.save_config()
 
-# Create dummy initial target file (normally a gzipped PyInstaller bundle)
+# Initialize repository (creates keys and root metadata, if necessary)
+repo.initialize()
+
+# Create dummy application bundle (e.g. a PyInstaller bundle)
 TARGETS_DIR.mkdir(exist_ok=True)
 temp_dir = tempfile.TemporaryDirectory()  # no need for context manager
 dummy_bundle_dir = pathlib.Path(temp_dir.name)
-# include the root metadata file with the bundle (this is normally done
-# using the pyinstaller .spec file)
-shutil.copy(src=roles.file_path(role_name='root', version=1), dst=dummy_bundle_dir)
-# create dummy app file
+# include the root metadata file with the bundle (e.g. when using PyInstaller
+# this could be automated using the .spec file)
+shutil.copy(src=repo.roles.file_path(role_name='root'), dst=dummy_bundle_dir)
+# create initial dummy app file
 dummy_file_size = int(1e5)  # bytes
 dummy_delta_size = int(1e2)  # bytes
 dummy_file_content = secrets.token_bytes(dummy_file_size)
 dummy_file_path = dummy_bundle_dir / 'dummy.exe'
 dummy_file_path.write_bytes(dummy_file_content)
-# create archive
-current_archive = make_gztar_archive(
-    src_dir=dummy_bundle_dir,
-    dst_dir=TARGETS_DIR,
-    app_name=APP_NAME,
-    version='1.0',
-)
 
-# Register the initial target file
-roles.add_or_update_target(local_path=current_archive.path)
-print('signing initial targets metadata')
-private_key_paths = {
-    role_name: [keys.private_key_path(key_name=role_name)]
-    for role_name in EXPIRES.keys()
-}
-roles.publish_targets(private_key_paths=private_key_paths, expires=EXPIRES)
+# Create archive from app bundle and register metadata
+repo.add_target(new_version='1.0', new_bundle_dir=dummy_bundle_dir)
 
 # register additional target files (as updates become available over time)
 new_versions = ['2.0', '3.0rc0', '4.0a0']
@@ -91,7 +82,10 @@ for new_version in new_versions:
     # Time goes by
     ...
 
-    # Create target files (archive and patch) for new update
+    # Initialize repo from config
+    repo = Repository.from_config()
+
+    # Create dummy content for new update
     if new_version == new_versions[-1]:
         # large change (total patch size will be larger than full archive size)
         dummy_file_content = secrets.token_bytes(dummy_file_size)
@@ -99,30 +93,15 @@ for new_version in new_versions:
         # small change
         dummy_file_content += secrets.token_bytes(dummy_delta_size)
     dummy_file_path.write_bytes(dummy_file_content)
-    new_archive = make_gztar_archive(
-        src_dir=dummy_bundle_dir,
-        dst_dir=TARGETS_DIR,
-        app_name=APP_NAME,
-        version=new_version,
-    )
-    new_patch_path = Patcher.create_patch(
-        src_path=current_archive.path, dst_path=new_archive.path
-    )
-    # Register the new update files
-    roles.add_or_update_target(local_path=new_archive.path)
-    roles.add_or_update_target(local_path=new_patch_path)
-    print(f'signing updated metadata for version {new_version}')
-    roles.publish_targets(private_key_paths=private_key_paths, expires=EXPIRES)
-    # next
-    current_archive = new_archive
+
+    # Create archive and patch and register the new update
+    repo.add_target(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
 
 # Time goes by
 ...
 
+# Initialize repo from config
+repo = Repository.from_config()
+
 # Re-sign roles, before they expire
-roles.sign_role(
-    role_name='timestamp',
-    expires=EXPIRES['timestamp'],
-    private_key_path=keys.private_key_path(key_name='timestamp'),
-)
-roles.persist_role(role_name='timestamp')
+repo.sign(role_name='timestamp', private_key_path=KEYS_DIR / 'timestamp')

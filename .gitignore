@@ -6,7 +6,7 @@ dist/
 examples/client/cache/
 examples/client/programs/
 examples/repo/keystore/
-examples/repo/content/
+examples/repo/repository/
 
 # files
 .notsotuf-repo-config
