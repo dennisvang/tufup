@@ -332,8 +332,13 @@ class Roles(Base):
             self.targets_modified = True
 
     def remove_target(self, local_path: Union[pathlib.Path, str]) -> bool:
-        target_url = local_path.name  # todo: allow proper url paths
-        removed = self.targets.signed.targets.pop(target_url, None) is not None
+        removed = False
+        targets_dict = self.targets.signed.targets
+        for target_url in targets_dict:
+            # assume target filenames only occur once
+            if target_url.endswith(local_path.name):
+                removed = targets_dict.pop(target_url, None) is not None
+                break
         if removed:
             local_path.unlink()
             self.targets_modified = True

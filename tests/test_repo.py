@@ -326,10 +326,14 @@ class RolesTests(TempDirTestCase):
     def test_remove_target(self):
         # prepare
         filename = 'my_app-1.0.tar.gz'
-        local_target_path = self.temp_dir_path / filename
+        dirname = 'subdir'
+        url_path = f'{dirname}/{filename}'
+        subdir = self.temp_dir_path / dirname
+        subdir.mkdir()
+        local_target_path = subdir / filename
         local_target_path.touch()
         roles = Roles(dir_path=self.temp_dir_path)
-        roles.targets = Mock(signed=Mock(targets={filename: Mock()}))
+        roles.targets = Mock(signed=Mock(targets={url_path: Mock()}))
         # test
         self.assertTrue(local_target_path.exists())
         roles.remove_target(local_path=local_target_path)
