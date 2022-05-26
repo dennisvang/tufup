@@ -79,5 +79,5 @@ autodoc_default_options = {
     'inherited-members': True,
 }
 
-html_baseurl = 'https://notsotuf.readthedocs.org'
+html_baseurl = 'https://notsotuf.readthedocs.io'
 html_extra_path = ['robots.txt']
