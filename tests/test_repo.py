@@ -647,6 +647,33 @@ class RepositoryTests(TempDirTestCase):
         repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
 
+    def test_remove_latest_bundle(self):
+        # prepare
+        bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
+        bundle_dir.mkdir(parents=True)
+        bundle_file = bundle_dir / 'dummy.exe'
+        bundle_file.touch()
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        v1 = '1.0'
+        v2 = '2.0'
+        repo.add_bundle(new_version=v1, new_bundle_dir=bundle_dir)
+        repo.add_bundle(new_version=v2, new_bundle_dir=bundle_dir)
+        # test
+        repo.remove_latest_bundle()
+        remaining_target_keys = list(repo.roles.targets.signed.targets.keys())
+        self.assertEqual(1, len(remaining_target_keys))
+        self.assertIn(v1, remaining_target_keys[0])
+        remaining_target_filenames = [p.name for p in repo.targets_dir.iterdir()]
+        self.assertEqual(1, len(remaining_target_filenames))
+        self.assertIn(remaining_target_keys[0], remaining_target_filenames)
+        # metadata should have been signed
+        self.assertFalse(repo.roles.targets_modified)
+
     def test_sign(self):
         # prepare
         role_name = 'root'

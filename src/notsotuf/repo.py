@@ -29,7 +29,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from notsotuf.common import Patcher, SUFFIX_ARCHIVE, TargetMeta
+from notsotuf.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
 
 logger = logging.getLogger(__name__)
 
@@ -680,9 +680,44 @@ class Repository(object):
                 )
                 self.roles.add_or_update_target(local_path=patch_path)
 
-            # publish updated targets (can safely be called if nothing has changed)
+            # publish updated roles (safe to call if nothing has changed)
             role_names = ['targets', 'snapshot', 'timestamp']
-            self.roles.publish_targets(
+            self.roles.publish_targets(  # todo: DRY
+                private_key_paths={
+                    role_name: [
+                        self.keys.private_key_path(key_name=self.key_map[role_name])
+                    ]
+                    for role_name in role_names
+                },
+                expires={
+                    role_name: in_(self.expiration_days[role_name])
+                    for role_name in role_names
+                },
+            )
+
+    def remove_latest_bundle(self):
+        """
+        Removes the *latest* app bundle from the repository.
+
+        This deletes the bundle's archive file and corresponding patch file
+        from the targets directory, and updates the tuf repository metadata
+        accordingly.
+        """
+        # Get latest archive
+        self._load_keys_and_roles()
+        latest_archive = self.roles.get_latest_archive()
+        if latest_archive:
+            # remove latest archive and corresponding patch
+            archive_path = self.targets_dir / latest_archive.target_path_str
+            patch_path = archive_path.with_suffix('').with_suffix(SUFFIX_PATCH)
+            for target_path in [archive_path, patch_path]:
+                removed = self.roles.remove_target(local_path=target_path)
+                logger.info(
+                    f'target {"removed" if removed else "not found"}: {target_path}'
+                )
+            # publish updated roles (safe to call if nothing has changed)
+            role_names = ['targets', 'snapshot', 'timestamp']
+            self.roles.publish_targets(  # todo: DRY
                 private_key_paths={
                     role_name: [
                         self.keys.private_key_path(key_name=self.key_map[role_name])
