@@ -70,6 +70,7 @@ html_theme_options = {
     'titles_only': False
 }
 
+# config for autodoc. See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_default_options
 autodoc_default_options = {
     'members': True,
     'member-order': 'bysource',
