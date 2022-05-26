@@ -29,7 +29,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from notsotuf.common import TargetMeta, SUFFIX_ARCHIVE
+from notsotuf.common import Patcher, SUFFIX_ARCHIVE, TargetMeta
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ __all__ = [
     'in_',
     'Keys',
     'make_gztar_archive',
+    'Repository',
     'Roles',
     'SUFFIX_JSON',
     'SUFFIX_PUB',
@@ -548,3 +549,168 @@ class Roles(Base):
         if archives:
             latest_archive = archives[-1]
         return latest_archive
+
+
+class Repository(object):
+    config_filename = '.notsotuf-repo-config'
+
+    def __init__(
+            self,
+            app_name: str,
+            repo_dir: Union[pathlib.Path, str, None] = None,
+            keys_dir: Union[pathlib.Path, str, None] = None,
+            key_map: Optional[RolesDict] = None,
+            encrypted_keys: Optional[List[str]] = None,
+            expiration_days: Optional[RolesDict] = None
+    ):
+        if repo_dir is None:
+            repo_dir = pathlib.Path.cwd() / DEFAULT_REPO_DIR_NAME
+        if keys_dir is None:
+            keys_dir = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+        if key_map is None:
+            key_map = DEFAULT_KEY_MAP
+        if encrypted_keys is None:
+            encrypted_keys = []
+        if expiration_days is None:
+            expiration_days = DEFAULT_EXPIRATION_DAYS
+        self.app_name = app_name
+        # force path object and resolve, in case of relative paths
+        self.repo_dir = pathlib.Path(repo_dir).resolve()
+        self.keys_dir = pathlib.Path(keys_dir).resolve()
+        self.key_map = key_map
+        self.encrypted_keys = encrypted_keys
+        self.expiration_days = expiration_days
+        # keys and roles
+        self.keys: Optional[Keys] = None
+        self.roles: Optional[Roles] = None
+
+    @property
+    def config_items(self):
+        # attributes matching __init__ arguments are stored as configuration
+        return inspect.signature(self.__init__).parameters.keys()
+
+    @property
+    def metadata_dir(self) -> pathlib.Path:
+        return self.repo_dir / DEFAULT_META_DIR_NAME
+
+    @property
+    def targets_dir(self) -> pathlib.Path:
+        return self.repo_dir / DEFAULT_TARGETS_DIR_NAME
+
+    @classmethod
+    def get_config_file_path(cls) -> pathlib.Path:
+        return pathlib.Path.cwd() / cls.config_filename
+
+    def save_config(self):
+        config_dict = {item: getattr(self, item) for item in self.config_items}
+        file_path = self.get_config_file_path()
+        file_path.write_text(
+            data=json.dumps(config_dict, default=str), encoding='utf-8'
+        )
+
+    @classmethod
+    def load_config(cls) -> dict:
+        file_path = cls.get_config_file_path()
+        config_dict = dict()
+        try:
+            config_dict = json.loads(file_path.read_text())
+        except FileNotFoundError:
+            logger.warning(f'config file not found: {file_path}')
+        except json.JSONDecodeError:
+            logger.warning(f'config file invalid: {file_path}')
+        return config_dict
+
+    @classmethod
+    def from_config(cls):
+        return cls(**cls.load_config())
+
+    def initialize(self):
+        """Safe to call for existing keys and roles."""
+        # Ensure dirs exist
+        for path in [self.keys_dir, self.metadata_dir, self.targets_dir]:
+            path.mkdir(parents=True, exist_ok=True)
+
+        # Load keys and roles
+        self._load_keys_and_roles(create_keys=True)
+
+        # Publish root metadata (save 1.root.json and copy to root.json)
+        if not self.roles.file_path('root').exists():
+            self.roles.publish_root(
+                private_key_paths=[
+                    self.keys.private_key_path(key_name=self.key_map['root'])
+                ],
+                expires=in_(self.expiration_days['root']),
+            )
+
+    def add_target(self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]):
+        # enforce path object
+        new_bundle_dir = pathlib.Path(new_bundle_dir)
+        # create archive from latest app bundle
+        logger.info(f'Creating new archive from bundle: {new_bundle_dir}')
+        new_archive = make_gztar_archive(
+            src_dir=new_bundle_dir,
+            dst_dir=self.targets_dir,
+            app_name=self.app_name,
+            version=new_version,
+        )
+        logger.info(f'Archive ready: {new_archive}')
+
+        # Load keys and roles
+        self._load_keys_and_roles()
+
+        # check latest archive before registering the new one
+        latest_archive = self.roles.get_latest_archive()
+        if not latest_archive or latest_archive.version < new_archive.version:
+            # register new archive
+            self.roles.add_or_update_target(local_path=new_archive.path)
+
+            # create patch, if possible, and register that too
+            if latest_archive:
+                patch_path = Patcher.create_patch(
+                    src_path=self.targets_dir / latest_archive.path,
+                    dst_path=self.targets_dir / new_archive.path,
+                )
+                self.roles.add_or_update_target(local_path=patch_path)
+
+            # publish updated targets (can safely be called if nothing has changed)
+            role_names = ['targets', 'snapshot', 'timestamp']
+            self.roles.publish_targets(
+                private_key_paths={
+                    role_name: [
+                        self.keys.private_key_path(key_name=self.key_map[role_name])
+                    ]
+                    for role_name in role_names
+                },
+                expires={
+                    role_name: in_(self.expiration_days[role_name])
+                    for role_name in role_names
+                },
+            )
+
+    def sign(self, role_name: str, private_key_path: Union[pathlib.Path, str]):
+        private_key_path = pathlib.Path(private_key_path)
+        self._load_keys_and_roles()
+        self.roles.sign_role(
+            role_name=role_name,
+            expires=in_(self.expiration_days[role_name]),
+            private_key_path=private_key_path,
+        )
+        self.roles.persist_role(role_name=role_name)
+
+    def _load_keys_and_roles(self, create_keys: bool = False):
+        if self.keys is None:
+            logger.info('Importing public keys...')
+            self.keys = Keys(
+                dir_path=self.keys_dir,
+                encrypted=self.encrypted_keys,
+                key_map=self.key_map,
+            )
+            if create_keys:
+                # safe to call if keys exist
+                self.keys.create()
+            logger.info('Public keys imported.')
+        if self.roles is None:
+            logger.info('Importing metadata...')
+            self.roles = Roles(dir_path=self.metadata_dir)
+            self.roles.initialize(keys=self.keys)
+            logger.info('Metadata imported.')

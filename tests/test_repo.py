@@ -21,7 +21,9 @@ from tuf.api.metadata import (
 
 from notsotuf.common import TargetMeta
 import notsotuf.repo  # for patching
-from notsotuf.repo import Base, Keys, Roles, in_, SUFFIX_PUB, make_gztar_archive
+from notsotuf.repo import (
+    Base, in_, Keys, make_gztar_archive, Repository, Roles, SUFFIX_PUB
+)
 from tests import TempDirTestCase, TEST_REPO_DIR
 
 
@@ -548,3 +550,148 @@ class RolesTests(TempDirTestCase):
         roles = Roles(dir_path=self.temp_dir_path)
         self.assertIsNone(roles.get_latest_archive())
 
+
+class RepositoryTests(TempDirTestCase):
+    def test_defaults(self):
+        self.assertTrue(Repository(app_name='test'))
+
+    def test_config_items(self):
+        repo = Repository(app_name='test')
+        expected_config_items = [
+            'app_name',
+            'encrypted_keys',
+            'expiration_days',
+            'key_map',
+            'keys_dir',
+            'repo_dir',
+        ]
+        self.assertEqual(set(expected_config_items), set(repo.config_items))
+
+    def test_get_config_file_path(self):
+        self.assertTrue(Repository.get_config_file_path())
+
+    def test_save_config(self):
+        mock_config_path = Mock(
+            return_value=self.temp_dir_path / Repository.config_filename
+        )
+        # prepare
+        repo = Repository(app_name='test')
+        # test
+        with patch.object(Repository, 'get_config_file_path', mock_config_path):
+            repo.save_config()
+        self.assertTrue(mock_config_path().exists())
+        print(mock_config_path().read_text())
+
+    def test_load_config(self):
+        # file does not exist
+        self.assertEqual(dict(), Repository.load_config())
+        # file exists but invalid
+        mock_config_path = Mock(
+            return_value=self.temp_dir_path / Repository.config_filename
+        )
+        mock_config_path().touch()
+        # test
+        with patch.object(Repository, 'get_config_file_path', mock_config_path):
+            self.assertEqual(dict(), Repository.load_config())
+
+    def test_from_config(self):
+        # prepare
+        config_data = dict(
+            app_name='test',
+            repo_dir=self.temp_dir_path / 'repo',
+            keys_dir=self.temp_dir_path / 'keystore',
+            key_map=dict(),
+            encrypted_keys=[],
+            expiration_days=dict()
+        )
+        mock_config_path = Mock(
+            return_value=self.temp_dir_path / Repository.config_filename
+        )
+        mock_config_path().write_text(json.dumps(config_data, default=str))
+        # test
+        with patch.object(Repository, 'get_config_file_path', mock_config_path):
+            repo = Repository.from_config()
+        self.assertEqual(
+            config_data,
+            {item: getattr(repo, item) for item in repo.config_items}
+        )
+
+    def test_initialize(self):
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        # test
+        repo.initialize()
+        self.assertTrue(any(repo.keys_dir.iterdir()))
+        self.assertTrue(any(repo.metadata_dir.iterdir()))
+        self.assertTrue(
+            all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
+        )
+
+    def test_add_target(self):
+        # prepare
+        bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
+        bundle_dir.mkdir(parents=True)
+        bundle_file = bundle_dir / 'dummy.exe'
+        bundle_file.touch()
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        # test
+        repo.add_target(new_version='1.0', new_bundle_dir=bundle_dir)
+        self.assertTrue((repo.metadata_dir / 'targets.json').exists())
+
+    def test_sign(self):
+        # prepare
+        role_name = 'root'
+        keys_dir = self.temp_dir_path / 'keystore'
+        repo = Repository(
+            app_name='test',
+            keys_dir=keys_dir,
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        original_expiration = repo.expiration_days[role_name]
+        repo.expiration_days[role_name] = 0  # today
+        repo.initialize()  # todo: make test independent...
+        repo.expiration_days[role_name] = original_expiration
+        # dummy modification
+        repo.roles.root_modified = True
+        versioned_file_path = repo.metadata_dir / f'1.{role_name}.json'
+        non_versioned_file_path = repo.metadata_dir / f'{role_name}.json'
+        versioned_last_modified = versioned_file_path.stat().st_mtime_ns
+        non_versioned_last_modified = non_versioned_file_path.stat().st_mtime_ns
+        # test
+        sleep(0.1)  # enforce different modification time
+        private_key_path = keys_dir / repo.key_map[role_name]
+        repo.sign(role_name=role_name, private_key_path=private_key_path)
+        self.assertGreater(repo.roles.root.signed.expires, datetime.today())
+        self.assertGreater(
+            versioned_file_path.stat().st_mtime_ns, versioned_last_modified
+        )
+        self.assertGreater(
+            non_versioned_file_path.stat().st_mtime_ns, non_versioned_last_modified
+        )
+
+    def test__load_keys_and_roles(self):
+        # prepare
+        keys_dir = self.temp_dir_path / 'keystore'
+        repo = Repository(
+            app_name='test',
+            keys_dir=keys_dir,
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        # test
+        with patch('builtins.input', Mock(return_value='y')):
+            repo._load_keys_and_roles(create_keys=True)
+        self.assertTrue(
+            all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
+        )
+        self.assertTrue(
+            all((keys_dir / name).exists() for name in TOP_LEVEL_ROLE_NAMES)
+        )
