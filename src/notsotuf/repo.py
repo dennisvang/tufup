@@ -642,7 +642,12 @@ class Repository(object):
                 expires=in_(self.expiration_days['root']),
             )
 
-    def add_bundle(self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]):
+    def add_bundle(
+            self,
+            new_version: str,
+            new_bundle_dir: Union[pathlib.Path, str],
+            private_key_paths: Optional[Dict[str, list]] = None,
+    ):
         """
         Adds a new application bundle to the repository.
 
@@ -680,22 +685,10 @@ class Repository(object):
                 )
                 self.roles.add_or_update_target(local_path=patch_path)
 
-            # publish updated roles (safe to call if nothing has changed)
-            role_names = ['targets', 'snapshot', 'timestamp']
-            self.roles.publish_targets(  # todo: DRY
-                private_key_paths={
-                    role_name: [
-                        self.keys.private_key_path(key_name=self.key_map[role_name])
-                    ]
-                    for role_name in role_names
-                },
-                expires={
-                    role_name: in_(self.expiration_days[role_name])
-                    for role_name in role_names
-                },
-            )
+            # publish updated roles
+            self._publish_targets(private_key_paths=private_key_paths)
 
-    def remove_latest_bundle(self):
+    def remove_latest_bundle(self, private_key_paths: Optional[Dict[str, list]] = None):
         """
         Removes the *latest* app bundle from the repository.
 
@@ -715,20 +708,29 @@ class Repository(object):
                 logger.info(
                     f'target {"removed" if removed else "not found"}: {target_path}'
                 )
-            # publish updated roles (safe to call if nothing has changed)
-            role_names = ['targets', 'snapshot', 'timestamp']
-            self.roles.publish_targets(  # todo: DRY
-                private_key_paths={
-                    role_name: [
-                        self.keys.private_key_path(key_name=self.key_map[role_name])
-                    ]
-                    for role_name in role_names
-                },
-                expires={
-                    role_name: in_(self.expiration_days[role_name])
-                    for role_name in role_names
-                },
-            )
+            self._publish_targets(private_key_paths=private_key_paths)
+
+    def _publish_targets(self, private_key_paths: Optional[Dict[str, list]] = None):
+        """
+        Publish targets, snapshot, and timestamp roles.
+
+        Safe to call if nothing has changed.
+        """
+        if private_key_paths is None:
+            private_key_paths = {
+                role_name: [self.keys.private_key_path(key_name=key_name)]
+                for role_name, key_name in self.key_map.items()
+            }
+        self.roles.publish_targets(
+            private_key_paths=private_key_paths,
+            expires=self.get_new_expiration_dates(),
+        )
+
+    def get_new_expiration_dates(self) -> dict:
+        return {
+            role_name: in_(days)
+            for role_name, days in self.expiration_days.items()
+        }
 
     def sign(self, role_name: str, private_key_path: Union[pathlib.Path, str]):
         private_key_path = pathlib.Path(private_key_path)
