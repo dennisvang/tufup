@@ -323,6 +323,22 @@ class RolesTests(TempDirTestCase):
                     roles.targets.signed.targets[expected_url_path], TargetFile
                 )
 
+    def test_remove_target(self):
+        # prepare
+        filename = 'my_app-1.0.tar.gz'
+        local_target_path = self.temp_dir_path / filename
+        local_target_path.touch()
+        roles = Roles(dir_path=self.temp_dir_path)
+        roles.targets = Mock(signed=Mock(targets={filename: Mock()}))
+        # test
+        self.assertTrue(local_target_path.exists())
+        roles.remove_target(local_path=local_target_path)
+        self.assertNotIn(filename, roles.targets.signed.targets)
+        self.assertFalse(local_target_path.exists())
+        self.assertTrue(roles.targets_modified)
+        # cannot remove non-existent target
+        self.assertFalse(roles.remove_target(local_path=local_target_path))
+
     def test_add_public_key(self):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)

@@ -331,6 +331,14 @@ class Roles(Base):
         if existing_target_file_info != target_file_info:
             self.targets_modified = True
 
+    def remove_target(self, local_path: Union[pathlib.Path, str]) -> bool:
+        target_url = local_path.name  # todo: allow proper url paths
+        removed = self.targets.signed.targets.pop(target_url, None) is not None
+        if removed:
+            local_path.unlink()
+            self.targets_modified = True
+        return removed
+
     def add_public_key(
             self, role_name: str, public_key_path: Union[pathlib.Path, str]
     ):
