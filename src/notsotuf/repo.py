@@ -425,14 +425,18 @@ class Roles(Base):
     def persist_role(self, role_name: str):
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
+        file_path = self.file_path(role_name=role_name, version=role.signed.version)
         role.to_file(
-            filename=str(
-                self.file_path(
-                    role_name=role.signed.type, version=role.signed.version
-                )
-            ),
-            serializer=JSONSerializer(compact=False),
+            filename=str(file_path), serializer=JSONSerializer(compact=False)
         )
+        if role_name == Root.type:
+            # Copy the latest root metadata to 'root.json' (without version),
+            # to use as trusted root metadata for distribution with the
+            # client. This is convenient, otherwise we would need to modify
+            # the version in the filename every time root is updated.
+            client_root_file_path = self.file_path(role_name=Root.type)
+            client_root_file_path.unlink(missing_ok=True)
+            shutil.copy(src=file_path, dst=client_root_file_path)
 
     def publish_root(
             self,
@@ -449,16 +453,6 @@ class Roles(Base):
                 private_key_paths={Root.type: private_key_paths},
                 expires={Root.type: expires},
             )
-            # Copy the latest root metadata to 'root.json' (without version),
-            # to use as trusted root metadata to be distributed with the
-            # client. This is convenient, otherwise we would need to modify
-            # the version in the filename every time root is updated.
-            latest_root_file_path = self.file_path(
-                role_name=Root.type, version=self.root.signed.version
-            )
-            client_root_file_path = self.file_path(role_name=Root.type)
-            client_root_file_path.unlink(missing_ok=True)
-            shutil.copy(src=latest_root_file_path, dst=client_root_file_path)
             # reset flag
             self.root_modified = False
 

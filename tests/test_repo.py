@@ -421,16 +421,19 @@ class RolesTests(TempDirTestCase):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)
         roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
-        expected_filename = f'{DUMMY_ROOT.version}.root.json'
+        expected_filenames = [f'{DUMMY_ROOT.version}.root.json', 'root.json']
         # test
         roles.persist_role(role_name='root')
-        self.assertTrue((self.temp_dir_path / expected_filename).exists())
+        for filename in expected_filenames:
+            with self.subTest(msg=filename):
+                self.assertTrue((self.temp_dir_path / filename).exists())
 
     def test_publish_root(self):
         def mock_publish_metadata(roles_, **kwargs):
             roles_.file_path(
                 role_name='root', version=roles_.root.signed.version
             ).touch()
+            roles_.file_path(role_name='root').touch()
 
         with patch.object(Roles, '_publish_metadata', mock_publish_metadata):
             # prepare
@@ -442,16 +445,15 @@ class RolesTests(TempDirTestCase):
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(1, roles.root.signed.version)
             self.assertFalse(roles.root_modified)
+            # versioned and non-versioned files must exist (this just shows
+            # the mock_publish_metadata was called with the proper arguments)
             self.assertTrue(roles.file_path(role_name='root', version=1).exists())
+            self.assertTrue(roles.file_path(role_name='root').exists())
             # ensure version is incremented if file exists
             roles.root_modified = True
             roles.publish_root(private_key_paths=[], expires=in_(0))
             self.assertEqual(2, roles.root.signed.version)
             self.assertTrue(roles.file_path(role_name='root', version=2).exists())
-            # ensure a copy of the latest version exists, without version in
-            # the filename, to be used as trusted root metadata for the
-            # client distribution
-            self.assertTrue(roles.file_path(role_name='root').exists())
 
     def test_publish_targets(self):
         with patch.object(Roles, '_publish_metadata', Mock()):
