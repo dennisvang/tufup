@@ -1,15 +1,15 @@
 import subprocess
-from time import sleep
-import unittest
-
-from tests import BASE_DIR, TempDirTestCase
-
-DUMMY_APP_CONTENT = f"""
 import sys
-sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
+from time import sleep
+
+from tests import TempDirTestCase
+
+DUMMY_APP_CONTENT = """
+import sys
 from notsotuf.utils.platform_specific import install_update
 install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
+
 
 class UtilsTests(TempDirTestCase):
     def test_install_update(self):
@@ -27,7 +27,7 @@ class UtilsTests(TempDirTestCase):
         # run the dummy app in a separate process, which, in turn, will run
         # another process that moves the file
         completed_process = subprocess.run(
-            ['python', src_file_path, src_dir, dst_dir]
+            [sys.executable, src_file_path, src_dir, dst_dir]
         )
         completed_process.check_returncode()
         # allow some time for the batch file to complete
