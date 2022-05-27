@@ -95,26 +95,31 @@ def get_config_from_user(**kwargs) -> dict:
             default=kwargs.get(key),
             optional=optional,
         )
-    key = 'key_map'
-    key_map = kwargs.get(key, {})
+    key_map = kwargs.get('key_map', {})
+    expiration_days = kwargs.get('expiration_days', {})
+    encrypted_keys = []
+    unique_key_names = []
     for role_name in top_level_role_names:
-        key_map[role_name] = input_text(
+        # key_map
+        key_name = input_text(
             prompt=f'Specify key name for {role_name}',
             default=key_map.get(role_name, role_name),
         )
-    kwargs[key] = key_map
-    key = 'encrypted_keys'
-    kwargs[key] = input_list(
-        prompt='Specify names of encrypted keys',
-        default=kwargs.get(key, []),
-        item_default=None,
-    )
-    key = 'expiration_days'
-    expiration_days = kwargs.get(key, {})
-    for role_name in top_level_role_names:
+        key_map[role_name] = key_name
+        # encrypted_keys
+        if key_name not in unique_key_names:
+            unique_key_names.append(key_name)
+            if input_bool(
+                    prompt=f'Encrypt key "{key_name}"?',
+                    default=key_name in kwargs.get('encrypted_keys', [])
+            ):
+                encrypted_keys.append(key_name)
+        # expiration_days
         expiration_days[role_name] = input_numeric(
             prompt=f'Specify number of days before {role_name} expires',
             default=expiration_days.get(role_name, 1),
         )
-    kwargs[key] = expiration_days
+    kwargs['key_map'] = key_map
+    kwargs['expiration_days'] = expiration_days
+    kwargs['encrypted_keys'] = encrypted_keys
     return kwargs
