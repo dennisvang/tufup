@@ -105,6 +105,7 @@ class InputTests(unittest.TestCase):
         user_inputs = iter(
             [
                 'my-app',
+                'my_app.__version__',
                 'repo/dir',
                 'keys/dir',
                 default,
@@ -120,14 +121,14 @@ class InputTests(unittest.TestCase):
                 '1',
             ]
         )
-        with patch('builtins.input',
-                   lambda *_, **__: next(user_inputs)):
+        with patch('builtins.input', lambda *_, **__: next(user_inputs)):
             config_kwargs = notsotuf.get_config_from_user()
         self.assertTrue(config_kwargs)
 
     def test_get_config_from_user_with_kwargs(self):
         original_kwargs = dict(
             app_name='my-app',
+            app_version_attr='my_app.__version__',
             repo_dir='repo/dir',
             keys_dir='keys/dir',
             key_map=notsotuf.repo.DEFAULT_KEY_MAP,
@@ -136,6 +137,5 @@ class InputTests(unittest.TestCase):
         )
         default = ''
         with patch('builtins.input', Mock(return_value=default)):
-            config_kwargs = notsotuf.get_config_from_user(
-                **original_kwargs)
+            config_kwargs = notsotuf.get_config_from_user(**original_kwargs)
         self.assertEqual(config_kwargs, original_kwargs)

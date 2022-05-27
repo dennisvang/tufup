@@ -84,9 +84,16 @@ def input_text(
 
 def get_config_from_user(**kwargs) -> dict:
     top_level_role_names = ['root', 'targets', 'snapshot', 'timestamp']
-    for key in ['app_name', 'repo_dir', 'keys_dir']:
+    for key, example, optional in [
+        ('app_name', '', False),
+        ('app_version_attr', ', e.g. my_app.__version__', True),
+        ('repo_dir', '', False),
+        ('keys_dir', '', False),
+    ]:
         kwargs[key] = input_text(
-            prompt=f'Specify {key}', default=kwargs.get(key)
+            prompt=f'Specify {key}{example}',
+            default=kwargs.get(key),
+            optional=optional,
         )
     key = 'key_map'
     key_map = kwargs.get(key, {})
