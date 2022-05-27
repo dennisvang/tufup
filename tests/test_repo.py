@@ -595,17 +595,18 @@ class RepositoryTests(TempDirTestCase):
             self.assertEqual(dict(), Repository.load_config())
 
     def test_from_config(self):
+        temp_dir = self.temp_dir_path.resolve()
         # prepare
         config_data = dict(
             app_name='test',
-            repo_dir=self.temp_dir_path / 'repo',
-            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=temp_dir / 'repo',
+            keys_dir=temp_dir / 'keystore',
             key_map=dict(),
             encrypted_keys=[],
             expiration_days=dict()
         )
         mock_config_path = Mock(
-            return_value=self.temp_dir_path / Repository.config_filename
+            return_value=temp_dir / Repository.config_filename
         )
         mock_config_path().write_text(json.dumps(config_data, default=str))
         # test
