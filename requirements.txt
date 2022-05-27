@@ -4,4 +4,5 @@ bsdiff4==1.2.*
 packaging==21.*
 requests
 securesystemslib[crypto,pynacl]==0.22.*
+setuptools>=61.0.0
 tuf==1.1.*

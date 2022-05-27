@@ -559,6 +559,7 @@ class RepositoryTests(TempDirTestCase):
         repo = Repository(app_name='test')
         expected_config_items = [
             'app_name',
+            'app_version_attr',
             'encrypted_keys',
             'expiration_days',
             'key_map',
@@ -566,6 +567,14 @@ class RepositoryTests(TempDirTestCase):
             'repo_dir',
         ]
         self.assertEqual(set(expected_config_items), set(repo.config_items))
+
+    def test_app_version(self):
+        # for convenience we use the notosotuf version attribute here,
+        # but normally this would point to an external app version e.g.
+        # 'my_app.__version__'
+        app_version_attr = 'notsotuf.__version__'
+        repo = Repository(app_name='test', app_version_attr=app_version_attr)
+        self.assertEqual(str(notsotuf.__version__), repo.app_version)
 
     def test_get_config_file_path(self):
         self.assertTrue(Repository.get_config_file_path())
@@ -599,6 +608,7 @@ class RepositoryTests(TempDirTestCase):
         # prepare
         config_data = dict(
             app_name='test',
+            app_version_attr='my_app.__version__',
             repo_dir=temp_dir / 'repo',
             keys_dir=temp_dir / 'keystore',
             key_map=dict(),
