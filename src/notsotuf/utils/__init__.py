@@ -68,11 +68,17 @@ def input_numeric(prompt: str, default: int) -> int:
         return default
 
 
-def input_text(prompt: str, default: str) -> str:
-    answer = ''
-    default_str = f' (default: {default})'
+def input_text(
+        prompt: str, default: Optional[str], optional: bool = False
+) -> Optional[str]:
+    answer = None
+    prompt += f' (default: {default})'
+    prompt += ' [optional]' if optional else ''
+    prompt += _INPUT_SEPARATOR
     while not answer:
-        answer = input(prompt + default_str + _INPUT_SEPARATOR) or default
+        answer = input(prompt) or default
+        if optional:
+            break
     return answer
 
 

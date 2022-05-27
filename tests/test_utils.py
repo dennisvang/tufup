@@ -90,6 +90,14 @@ class InputTests(unittest.TestCase):
                 answer, notsotuf.utils.input_text(prompt='', default=answer)
             )
 
+    def test_input_text_optional(self):
+        with patch('builtins.input', Mock(return_value='')):
+            self.assertIsNone(
+                notsotuf.utils.input_text(
+                    prompt='', default=None, optional=True
+                )
+            )
+
     def test_get_config_from_user_no_kwargs(self):
         default = ''
         yes = 'y'
