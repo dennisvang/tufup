@@ -462,7 +462,12 @@ class Roles(Base):
             private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
             expires: Dict[str, datetime],  # RolesDict...
     ):
-        """Call this whenever new targets have been added."""
+        """
+        Increments version for targets, snapshot, and timestamp, then signs
+        and saves the updated metadata files.
+
+        Call this whenever new targets have been added.
+        """
         if self.targets_modified:
             # targets content has changed, so increment version
             if self.file_exists(role_name=Targets.type):
@@ -552,6 +557,7 @@ class Roles(Base):
 
 
 class Repository(object):
+    """High-level tools for repository management."""
     config_filename = '.notsotuf-repo-config'
 
     def __init__(
@@ -586,6 +592,7 @@ class Repository(object):
 
     @property
     def config_items(self):
+        """Returns names of attributes that are saved to configuration file."""
         # attributes matching __init__ arguments are stored as configuration
         return inspect.signature(self.__init__).parameters.keys()
 
@@ -602,6 +609,7 @@ class Repository(object):
         return pathlib.Path.cwd() / cls.config_filename
 
     def save_config(self):
+        """Save current configuration."""
         config_dict = {item: getattr(self, item) for item in self.config_items}
         file_path = self.get_config_file_path()
         file_path.write_text(
@@ -610,6 +618,7 @@ class Repository(object):
 
     @classmethod
     def load_config(cls) -> dict:
+        """Load configuration dict from file."""
         file_path = cls.get_config_file_path()
         config_dict = dict()
         try:
@@ -622,10 +631,22 @@ class Repository(object):
 
     @classmethod
     def from_config(cls):
+        """Create Repository instance from configuration file."""
         return cls(**cls.load_config())
 
     def initialize(self):
-        """Safe to call for existing keys and roles."""
+        """
+        Initialize (or update) the local repository.
+
+        This includes:
+
+        - create directories if they do not exist
+        - import public keys from existing files, or create new key pairs
+        - import roles from existing metadata files
+        - create root metadata file if it does not exist
+
+        Safe to call for existing keys and roles.
+        """
         # Ensure dirs exist
         for path in [self.keys_dir, self.metadata_dir, self.targets_dir]:
             path.mkdir(parents=True, exist_ok=True)
@@ -649,7 +670,7 @@ class Repository(object):
             private_key_paths: Optional[Dict[str, list]] = None,
     ):
         """
-        Adds a new application bundle to the repository.
+        Adds a new application bundle to the local repository.
 
         An archive file is created from the app bundle, and this file is
         added to the tuf repository. If a previous archive version is
@@ -690,7 +711,7 @@ class Repository(object):
 
     def remove_latest_bundle(self, private_key_paths: Optional[Dict[str, list]] = None):
         """
-        Removes the *latest* app bundle from the repository.
+        Removes the *latest* app bundle from the local repository.
 
         This deletes the bundle's archive file and corresponding patch file
         from the targets directory, and updates the tuf repository metadata
@@ -727,17 +748,19 @@ class Repository(object):
         )
 
     def get_new_expiration_dates(self) -> dict:
+        """Returns a dict with expiration dates for the top-level roles."""
         return {
             role_name: in_(days)
             for role_name, days in self.expiration_days.items()
         }
 
     def sign(self, role_name: str, private_key_path: Union[pathlib.Path, str]):
+        """Sign the metadata file for a specific role."""
         private_key_path = pathlib.Path(private_key_path)
         self._load_keys_and_roles()
         self.roles.sign_role(
             role_name=role_name,
-            expires=in_(self.expiration_days[role_name]),
+            expires=self.get_new_expiration_dates()[role_name],
             private_key_path=private_key_path,
         )
         self.roles.persist_role(role_name=role_name)
