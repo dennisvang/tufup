@@ -89,3 +89,45 @@ class InputTests(unittest.TestCase):
             self.assertEqual(
                 answer, notsotuf.utils.input_text(prompt='', default=answer)
             )
+
+    def test_get_config_from_user_no_kwargs(self):
+        default = ''
+        yes = 'y'
+        no = 'n'
+        user_inputs = iter(
+            [
+                'my-app',
+                'repo/dir',
+                'keys/dir',
+                default,
+                default,
+                default,
+                default,
+                yes,
+                'root',
+                no,
+                '365',
+                '7',
+                '7',
+                '1',
+            ]
+        )
+        with patch('builtins.input',
+                   lambda *_, **__: next(user_inputs)):
+            config_kwargs = notsotuf.get_config_from_user()
+        self.assertTrue(config_kwargs)
+
+    def test_get_config_from_user_with_kwargs(self):
+        original_kwargs = dict(
+            app_name='my-app',
+            repo_dir='repo/dir',
+            keys_dir='keys/dir',
+            key_map=notsotuf.repo.DEFAULT_KEY_MAP,
+            encrypted_keys=['root'],
+            expiration_days=notsotuf.repo.DEFAULT_EXPIRATION_DAYS,
+        )
+        default = ''
+        with patch('builtins.input', Mock(return_value=default)):
+            config_kwargs = notsotuf.get_config_from_user(
+                **original_kwargs)
+        self.assertEqual(config_kwargs, original_kwargs)

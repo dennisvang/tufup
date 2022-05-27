@@ -74,3 +74,34 @@ def input_text(prompt: str, default: str) -> str:
     while not answer:
         answer = input(prompt + default_str + _INPUT_SEPARATOR) or default
     return answer
+
+
+def get_config_from_user(**kwargs) -> dict:
+    top_level_role_names = ['root', 'targets', 'snapshot', 'timestamp']
+    for key in ['app_name', 'repo_dir', 'keys_dir']:
+        kwargs[key] = input_text(
+            prompt=f'Specify {key}', default=kwargs.get(key)
+        )
+    key = 'key_map'
+    key_map = kwargs.get(key, {})
+    for role_name in top_level_role_names:
+        key_map[role_name] = input_text(
+            prompt=f'Specify key name for {role_name}',
+            default=key_map.get(role_name, role_name),
+        )
+    kwargs[key] = key_map
+    key = 'encrypted_keys'
+    kwargs[key] = input_list(
+        prompt='Specify names of encrypted keys',
+        default=kwargs.get(key, []),
+        item_default=None,
+    )
+    key = 'expiration_days'
+    expiration_days = kwargs.get(key, {})
+    for role_name in top_level_role_names:
+        expiration_days[role_name] = input_numeric(
+            prompt=f'Specify number of days before {role_name} expires',
+            default=expiration_days.get(role_name, 1),
+        )
+    kwargs[key] = expiration_days
+    return kwargs
