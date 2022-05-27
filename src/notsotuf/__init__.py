@@ -15,10 +15,13 @@ logger = logging.getLogger(__name__)
 
 def main(args=None):
     print(f'notsotuf version: {__version__}')
+    # default to --help
+    if args is None:
+        args = sys.argv[1:] or ['--help']
 
     # parse command line arguments
     parser = _get_parser()
-    options = parser.parse_args(args=args or sys.argv[1:])
+    options = parser.parse_args(args=args)
 
     # process command
     try:
