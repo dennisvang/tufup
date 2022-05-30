@@ -20,7 +20,12 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_targets = subparsers.add_parser('targets')
     subparser_targets.set_defaults(func=_cmd_targets)
     subparser_targets.add_argument(
-        '-a', '--add', action=_StoreVersionAction, nargs=2, help=MSG['targets_add']
+        '-a',
+        '--add',
+        metavar=('<version>', '<bundle directory>'),
+        action=_StoreVersionAction,
+        nargs=2,
+        help=MSG['targets_add'],
     )
     subparser_targets.add_argument(
         '-r', '--remove', action='store_true', help=MSG['targets_remove']
@@ -151,14 +156,8 @@ MSG = dict(
         'For examples, see https://www.python.org/dev/peps/pep-0440/.\n'
     ),
     targets_add=(
-        'Add specified app bundle to the repository.\n'
-        'Creates archive and patch from bundle files.\n'
-        'Positional arguments:\n'
-        '\tversion (PEP 440 compliant)\n'
-        '\tpath to app bundle directory (relative or absolute)\n'
+        'Add specified app bundle to the repository. Creates archive and '
+        'patch from bundle files. '
     ),
-    targets_remove=(
-        'Remove latest app bundle from the repository.\n'
-        'Positional arguments: none\n'
-    )
+    targets_remove='Remove latest app bundle from the repository.',
 )
