@@ -2,10 +2,11 @@ import subprocess
 import sys
 from time import sleep
 
-from tests import TempDirTestCase
+from tests import BASE_DIR, TempDirTestCase
 
-DUMMY_APP_CONTENT = """
+DUMMY_APP_CONTENT = f"""
 import sys
+sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from notsotuf.utils.platform_specific import install_update
 install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 """
@@ -29,6 +30,7 @@ class UtilsTests(TempDirTestCase):
         completed_process = subprocess.run(
             [sys.executable, src_file_path, src_dir, dst_dir]
         )
+        print(sys.executable)
         completed_process.check_returncode()
         # allow some time for the batch file to complete
         sleep(1)
