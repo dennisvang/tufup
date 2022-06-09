@@ -25,17 +25,17 @@ def get_parser() -> argparse.ArgumentParser:
         metavar=('<version>', '<bundle directory>'),
         action=_StoreVersionAction,
         nargs=2,
-        help=MSG['targets_add'],
+        help=HELP['targets_add'],
     )
     subparser_targets.add_argument(
-        '-r', '--remove', action='store_true', help=MSG['targets_remove']
+        '-r', '--remove', action='store_true', help=HELP['targets_remove']
     )
     # keys
     subparser_keys = subparsers.add_parser('keys')
     subparser_keys.set_defaults(func=_cmd_keys)
-    subparser_keys.add_argument('-c', '--create')
-    subparser_keys.add_argument('-a', '--add')
-    subparser_keys.add_argument('-r', '--revoke')
+    subparser_keys.add_argument('-c', '--create', help=HELP['keys_create'])
+    subparser_keys.add_argument('-a', '--add', help=HELP['keys_add'])
+    subparser_keys.add_argument('-r', '--revoke', help=HELP['keys_revoke'])
     return parser
 
 
@@ -47,7 +47,11 @@ class _StoreVersionAction(argparse.Action):
         try:
             packaging.version.Version(value)
         except packaging.version.InvalidVersion:
-            raise argparse.ArgumentError(self, MSG['not_pep440'].format(value))
+            raise argparse.ArgumentError(
+                self,
+                f'Version string "{value}" is not PEP440 compliant.\n '
+                f'See examples: https://www.python.org/dev/peps/pep-0440/\n'
+            )
         # Store the value, same as "store" action
         setattr(namespace, self.dest, values)
 
@@ -150,14 +154,13 @@ def _cmd_targets(options: argparse.Namespace):
         repository.remove_latest_bundle()
 
 
-MSG = dict(
-    not_pep440=(
-        'Version string "{}" is not PEP440 compliant.\n'
-        'For examples, see https://www.python.org/dev/peps/pep-0440/.\n'
-    ),
+HELP = dict(
     targets_add=(
         'Add specified app bundle to the repository. Creates archive and '
         'patch from bundle files. '
     ),
     targets_remove='Remove latest app bundle from the repository.',
+    keys_create='Create a new key pair and add it to the repository.',
+    keys_add='Add an existing key to the repository.',
+    keys_revoke='Revoke a repository key.',
 )
