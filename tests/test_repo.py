@@ -372,7 +372,15 @@ class RolesTests(TempDirTestCase):
         roles.persist_role(role_name='root')
         # test not modified and not bumped
         self.assertFalse(roles.bump_signed_version_if_modified(role_name='root'))
+        # test forced bump (not modified)
+        self.assertTrue(
+            roles.bump_signed_version_if_modified(
+                role_name='root', force_bump=True
+            )
+        )
+        self.assertEqual(2, roles.root.signed.version)
         # test modified but not bumped
+        roles.root.signed.version = 1
         roles.root.signed.consistent_snapshot = True  # any attribute would do
         self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
         # test modified and already bumped

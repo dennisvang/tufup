@@ -372,18 +372,19 @@ class Roles(Base):
         self.root.signed.add_key(
             role=role_name, key=Key.from_securesystemslib_key(ssl_key)
         )
-        self.root_modified = True
 
     def set_signature_threshold(self, role_name: str, threshold: int):
         self.root.signed.roles[role_name].threshold = threshold
-        self.root_modified = True
 
     def set_expiration_date(self, role_name: str, days: int):
         role = getattr(self, role_name)
         if hasattr(role, 'signed'):
             role.signed.expires = in_(days)
 
-    def bump_signed_version_if_modified(self, role_name: str):
+    def bump_signed_version_if_modified(
+            self, role_name: str, force_bump: bool = False
+    ):
+        # todo: refactor to e.g. check_if_modified(..., bump_version=True, ...)
         """
         Check if role has changed w.r.t. latest metadata file, and increment
         version if necessary.
@@ -394,8 +395,9 @@ class Roles(Base):
         if latest_file_path.exists():
             role = getattr(self, role_name)
             latest_role = Metadata.from_file(filename=str(latest_file_path))
+            modified = role.signed != latest_role.signed
             version_bumped = role.signed.version > latest_role.signed.version
-            if role.signed != latest_role.signed and not version_bumped:
+            if (modified or force_bump) and not version_bumped:
                 role.signed.version += 1
                 version_bumped = True
         return version_bumped
