@@ -403,6 +403,12 @@ class Roles(Base):
     def sign_role(
             self, role_name: str, private_key_path: Union[pathlib.Path, str]
     ):
+        """
+        Sign role using specified private key.
+
+        We sign off on the role.signed part, and the signature is added to
+        the role.signatures list.
+        """
         # based on python-tuf basic_repo.py
         try:
             # assume unencrypted
@@ -441,9 +447,17 @@ class Roles(Base):
         )
 
     def persist_role(self, role_name: str):
+        """
+        Save specified role to corresponding metadata file.
+
+        In case of root, make sure "root.json" always represents the latest
+        version (in addition to x.root.json).
+        """
         # based on python-tuf basic_repo.py (but without consistent snapshots)
         role = getattr(self, role_name)
-        file_path = self.file_path(role_name=role_name, version=role.signed.version)
+        file_path = self.file_path(
+            role_name=role_name, version=role.signed.version
+        )
         role.to_file(
             filename=str(file_path), serializer=JSONSerializer(compact=False)
         )
