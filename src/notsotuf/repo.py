@@ -59,6 +59,20 @@ __all__ = [
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 
 
+def _versioned_filename_sorting_key(path: pathlib.Path):
+    """
+    Return a numeric filename version, for sorting (versioned) filenames.
+
+    Note that default, lexicogrpahical sorting by filename breaks down in the
+    case of e.g. ['1.root.json', '11.root.json', '100.root.json'].
+    """
+    value = 0
+    filename_start = path.name.split('.')[0]
+    if filename_start.isnumeric():
+        value = int(filename_start)
+    return value
+
+
 # copied from python-tuf basic_repo.py
 def in_(days: float) -> datetime:
     """Returns a timestamp for the specified number of days from now."""
@@ -383,6 +397,29 @@ class Roles(Base):
         if hasattr(role, 'signed'):
             role.signed.expires = in_(days)
 
+    def bump_signed_version_if_modified(self, role_name: str):
+        # sort so we can get the latest version (in case of versioned filenames)
+        sorted_metadata_file_paths = sorted(
+            [
+                path for path in self.dir_path.iterdir()
+                if path.is_file() and role_name in path.name
+            ],
+            key=_versioned_filename_sorting_key,
+        )
+        # check if role has changed w.r.t. latest metadata file, and bump
+        # version if necessary
+        version_bumped = False
+        if sorted_metadata_file_paths:
+            role = getattr(self, role_name)
+            latest_role = Metadata.from_file(
+                filename=str(sorted_metadata_file_paths[-1])
+            )
+            version_bumped = role.signed.version > latest_role.signed.version
+            if role.signed != latest_role.signed and not version_bumped:
+                role.signed.version += 1
+                version_bumped = True
+        return version_bumped
+
     def sign_role(
             self, role_name: str, private_key_path: Union[pathlib.Path, str]
     ):
@@ -435,6 +472,8 @@ class Roles(Base):
             # to use as trusted root metadata for distribution with the
             # client. This is convenient, otherwise we would need to modify
             # the version in the filename every time root is updated.
+            # Moreover, we can now easily access the latest root metadata,
+            # without having to check the version in the filename.
             client_root_file_path = self.file_path(role_name=Root.type)
             client_root_file_path.unlink(missing_ok=True)
             shutil.copy(src=file_path, dst=client_root_file_path)
