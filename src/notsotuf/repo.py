@@ -59,20 +59,6 @@ __all__ = [
 SPEC_VERSION = ".".join(SPECIFICATION_VERSION)
 
 
-def _versioned_filename_sorting_key(path: pathlib.Path):
-    """
-    Return a numeric filename version, for sorting (versioned) filenames.
-
-    Note that default, lexicogrpahical sorting by filename breaks down in the
-    case of e.g. ['1.root.json', '11.root.json', '100.root.json'].
-    """
-    value = 0
-    filename_start = path.name.split('.')[0]
-    if filename_start.isnumeric():
-        value = int(filename_start)
-    return value
-
-
 # copied from python-tuf basic_repo.py
 def in_(days: float) -> datetime:
     """Returns a timestamp for the specified number of days from now."""
@@ -398,22 +384,16 @@ class Roles(Base):
             role.signed.expires = in_(days)
 
     def bump_signed_version_if_modified(self, role_name: str):
-        # sort so we can get the latest version (in case of versioned filenames)
-        sorted_metadata_file_paths = sorted(
-            [
-                path for path in self.dir_path.iterdir()
-                if path.is_file() and role_name in path.name
-            ],
-            key=_versioned_filename_sorting_key,
-        )
-        # check if role has changed w.r.t. latest metadata file, and bump
-        # version if necessary
+        """
+        Check if role has changed w.r.t. latest metadata file, and increment
+        version if necessary.
+        """
         version_bumped = False
-        if sorted_metadata_file_paths:
+        # filename without version is always the latest version
+        latest_file_path = self.file_path(role_name=role_name, version=None)
+        if latest_file_path.exists():
             role = getattr(self, role_name)
-            latest_role = Metadata.from_file(
-                filename=str(sorted_metadata_file_paths[-1])
-            )
+            latest_role = Metadata.from_file(filename=str(latest_file_path))
             version_bumped = role.signed.version > latest_role.signed.version
             if role.signed != latest_role.signed and not version_bumped:
                 role.signed.version += 1
