@@ -378,14 +378,14 @@ class Roles(Base):
         self.root.signed.roles[role_name].threshold = threshold
         self.root_modified = True
 
+    def set_expiration_date(self, role_name: str, days: int):
+        role = getattr(self, role_name)
+        if hasattr(role, 'signed'):
+            role.signed.expires = in_(days)
+
     def sign_role(
-            self,
-            role_name: str,
-            private_key_path: Union[pathlib.Path, str],
-            expires: datetime,
+            self, role_name: str, private_key_path: Union[pathlib.Path, str]
     ):
-        # set new expiration date
-        getattr(self, role_name).signed.expires = expires
         # based on python-tuf basic_repo.py
         try:
             # assume unencrypted
@@ -442,7 +442,7 @@ class Roles(Base):
     def publish_root(
             self,
             private_key_paths: List[Union[pathlib.Path, str]],
-            expires: datetime,
+            expiration_days: int,
     ):
         """Call this whenever root has been modified (should be rare)."""
         if self.root_modified:
@@ -452,7 +452,7 @@ class Roles(Base):
             # sign and save
             self._publish_metadata(
                 private_key_paths={Root.type: private_key_paths},
-                expires={Root.type: expires},
+                expiration_days={Root.type: expiration_days},
             )
             # reset flag
             self.root_modified = False
@@ -460,7 +460,7 @@ class Roles(Base):
     def publish_targets(
             self,
             private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
-            expires: Dict[str, datetime],  # RolesDict...
+            expiration_days: Dict[str, int],  # RolesDict...
     ):
         """
         Increments version for targets, snapshot, and timestamp, then signs
@@ -482,23 +482,27 @@ class Roles(Base):
                 self.timestamp.signed.version += 1
             # sign and save
             self._publish_metadata(
-                private_key_paths=private_key_paths, expires=expires
+                private_key_paths=private_key_paths,
+                expiration_days=expiration_days,
             )
             self.targets_modified = False
 
     def _publish_metadata(
             self,
             private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
-            expires: Dict[str, datetime],  # RolesDict...
+            expiration_days: Optional[Dict[str, int]] = None,  # RolesDict...
     ):
+        if expiration_days is None:
+            expiration_days = dict()
         # sign the metadata files and save to disk
         for role_name, role_private_key_paths in private_key_paths.items():
             # sign with each specified key
             for private_key_path in role_private_key_paths:
+                days = expiration_days.get(role_name)
+                if days is not None:
+                    self.set_expiration_date(role_name=role_name, days=days)
                 self.sign_role(
-                    role_name=role_name,
-                    private_key_path=private_key_path,
-                    expires=expires[role_name],
+                    role_name=role_name, private_key_path=private_key_path
                 )
             self.persist_role(role_name=role_name)
 
@@ -508,7 +512,7 @@ class Roles(Base):
             old_private_key_path: Union[pathlib.Path, str],
             new_private_key_path: Union[pathlib.Path, str],
             new_public_key_path: Union[pathlib.Path, str],
-            root_expires: datetime,
+            root_expiration_days: int,
     ):
         """Based on root key rotation example from tuf basic_repo.py."""
         # a key may be used for multiple roles, so we check the key id for
@@ -528,7 +532,7 @@ class Roles(Base):
         # publish new version of root, sign with both old key and new key
         self.publish_root(
             private_key_paths=[old_private_key_path, new_private_key_path],
-            expires=root_expires,
+            expiration_days=root_expiration_days,
         )
 
     def get_latest_archive(self) -> Optional[TargetMeta]:
@@ -660,7 +664,7 @@ class Repository(object):
                 private_key_paths=[
                     self.keys.private_key_path(key_name=self.key_map['root'])
                 ],
-                expires=in_(self.expiration_days['root']),
+                expiration_days=self.expiration_days['root'],
             )
 
     def add_bundle(
@@ -744,23 +748,24 @@ class Repository(object):
             }
         self.roles.publish_targets(
             private_key_paths=private_key_paths,
-            expires=self.get_new_expiration_dates(),
+            expiration_days=self.expiration_days,
         )
 
-    def get_new_expiration_dates(self) -> dict:
-        """Returns a dict with expiration dates for the top-level roles."""
-        return {
-            role_name: in_(days)
-            for role_name, days in self.expiration_days.items()
-        }
-
-    def sign(self, role_name: str, private_key_path: Union[pathlib.Path, str]):
+    def sign(
+            self,
+            role_name: str,
+            private_key_path: Union[pathlib.Path, str],
+            expiration_days: Optional[int] = None,
+    ):
         """Sign the metadata file for a specific role."""
         private_key_path = pathlib.Path(private_key_path)
         self._load_keys_and_roles()
+        if expiration_days is not None:  # could be zero
+            self.roles.set_expiration_date(
+                role_name=role_name, days=expiration_days
+            )
         self.roles.sign_role(
             role_name=role_name,
-            expires=self.get_new_expiration_dates()[role_name],
             private_key_path=private_key_path,
         )
         self.roles.persist_role(role_name=role_name)

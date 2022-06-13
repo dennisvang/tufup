@@ -47,9 +47,7 @@ DUMMY_ROOT = Root(
     },
     consistent_snapshot=False,
 )
-DUMMY_EXPIRES = dict(
-    root=in_(0), targets=in_(0), snapshot=in_(0), timestamp=in_(0)
-)
+DUMMY_EXPIRATION_DAYS = dict(root=0, targets=0, snapshot=0, timestamp=0)
 DUMMY_PRIVATE_KEY_PATHS = dict(
     (role_name, [pathlib.Path('dummy', role_name)])
     for role_name in TOP_LEVEL_ROLE_NAMES
@@ -388,9 +386,7 @@ class RolesTests(TempDirTestCase):
                     )
                 # test
                 roles.sign_role(
-                    role_name=role_name,
-                    private_key_path=private_key_path,
-                    expires=in_(0),
+                    role_name=role_name, private_key_path=private_key_path
                 )
         self.assertEqual(signature_count, len(roles.root.signatures))
 
@@ -444,7 +440,7 @@ class RolesTests(TempDirTestCase):
             roles.encrypted = []
             roles.root_modified = True
             # test
-            roles.publish_root(private_key_paths=[], expires=in_(0))
+            roles.publish_root(private_key_paths=[], expiration_days=0)
             self.assertEqual(1, roles.root.signed.version)
             self.assertFalse(roles.root_modified)
             # versioned and non-versioned files must exist (this just shows
@@ -453,7 +449,7 @@ class RolesTests(TempDirTestCase):
             self.assertTrue(roles.file_path(role_name='root').exists())
             # ensure version is incremented if file exists
             roles.root_modified = True
-            roles.publish_root(private_key_paths=[], expires=in_(0))
+            roles.publish_root(private_key_paths=[], expiration_days=0)
             self.assertEqual(2, roles.root.signed.version)
             self.assertTrue(roles.file_path(role_name='root', version=2).exists())
 
@@ -472,12 +468,13 @@ class RolesTests(TempDirTestCase):
             roles.encrypted = []
             roles.targets_modified = True
             # test
-            expires = DUMMY_EXPIRES.copy()
-            expires.pop('root')  # no need to sign root
+            expiration_days = DUMMY_EXPIRATION_DAYS.copy()
+            expiration_days.pop('root')  # no need to sign root
             private_key_paths = DUMMY_PRIVATE_KEY_PATHS.copy()
             private_key_paths.pop('root')
             roles.publish_targets(
-                private_key_paths=private_key_paths, expires=expires
+                private_key_paths=private_key_paths,
+                expiration_days=expiration_days
             )
             role_names = [Targets.type, Snapshot.type, Timestamp.type]
             self.assertTrue(
@@ -490,7 +487,8 @@ class RolesTests(TempDirTestCase):
             for role_name in role_names:
                 roles.file_path(role_name=role_name, version=1).touch()
             roles.publish_targets(
-                private_key_paths=private_key_paths, expires=expires
+                private_key_paths=private_key_paths,
+                expiration_days=expiration_days,
             )
             self.assertTrue(
                 all(getattr(roles, n).signed.version == 2 for n in role_names)
@@ -503,7 +501,8 @@ class RolesTests(TempDirTestCase):
             roles.encrypted = []
             # test
             roles._publish_metadata(
-                private_key_paths=DUMMY_PRIVATE_KEY_PATHS, expires=DUMMY_EXPIRES
+                private_key_paths=DUMMY_PRIVATE_KEY_PATHS,
+                expiration_days=DUMMY_EXPIRATION_DAYS,
             )
             self.assertTrue(Roles.sign_role.called)  # noqa
             self.assertTrue(Roles.persist_role.called)  # noqa
@@ -532,7 +531,7 @@ class RolesTests(TempDirTestCase):
             old_private_key_path=old_private_key_path,
             new_private_key_path=new_private_key_path,
             new_public_key_path=new_public_key_path,
-            root_expires=in_(365),
+            root_expiration_days=365,
         )
         self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)
         # root version must be incremented
@@ -697,7 +696,11 @@ class RepositoryTests(TempDirTestCase):
         # test
         sleep(0.1)  # enforce different modification time
         private_key_path = keys_dir / repo.key_map[role_name]
-        repo.sign(role_name=role_name, private_key_path=private_key_path)
+        repo.sign(
+            role_name=role_name,
+            private_key_path=private_key_path,
+            expiration_days=1,
+        )
         self.assertGreater(repo.roles.root.signed.expires, datetime.today())
         self.assertGreater(
             versioned_file_path.stat().st_mtime_ns, versioned_last_modified

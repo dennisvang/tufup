@@ -103,5 +103,9 @@ for new_version in new_versions:
 # Initialize repo from config
 repo = Repository.from_config()
 
-# Re-sign roles, before they expire
-repo.sign(role_name='timestamp', private_key_path=KEYS_DIR / 'timestamp')
+# Re-sign expired timestamp
+repo.sign(
+    role_name='timestamp',
+    private_key_path=KEYS_DIR / 'timestamp',
+    expiration_days=1,
+)
