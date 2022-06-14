@@ -740,13 +740,16 @@ class Repository(object):
             self,
             role_name: str,
             private_key_dirs: List[Union[pathlib.Path, str]],
-    ):
+    ) -> int:
         """
         Sign the metadata file for a specific role, and save changes to disk.
 
         Use this to sign and save without making any changes to the actual
         signed metadata.
+
+        Returns the number of signatures created.
         """
+        signature_count = 0
         # sign role with all required keys that can be found
         for key_name in self.key_map.get(role_name, []):
             private_key_path = self.keys.find_private_key(
@@ -757,10 +760,14 @@ class Repository(object):
                     role_name=role_name,
                     private_key_path=private_key_path,
                 )
+                signature_count += 1
             else:
                 logger.warning(f'private key not found: {key_name}')
+        if not signature_count:
+            raise Exception(f'No private keys found for {role_name}.')
         # save changes to disk
         self.roles.persist_role(role_name=role_name)
+        return signature_count
 
     def _load_keys_and_roles(self, create_keys: bool = False):
         # todo: make public, rename load_keys_and_metadata

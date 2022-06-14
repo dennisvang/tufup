@@ -632,9 +632,10 @@ class RepositoryTests(TempDirTestCase):
         non_versioned_last_modified = non_versioned_file_path.stat().st_mtime_ns
         # test
         sleep(0.1)  # enforce different modification time
-        repo.threshold_sign(
+        count = repo.threshold_sign(
             role_name=role_name, private_key_dirs=[repo.keys_dir]
         )
+        self.assertEqual(1, count)
         # files should have been modified
         self.assertGreater(
             versioned_file_path.stat().st_mtime_ns, versioned_last_modified
@@ -642,6 +643,13 @@ class RepositoryTests(TempDirTestCase):
         self.assertGreater(
             non_versioned_file_path.stat().st_mtime_ns, non_versioned_last_modified
         )
+        # if no signatures found
+        for path in repo.keys_dir.iterdir():
+            path.unlink()
+        with self.assertRaises(Exception):
+            repo.threshold_sign(
+                role_name=role_name, private_key_dirs=[repo.keys_dir]
+            )
 
     def test__load_keys_and_roles(self):
         # prepare
