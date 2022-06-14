@@ -75,6 +75,7 @@ dummy_file_path.write_bytes(dummy_file_content)
 
 # Create archive from app bundle and register metadata
 repo.add_bundle(new_version='1.0', new_bundle_dir=dummy_bundle_dir)
+repo.publish_changes(private_key_dirs=[KEYS_DIR])
 
 # register additional target files (as updates become available over time)
 new_versions = ['2.0', '3.0rc0', '4.0a0']
@@ -96,6 +97,7 @@ for new_version in new_versions:
 
     # Create archive and patch and register the new update
     repo.add_bundle(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
+    repo.publish_changes(private_key_dirs=[KEYS_DIR])
 
 # Time goes by
 ...
@@ -104,8 +106,5 @@ for new_version in new_versions:
 repo = Repository.from_config()
 
 # Re-sign expired timestamp
-repo.sign(
-    role_name='timestamp',
-    private_key_path=KEYS_DIR / 'timestamp',
-    expiration_days=1,
-)
+repo.roles.set_expiration_date(role_name='timestamp', days=1)
+repo.publish_changes(private_key_dirs=[KEYS_DIR])
