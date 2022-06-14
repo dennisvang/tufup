@@ -389,9 +389,11 @@ class Roles(Base):
         Check if role has changed w.r.t. latest metadata file, and increment
         version if necessary.
         """
-        version_bumped = False
         # filename without version is always the latest version
         latest_file_path = self.file_path(role_name=role_name, version=None)
+        # if the file does not exist yet, the version must remain 1, but we
+        # consider it bumped
+        version_bumped = True
         if latest_file_path.exists():
             role = getattr(self, role_name)
             latest_role = Metadata.from_file(filename=str(latest_file_path))

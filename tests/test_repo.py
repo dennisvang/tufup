@@ -369,8 +369,10 @@ class RolesTests(TempDirTestCase):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)
         roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
-        roles.persist_role(role_name='root')
+        # test file does not exist yet
+        self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
         # test not modified and not bumped
+        roles.persist_role(role_name='root')
         self.assertFalse(roles.bump_signed_version_if_modified(role_name='root'))
         # test forced bump (not modified)
         self.assertTrue(
