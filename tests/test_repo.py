@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+import copy
+from datetime import date, datetime, timedelta
 import json
 import pathlib
 from time import sleep
@@ -335,12 +336,13 @@ class RolesTests(TempDirTestCase):
         local_target_path.touch()
         roles = Roles(dir_path=self.temp_dir_path)
         roles.targets = Mock(signed=Mock(targets={url_path: Mock()}))
+        original_targets_signed = copy.deepcopy(roles.targets.signed)
         # test
         self.assertTrue(local_target_path.exists())
         roles.remove_target(local_path=local_target_path)
         self.assertNotIn(filename, roles.targets.signed.targets)
         self.assertFalse(local_target_path.exists())
-        self.assertTrue(roles.targets_modified)
+        self.assertNotEqual(original_targets_signed, roles.targets.signed)
         # cannot remove non-existent target
         self.assertFalse(roles.remove_target(local_path=local_target_path))
 
@@ -450,119 +452,6 @@ class RolesTests(TempDirTestCase):
             with self.subTest(msg=filename):
                 self.assertTrue((self.temp_dir_path / filename).exists())
 
-    def test_publish_root(self):
-        def mock_publish_metadata(roles_, **kwargs):
-            roles_.file_path(
-                role_name='root', version=roles_.root.signed.version
-            ).touch()
-            roles_.file_path(role_name='root').touch()
-
-        with patch.object(Roles, '_publish_metadata', mock_publish_metadata):
-            # prepare
-            roles = Roles(dir_path=self.temp_dir_path)
-            roles.root = Mock(signed=Mock(version=1))
-            roles.encrypted = []
-            roles.root_modified = True
-            # test
-            roles.publish_root(private_key_paths=[], expiration_days=0)
-            self.assertEqual(1, roles.root.signed.version)
-            self.assertFalse(roles.root_modified)
-            # versioned and non-versioned files must exist (this just shows
-            # the mock_publish_metadata was called with the proper arguments)
-            self.assertTrue(roles.file_path(role_name='root', version=1).exists())
-            self.assertTrue(roles.file_path(role_name='root').exists())
-            # ensure version is incremented if file exists
-            roles.root_modified = True
-            roles.publish_root(private_key_paths=[], expiration_days=0)
-            self.assertEqual(2, roles.root.signed.version)
-            self.assertTrue(roles.file_path(role_name='root', version=2).exists())
-
-    def test_publish_targets(self):
-        with patch.object(Roles, '_publish_metadata', Mock()):
-            # prepare
-            roles = Roles(dir_path=self.temp_dir_path)
-            roles.targets = Mock(signed=Mock(version=1))
-            roles.snapshot = Mock(
-                # note no version in filename
-                signed=Mock(meta={'targets.json': Mock(version=1)}, version=1)
-            )
-            roles.timestamp = Mock(
-                signed=Mock(snapshot_meta=Mock(version=1), version=1)
-            )
-            roles.encrypted = []
-            roles.targets_modified = True
-            # test
-            expiration_days = DUMMY_EXPIRATION_DAYS.copy()
-            expiration_days.pop('root')  # no need to sign root
-            private_key_paths = DUMMY_PRIVATE_KEY_PATHS.copy()
-            private_key_paths.pop('root')
-            roles.publish_targets(
-                private_key_paths=private_key_paths,
-                expiration_days=expiration_days
-            )
-            role_names = [Targets.type, Snapshot.type, Timestamp.type]
-            self.assertTrue(
-                all(getattr(roles, n).signed.version == 1 for n in role_names)
-            )
-            self.assertTrue(Roles._publish_metadata.called)  # noqa
-            self.assertFalse(roles.targets_modified)
-            # test version increment
-            roles.targets_modified = True
-            for role_name in role_names:
-                roles.file_path(role_name=role_name, version=1).touch()
-            roles.publish_targets(
-                private_key_paths=private_key_paths,
-                expiration_days=expiration_days,
-            )
-            self.assertTrue(
-                all(getattr(roles, n).signed.version == 2 for n in role_names)
-            )
-
-    def test__publish_metadata(self):
-        with patch.multiple(Roles, sign_role=Mock(), persist_role=Mock()):
-            # prepare
-            roles = Roles(dir_path=self.temp_dir_path)
-            roles.encrypted = []
-            # test
-            roles._publish_metadata(
-                private_key_paths=DUMMY_PRIVATE_KEY_PATHS,
-                expiration_days=DUMMY_EXPIRATION_DAYS,
-            )
-            self.assertTrue(Roles.sign_role.called)  # noqa
-            self.assertTrue(Roles.persist_role.called)  # noqa
-
-    def test_replace_root_key(self):
-        role_name = 'root'
-        # prepare
-        keys_dir = self.temp_dir_path / 'keystore'
-        keys_dir.mkdir()
-        keys = Keys(dir_path=keys_dir, encrypted=None)
-        keys.create()
-        old_private_key_path = keys.private_key_path(key_name=role_name)
-        roles = Roles(dir_path=self.temp_dir_path)
-        roles.initialize(keys=keys)
-        old_root_version = roles.root.signed.version
-        roles.file_path(role_name='root', version=old_root_version).touch()
-        # create new key pair to replace old one
-        new_private_key_path = keys_dir / 'new_key'
-        new_public_key_path = Keys.create_key_pair(
-            private_key_path=new_private_key_path, encrypted=False
-        )
-        # test
-        old_key_id = roles.root.signed.roles[role_name].keyids[0]
-        roles.replace_key(
-            old_key_id=old_key_id,
-            old_private_key_path=old_private_key_path,
-            new_private_key_path=new_private_key_path,
-            new_public_key_path=new_public_key_path,
-            root_expiration_days=365,
-        )
-        self.assertNotIn(old_key_id, roles.root.signed.roles[role_name].keyids)
-        # root version must be incremented
-        self.assertEqual(old_root_version + 1, roles.root.signed.version)
-        # root should be signed using both the old key and the new key
-        self.assertEqual(2, len(roles.root.signatures))
-
     def test_get_latest_archive(self):
         roles = Roles(dir_path=TEST_REPO_DIR / 'metadata')
         expected_filename = 'example_app-4.0a0.tar.gz'
@@ -655,6 +544,29 @@ class RepositoryTests(TempDirTestCase):
             all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
         )
 
+    def test_replace_key(self):
+        role_name = 'root'
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        # create new key pair to replace old one
+        new_private_key_path = repo.keys_dir / 'new_key'
+        new_public_key_path = Keys.create_key_pair(
+            private_key_path=new_private_key_path, encrypted=False
+        )
+        old_key_id = repo.roles.root.signed.roles[role_name].keyids[0]
+        # test
+        repo.replace_key(
+            old_key_id=old_key_id, new_public_key_path=new_public_key_path
+        )
+        self.assertNotIn(
+            old_key_id, repo.roles.root.signed.roles[role_name].keyids
+        )
+
     def test_add_bundle(self):
         # prepare
         bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
@@ -695,10 +607,8 @@ class RepositoryTests(TempDirTestCase):
         remaining_target_filenames = [p.name for p in repo.targets_dir.iterdir()]
         self.assertEqual(1, len(remaining_target_filenames))
         self.assertIn(remaining_target_keys[0], remaining_target_filenames)
-        # metadata should have been signed
-        self.assertFalse(repo.roles.targets_modified)
 
-    def test_sign(self):
+    def test_threshold_sign(self):
         # prepare
         role_name = 'root'
         keys_dir = self.temp_dir_path / 'keystore'
@@ -707,10 +617,7 @@ class RepositoryTests(TempDirTestCase):
             keys_dir=keys_dir,
             repo_dir=self.temp_dir_path / 'repo',
         )
-        original_expiration = repo.expiration_days[role_name]
-        repo.expiration_days[role_name] = 0  # today
         repo.initialize()  # todo: make test independent...
-        repo.expiration_days[role_name] = original_expiration
         # dummy modification
         repo.roles.root_modified = True
         versioned_file_path = repo.metadata_dir / f'1.{role_name}.json'
@@ -719,13 +626,10 @@ class RepositoryTests(TempDirTestCase):
         non_versioned_last_modified = non_versioned_file_path.stat().st_mtime_ns
         # test
         sleep(0.1)  # enforce different modification time
-        private_key_path = keys_dir / repo.key_map[role_name]
-        repo.sign(
-            role_name=role_name,
-            private_key_path=private_key_path,
-            expiration_days=1,
+        repo.threshold_sign(
+            role_name=role_name, private_key_dirs=[repo.keys_dir]
         )
-        self.assertGreater(repo.roles.root.signed.expires, datetime.today())
+        # files should have been modified
         self.assertGreater(
             versioned_file_path.stat().st_mtime_ns, versioned_last_modified
         )

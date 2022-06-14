@@ -283,9 +283,6 @@ class Roles(Base):
         self.timestamp: Optional[Metadata[Timestamp]] = None
         # import roles from dir_path, if it exists
         self._import_roles(role_names=TOP_LEVEL_ROLE_NAMES)
-        # flags
-        self.root_modified = False
-        self.targets_modified = False
 
     def _import_roles(self, role_names: Iterable[str]):
         """Import roles from metadata files."""
@@ -329,10 +326,6 @@ class Roles(Base):
                         signatures=dict(),
                     ),
                 )
-                if attr_name == 'root':
-                    self.root_modified = True
-                else:
-                    self.targets_modified = True
 
     def add_or_update_target(
             self,
@@ -349,10 +342,7 @@ class Roles(Base):
             target_file_path=url_path, local_path=str(local_path)
         )
         # note we assume self.targets has been initialized
-        existing_target_file_info = self.targets.signed.targets.get(url_path)
         self.targets.signed.targets[url_path] = target_file_info
-        if existing_target_file_info != target_file_info:
-            self.targets_modified = True
 
     def remove_target(self, local_path: Union[pathlib.Path, str]) -> bool:
         removed = False
@@ -364,7 +354,6 @@ class Roles(Base):
                 break
         if removed:
             local_path.unlink()
-            self.targets_modified = True
         return removed
 
     def add_public_key(
@@ -479,102 +468,6 @@ class Roles(Base):
             client_root_file_path = self.file_path(role_name=Root.type)
             client_root_file_path.unlink(missing_ok=True)
             shutil.copy(src=file_path, dst=client_root_file_path)
-
-    def publish_root(
-            self,
-            private_key_paths: List[Union[pathlib.Path, str]],
-            expiration_days: int,
-    ):
-        """Call this whenever root has been modified (should be rare)."""
-        if self.root_modified:
-            # root content has changed, so increment version (if not initial)
-            if self.file_exists(role_name=Root.type):
-                self.root.signed.version += 1
-            # sign and save
-            self._publish_metadata(
-                private_key_paths={Root.type: private_key_paths},
-                expiration_days={Root.type: expiration_days},
-            )
-            # reset flag
-            self.root_modified = False
-
-    def publish_targets(
-            self,
-            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
-            expiration_days: Dict[str, int],  # RolesDict...
-    ):
-        """
-        Increments version for targets, snapshot, and timestamp, then signs
-        and saves the updated metadata files.
-
-        Call this whenever new targets have been added.
-        """
-        if self.targets_modified:
-            # targets content has changed, so increment version
-            if self.file_exists(role_name=Targets.type):
-                self.targets.signed.version += 1
-            # update snapshot content and increment version
-            self.snapshot.signed.meta[FILENAME_TARGETS].version = self.targets.signed.version
-            if self.file_exists(role_name=Snapshot.type):
-                self.snapshot.signed.version += 1
-            # update timestamp content and increment version
-            self.timestamp.signed.snapshot_meta.version = self.snapshot.signed.version
-            if self.file_exists(role_name=Timestamp.type):
-                self.timestamp.signed.version += 1
-            # sign and save
-            self._publish_metadata(
-                private_key_paths=private_key_paths,
-                expiration_days=expiration_days,
-            )
-            self.targets_modified = False
-
-    def _publish_metadata(
-            self,
-            private_key_paths: Dict[str, List[Union[pathlib.Path, str]]],  # RolesDict...
-            expiration_days: Optional[Dict[str, int]] = None,  # RolesDict...
-    ):
-        if expiration_days is None:
-            expiration_days = dict()
-        # sign the metadata files and save to disk
-        for role_name, role_private_key_paths in private_key_paths.items():
-            # sign with each specified key
-            for private_key_path in role_private_key_paths:
-                days = expiration_days.get(role_name)
-                if days is not None:
-                    self.set_expiration_date(role_name=role_name, days=days)
-                self.sign_role(
-                    role_name=role_name, private_key_path=private_key_path
-                )
-            self.persist_role(role_name=role_name)
-
-    def replace_key(
-            self,
-            old_key_id: str,
-            old_private_key_path: Union[pathlib.Path, str],
-            new_private_key_path: Union[pathlib.Path, str],
-            new_public_key_path: Union[pathlib.Path, str],
-            root_expiration_days: int,
-    ):
-        """Based on root key rotation example from tuf basic_repo.py."""
-        # a key may be used for multiple roles, so we check the key id for
-        # all roles
-        for role_name in TOP_LEVEL_ROLE_NAMES:
-            try:
-                # key id is removed from roles dict, if found, and key is
-                # removed from keys dict if it is no longer used by any roles
-                self.root.signed.remove_key(role=role_name, keyid=old_key_id)
-            except ValueError:
-                logger.debug(f'{role_name} does not have key {old_key_id}')
-            else:
-                # add the new key
-                self.add_public_key(
-                    role_name=role_name, public_key_path=new_public_key_path
-                )
-        # publish new version of root, sign with both old key and new key
-        self.publish_root(
-            private_key_paths=[old_private_key_path, new_private_key_path],
-            expiration_days=root_expiration_days,
-        )
 
     def get_latest_archive(self) -> Optional[TargetMeta]:
         """
@@ -701,18 +594,37 @@ class Repository(object):
 
         # Publish root metadata (save 1.root.json and copy to root.json)
         if not self.roles.file_path('root').exists():
-            self.roles.publish_root(
-                private_key_paths=[
-                    self.keys.private_key_path(key_name=self.key_map['root'])
-                ],
-                expiration_days=self.expiration_days['root'],
-            )
+            self.publish_changes(private_key_dirs=[self.keys_dir])
+
+    def replace_key(
+            self, old_key_id: str, new_public_key_path: Union[pathlib.Path, str]
+    ):
+        """
+        Replace an existing key by a new one, e.g. after a key compromise.
+
+        Note the changes are not published yet: call publish_changes() for that
+        """
+        # Based on root key rotation example from tuf basic_repo.py.
+        # a key may be used for multiple roles, so we check the key id for
+        # all roles
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            try:
+                # key id is removed from roles dict, if found, and key is
+                # removed from keys dict if it is no longer used by any roles
+                self.roles.root.signed.remove_key(
+                    role=role_name, keyid=old_key_id
+                )
+                # todo: we must ensure both keys will still be used for signing
+            except ValueError:
+                logger.debug(f'{role_name} does not have key {old_key_id}')
+            else:
+                # add the new key
+                self.roles.add_public_key(
+                    role_name=role_name, public_key_path=new_public_key_path
+                )
 
     def add_bundle(
-            self,
-            new_version: str,
-            new_bundle_dir: Union[pathlib.Path, str],
-            private_key_paths: Optional[Dict[str, list]] = None,
+            self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]
     ):
         """
         Adds a new application bundle to the local repository.
@@ -721,6 +633,7 @@ class Repository(object):
         added to the tuf repository. If a previous archive version is
         found, a patch file is also created and added to the repository.
 
+        Note the changes are not published yet: call publish_changes() for that
         """
         # enforce path object
         new_bundle_dir = pathlib.Path(new_bundle_dir)
@@ -751,16 +664,15 @@ class Repository(object):
                 )
                 self.roles.add_or_update_target(local_path=patch_path)
 
-            # publish updated roles
-            self._publish_targets(private_key_paths=private_key_paths)
-
-    def remove_latest_bundle(self, private_key_paths: Optional[Dict[str, list]] = None):
+    def remove_latest_bundle(self):
         """
         Removes the *latest* app bundle from the local repository.
 
         This deletes the bundle's archive file and corresponding patch file
         from the targets directory, and updates the tuf repository metadata
         accordingly.
+
+        Note the changes are not published yet: call publish_changes() for that
         """
         # Get latest archive
         self._load_keys_and_roles()
@@ -774,44 +686,82 @@ class Repository(object):
                 logger.info(
                     f'target {"removed" if removed else "not found"}: {target_path}'
                 )
-            self._publish_targets(private_key_paths=private_key_paths)
 
-    def _publish_targets(self, private_key_paths: Optional[Dict[str, list]] = None):
+    def publish_changes(self, private_key_dirs: List[Union[pathlib.Path, str]]):
         """
-        Publish targets, snapshot, and timestamp roles.
+        Publish all modified roles. That is, if a role has changed w.r.t. to
+        the version on disk:
 
-        Safe to call if nothing has changed.
+        - bump version
+        - set new expiration date
+        - sign
+        - save to disk
         """
-        if private_key_paths is None:
-            private_key_paths = {
-                role_name: [self.keys.private_key_path(key_name=key_name)]
-                for role_name, key_name in self.key_map.items()
-            }
-        self.roles.publish_targets(
-            private_key_paths=private_key_paths,
-            expiration_days=self.expiration_days,
-        )
+        # todo: implement custom Metadata subclass with extra methods:
+        #  modified, set_expiration_date, sign, persist, etc. So we can do
+        #  e.g role.set_expiration_date(days=1) instead of passing the
+        #  role_name around
+        for role_name in ['root', 'targets', 'snapshot', 'timestamp']:
+            role = getattr(self.roles, role_name)
+            if self.roles.bump_signed_version_if_modified(role_name=role_name):
+                # reset expiration date (if version is bumped, we always want
+                # to reset the expiration date too, unless it has already
+                # been changed)
+                self.roles.set_expiration_date(
+                    role_name=role_name,
+                    days=self.expiration_days.get(role_name),
+                )
+                # sign metadata and persist changes
+                self.threshold_sign(
+                    role_name=role_name, private_key_dirs=private_key_dirs
+                )
+                # update version in dependent metadata
+                dependent = None
+                if role_name == 'root':
+                    # Not all changes to root require a re-sign of the other
+                    # metadata files (e.g. we could just add some additional
+                    # valid keys). However, to be on the safe side,
+                    # we'll force a re-sign cascade by bumping the targets
+                    # version.
+                    self.roles.bump_signed_version_if_modified(
+                        role_name='targets', force_bump=True
+                    )
+                elif role_name == 'targets':
+                    dependent = self.roles.snapshot.signed.meta[FILENAME_TARGETS]
+                elif role_name == 'snapshot':
+                    dependent = self.roles.timestamp.signed.snapshot_meta
+                if dependent:
+                    dependent.version = role.signed.version
 
-    def sign(
+    def threshold_sign(
             self,
             role_name: str,
-            private_key_path: Union[pathlib.Path, str],
-            expiration_days: Optional[int] = None,
+            private_key_dirs: List[Union[pathlib.Path, str]],
     ):
-        """Sign the metadata file for a specific role."""
-        private_key_path = pathlib.Path(private_key_path)
+        """
+        Sign the metadata file for a specific role, and save changes to disk.
+
+        Use this to sign and save without making any changes to the actual
+        signed metadata.
+        """
         self._load_keys_and_roles()
-        if expiration_days is not None:  # could be zero
-            self.roles.set_expiration_date(
-                role_name=role_name, days=expiration_days
+        # sign role with all required keys that can be found
+        for key_name in self.key_map.get(role_name, []):
+            private_key_path = self.keys.find_private_key(
+                key_name=key_name, key_dirs=private_key_dirs
             )
-        self.roles.sign_role(
-            role_name=role_name,
-            private_key_path=private_key_path,
-        )
+            if private_key_path:
+                self.roles.sign_role(
+                    role_name=role_name,
+                    private_key_path=private_key_path,
+                )
+            else:
+                logger.warning(f'private key not found: {key_name}')
+        # save changes to disk
         self.roles.persist_role(role_name=role_name)
 
     def _load_keys_and_roles(self, create_keys: bool = False):
+        # todo: make public, rename load_keys_and_metadata
         if self.keys is None:
             logger.info('Importing public keys...')
             self.keys = Keys(
