@@ -110,7 +110,7 @@ DEFAULT_REPO_DIR_NAME = 'repository'
 DEFAULT_KEYS_DIR_NAME = 'keystore'
 DEFAULT_META_DIR_NAME = 'metadata'
 DEFAULT_TARGETS_DIR_NAME = 'targets'
-DEFAULT_KEY_MAP = RolesDict((key, key) for key in TOP_LEVEL_ROLE_NAMES)  # noqa
+DEFAULT_KEY_MAP = RolesDict((key, [key]) for key in TOP_LEVEL_ROLE_NAMES)  # noqa
 DEFAULT_EXPIRATION_DAYS = RolesDict(root=365, targets=7, snapshot=7, timestamp=1)
 SUFFIX_JSON = '.json'
 SUFFIX_PUB = '.pub'
@@ -125,7 +125,7 @@ class Base(object):
         """
         dir_path: directory where all key files are stored
         encrypted: names of the keys that are (to be) encrypted
-        key_map: maps top-level role names to key names
+        key_map: maps top-level role names to lists of key names
         """
         if dir_path is None:
             dir_path = pathlib.Path.cwd()
@@ -164,8 +164,9 @@ class Keys(Base):
         self.import_all_public_keys()
 
     def import_all_public_keys(self):
-        for role_name, key_name in self.key_map.items():
-            self.import_public_key(role_name=role_name, key_name=key_name)
+        for role_name, key_list in self.key_map.items():
+            for key_name in key_list:
+                self.import_public_key(role_name=role_name, key_name=key_name)
 
     def import_public_key(self, role_name: str, key_name: Optional[str] = None):
         """Import public key for specified role."""
@@ -182,7 +183,10 @@ class Keys(Base):
             logger.debug(f'file does not exist: {public_key_path}')
 
     def create(self):
-        unique_key_names = set(self.key_map.values())
+        all_key_names = []
+        for key_list in self.key_map.values():
+            all_key_names.extend(key_list)
+        unique_key_names = set(all_key_names)
         logger.debug(f'creating key-pairs: {unique_key_names}')
         for key_name in unique_key_names:
             default_private_key_path = self.private_key_path(key_name=key_name)

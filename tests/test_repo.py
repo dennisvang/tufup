@@ -122,7 +122,7 @@ class KeysTests(TempDirTestCase):
         private_key_filename = Keys.filename_pattern.format(key_name=key_name)
         file_path = self.temp_dir_path / private_key_filename
         generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
-        key_map = {role_name: key_name for role_name in TOP_LEVEL_ROLE_NAMES}
+        key_map = {role_name: [key_name] for role_name in TOP_LEVEL_ROLE_NAMES}
         # test
         keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
         for role_name in TOP_LEVEL_ROLE_NAMES:
@@ -176,7 +176,7 @@ class KeysTests(TempDirTestCase):
     def test_create_with_key_map(self):
         # prepare
         key_name = 'single'
-        key_map = {role_name: key_name for role_name in TOP_LEVEL_ROLE_NAMES}
+        key_map = {role_name: [key_name] for role_name in TOP_LEVEL_ROLE_NAMES}
         keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
         private_key_filename = Keys.filename_pattern.format(key_name=key_name)
         public_key_filename = private_key_filename + SUFFIX_PUB
