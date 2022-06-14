@@ -54,6 +54,12 @@ DUMMY_PRIVATE_KEY_PATHS = dict(
     (role_name, [pathlib.Path('dummy', role_name)])
     for role_name in TOP_LEVEL_ROLE_NAMES
 )
+DUMMY_KEY_MAP = dict(
+    root=['root_one', 'root_two'],
+    targets=['targets'],
+    snapshot=['snapshot'],
+    timestamp=['timestamp'],
+)
 
 
 class ModuleTests(TempDirTestCase):
@@ -177,20 +183,23 @@ class KeysTests(TempDirTestCase):
 
     def test_create_with_key_map(self):
         # prepare
-        key_name = 'single'
-        key_map = {role_name: [key_name] for role_name in TOP_LEVEL_ROLE_NAMES}
-        keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
-        private_key_filename = Keys.filename_pattern.format(key_name=key_name)
-        public_key_filename = private_key_filename + SUFFIX_PUB
+        keys = Keys(dir_path=self.temp_dir_path, key_map=DUMMY_KEY_MAP)
+        expected_key_names = [
+            key_name
+            for key_names in DUMMY_KEY_MAP.values()
+            for key_name in key_names
+        ]
         # test
         keys.create()
-        # a single key pair should now exist
+        # we should now have five key-pairs (one for each, but two for root)
         filenames = [item.name for item in keys.dir_path.iterdir()]
-        self.assertEqual(2, len(filenames))
-        self.assertIn(private_key_filename, filenames)
-        self.assertIn(public_key_filename, filenames)
+        self.assertEqual(2*len(expected_key_names), len(filenames))
+        for key_name in expected_key_names:
+            self.assertIn(key_name, filenames)
+            self.assertIn(key_name + SUFFIX_PUB, filenames)
         # and the public keys should have been imported
-        self.assertTrue(all(getattr(keys, n) for n in TOP_LEVEL_ROLE_NAMES))
+        for role_name, key_names in DUMMY_KEY_MAP.items():
+            self.assertEqual(len(key_names), len(getattr(keys, role_name)))
 
     def test_create_key_pair(self):
         public_key_path = Keys.create_key_pair(
