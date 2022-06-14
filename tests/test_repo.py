@@ -498,13 +498,19 @@ class RepositoryTests(TempDirTestCase):
             return_value=temp_dir / Repository.config_filename
         )
         mock_config_path().write_text(json.dumps(config_data, default=str))
+        mock_load_keys_and_roles = Mock()
         # test
-        with patch.object(Repository, 'get_config_file_path', mock_config_path):
+        with patch.multiple(
+                Repository,
+                get_config_file_path=mock_config_path,
+                _load_keys_and_roles=mock_load_keys_and_roles,
+        ):
             repo = Repository.from_config()
         self.assertEqual(
             config_data,
             {item: getattr(repo, item) for item in repo.config_items}
         )
+        self.assertTrue(mock_load_keys_and_roles.called)
 
     def test_initialize(self):
         # prepare

@@ -5,6 +5,7 @@ import shutil
 import tempfile
 
 from notsotuf.repo import (
+    DEFAULT_KEY_MAP,
     DEFAULT_KEYS_DIR_NAME,
     DEFAULT_META_DIR_NAME,
     DEFAULT_REPO_DIR_NAME,
@@ -41,14 +42,16 @@ TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
 # Settings
 EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
-ENCRYPTED_KEYS = ['root', 'targets']
+KEY_MAP = DEFAULT_KEY_MAP.copy()
+KEY_MAP['root'].append('root_two')  # use two keys for root
+ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
 
 # Create repository instance
 repo = Repository(
     app_name=APP_NAME,
     repo_dir=REPO_DIR,
     keys_dir=KEYS_DIR,
-    key_map=None,  # use default key map
+    key_map=KEY_MAP,
     expiration_days=EXPIRATION_DAYS,
     encrypted_keys=ENCRYPTED_KEYS,
 )

@@ -632,16 +632,11 @@ class Repository(object):
             version=new_version,
         )
         logger.info(f'Archive ready: {new_archive}')
-
-        # Load keys and roles
-        self._load_keys_and_roles()
-
         # check latest archive before registering the new one
         latest_archive = self.roles.get_latest_archive()
         if not latest_archive or latest_archive.version < new_archive.version:
             # register new archive
             self.roles.add_or_update_target(local_path=new_archive.path)
-
             # create patch, if possible, and register that too
             if latest_archive:
                 patch_path = Patcher.create_patch(
@@ -661,7 +656,6 @@ class Repository(object):
         Note the changes are not published yet: call publish_changes() for that
         """
         # Get latest archive
-        self._load_keys_and_roles()
         latest_archive = self.roles.get_latest_archive()
         if latest_archive:
             # remove latest archive and corresponding patch
@@ -753,7 +747,6 @@ class Repository(object):
         Use this to sign and save without making any changes to the actual
         signed metadata.
         """
-        self._load_keys_and_roles()
         # sign role with all required keys that can be found
         for key_name in self.key_map.get(role_name, []):
             private_key_path = self.keys.find_private_key(
