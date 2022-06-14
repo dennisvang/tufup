@@ -521,6 +521,20 @@ class RepositoryTests(TempDirTestCase):
             all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
         )
 
+    def test_refresh_expiration_date(self):
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        days = 999
+        repo.refresh_expiration_date(role_name='root', days=days)
+        self.assertEqual(
+            date.today() + timedelta(days=days),
+            repo.roles.root.signed.expires.date(),
+        )
+
     def test_replace_key(self):
         role_name = 'root'
         # prepare

@@ -575,6 +575,11 @@ class Repository(object):
         if not self.roles.file_path('root').exists():
             self.publish_changes(private_key_dirs=[self.keys_dir])
 
+    def refresh_expiration_date(self, role_name: str, days: Optional[int] = None):
+        if days is None:
+            days = self.expiration_days.get(role_name)
+        self.roles.set_expiration_date(role_name=role_name, days=days)
+
     def replace_key(
             self, old_key_id: str, new_public_key_path: Union[pathlib.Path, str]
     ):
