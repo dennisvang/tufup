@@ -156,10 +156,10 @@ class Keys(Base):
         self.encrypted = encrypted
         self.key_map = key_map
         # top-level roles
-        self.root: Optional[Dict[str, Any]] = None
-        self.targets: Optional[Dict[str, Any]] = None
-        self.snapshot: Optional[Dict[str, Any]] = None
-        self.timestamp: Optional[Dict[str, Any]] = None
+        self.root: List[Dict[str, Any]] = []
+        self.targets: List[Dict[str, Any]] = []
+        self.snapshot: List[Dict[str, Any]] = []
+        self.timestamp: List[Dict[str, Any]] = []
         # import public keys from dir_path, if it exists
         self.import_all_public_keys()
 
@@ -177,7 +177,7 @@ class Keys(Base):
             ssl_key = import_ed25519_publickey_from_file(
                 filepath=str(public_key_path)
             )
-            setattr(self, role_name, ssl_key)
+            getattr(self, role_name).append(ssl_key)
             logger.debug(f'public key imported: {public_key_path}')
         else:
             logger.debug(f'file does not exist: {public_key_path}')
@@ -228,16 +228,18 @@ class Keys(Base):
         # return a dict that maps key ids to *public* key objects
         return {
             ssl_key['keyid']: Key.from_securesystemslib_key(key_dict=ssl_key)
-            for attr_name, ssl_key in vars(self).items()
-            if attr_name in TOP_LEVEL_ROLE_NAMES and ssl_key is not None
+            for attr_name, ssl_keys in vars(self).items()
+            if attr_name in TOP_LEVEL_ROLE_NAMES
+            for ssl_key in ssl_keys
         }
 
     def roles(self):
         # return a dict that maps role names to key ids and key thresholds
         return {
-            attr_name: Role(keyids=[ssl_key['keyid']], threshold=1)
-            if ssl_key is not None else None
-            for attr_name, ssl_key in vars(self).items()
+            attr_name: Role(
+                keyids=[ssl_key['keyid'] for ssl_key in ssl_keys], threshold=1
+            ) if ssl_keys else None
+            for attr_name, ssl_keys in vars(self).items()
             if attr_name in TOP_LEVEL_ROLE_NAMES
         }
 

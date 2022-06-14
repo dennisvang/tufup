@@ -105,7 +105,7 @@ class KeysTests(TempDirTestCase):
         # no public key files exist yet
         keys = Keys(dir_path=self.temp_dir_path)
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.assertIsNone(getattr(keys, role_name))
+            self.assertFalse(getattr(keys, role_name))
 
     def test_init_and_import_all_public_keys(self):
         # create some key files
@@ -116,7 +116,7 @@ class KeysTests(TempDirTestCase):
         # test
         keys = Keys(dir_path=self.temp_dir_path)
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.assertIsInstance(getattr(keys, role_name), dict)
+            self.assertIsInstance(getattr(keys, role_name)[0], dict)
 
     def test_init_and_import_all_public_keys_with_key_map(self):
         # create a single key-pair
@@ -128,7 +128,7 @@ class KeysTests(TempDirTestCase):
         # test
         keys = Keys(dir_path=self.temp_dir_path, key_map=key_map)
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.assertIsInstance(getattr(keys, role_name), dict)
+            self.assertIsInstance(getattr(keys, role_name)[0], dict)
             # all keys should be equal
             self.assertEqual(keys.root, getattr(keys, role_name))
 
@@ -144,10 +144,10 @@ class KeysTests(TempDirTestCase):
                 filepath=str(file_path))
         # test
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.assertIsNone(getattr(keys, role_name))
+            self.assertFalse(getattr(keys, role_name))
         keys.import_all_public_keys()
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            self.assertIsInstance(getattr(keys, role_name), dict)
+            self.assertIsInstance(getattr(keys, role_name)[0], dict)
 
     def test_import_public_key(self):
         # create dummy key with name differing from role name
@@ -218,7 +218,7 @@ class KeysTests(TempDirTestCase):
         # test empty
         self.assertFalse(keys.public())
         # set a dummy key value
-        keys.root = DUMMY_SSL_KEY
+        keys.root = [DUMMY_SSL_KEY]
         # test
         self.assertIn(DUMMY_SSL_KEY['keyid'], keys.public().keys())
 
@@ -227,7 +227,7 @@ class KeysTests(TempDirTestCase):
         # test empty
         self.assertSetEqual(set(TOP_LEVEL_ROLE_NAMES), set(keys.roles().keys()))
         # set a dummy key value
-        keys.root = DUMMY_SSL_KEY
+        keys.root = [DUMMY_SSL_KEY]
         # test
         self.assertIn('root', keys.roles().keys())
 
