@@ -235,13 +235,15 @@ class Keys(Base):
 
     def roles(self):
         # return a dict that maps role names to key ids and key thresholds
-        return {
-            attr_name: Role(
-                keyids=[ssl_key['keyid'] for ssl_key in ssl_keys], threshold=1
-            ) if ssl_keys else None
-            for attr_name, ssl_keys in vars(self).items()
-            if attr_name in TOP_LEVEL_ROLE_NAMES
-        }
+        roles_map = dict()
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            ssl_keys = getattr(self, role_name)
+            role_keys = None
+            if ssl_keys:
+                unique_key_ids = list(set(ssl_key['keyid'] for ssl_key in ssl_keys))
+                role_keys = Role(keyids=unique_key_ids, threshold=1)
+            roles_map[role_name] = role_keys
+        return roles_map
 
     @classmethod
     def find_private_key(cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]):
