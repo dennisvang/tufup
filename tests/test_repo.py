@@ -2,6 +2,7 @@ import copy
 from datetime import date, datetime, timedelta
 import json
 import pathlib
+from tempfile import TemporaryDirectory
 from time import sleep
 from unittest.mock import Mock, patch
 
@@ -630,3 +631,78 @@ class RepositoryTests(TempDirTestCase):
         self.assertTrue(
             all((keys_dir / name).exists() for name in TOP_LEVEL_ROLE_NAMES)
         )
+
+    def test_publish_changes_no_change(self):
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        # test
+        repo.publish_changes(private_key_dirs=[repo.keys_dir])
+        for role_name in ['root', 'targets', 'snapshot', 'timestamp']:
+            role = getattr(repo.roles, role_name)
+            with self.subTest(msg=role_name):
+                self.assertEqual(1, role.signed.version)
+                self.assertTrue(role.signatures)
+
+    def test_publish_changes(self):
+        days = 999
+        role_names = ['root', 'targets', 'snapshot', 'timestamp']
+        for test_role_name in role_names.copy():
+            # use a fresh temporary dir and repo
+            with TemporaryDirectory() as temp_dir:
+                temp_dir_path = pathlib.Path(temp_dir)
+                repo = Repository(
+                    app_name='test',
+                    keys_dir=temp_dir_path / 'keystore',
+                    repo_dir=temp_dir_path / 'repo',
+                )
+                repo.initialize()  # todo: make test independent...
+                # make a change (in memory)
+                repo.roles.set_expiration_date(
+                    role_name=test_role_name, days=days
+                )
+                # test
+                repo.publish_changes(private_key_dirs=[repo.keys_dir])
+                for role_name in role_names:
+                    role = getattr(repo.roles, role_name)
+                    with self.subTest(msg=f'{test_role_name}: {role_name}'):
+                        self.assertEqual(2, role.signed.version)
+                        self.assertTrue(role.signatures)
+                role_names.remove(test_role_name)
+                #  re-load from file to verify change
+                root = Metadata.from_file(
+                    repo.roles.file_path(role_name=test_role_name)
+                )
+                self.assertEqual(
+                    date.today() + timedelta(days=days),
+                    root.signed.expires.date(),
+                )
+
+ # def test_bump_signed_version_if_modified(self):
+    #     # prepare
+    #     roles = Roles(dir_path=self.temp_dir_path)
+    #     roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
+    #     # test file does not exist yet
+    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
+    #     # test not modified and not bumped
+    #     roles.persist_role(role_name='root')
+    #     self.assertFalse(roles.bump_signed_version_if_modified(role_name='root'))
+    #     # test forced bump (not modified)
+    #     self.assertTrue(
+    #         roles.bump_signed_version_if_modified(
+    #             role_name='root', force_bump=True
+    #         )
+    #     )
+    #     self.assertEqual(2, roles.root.signed.version)
+    #     # test modified but not bumped
+    #     roles.root.signed.version = 1
+    #     roles.root.signed.consistent_snapshot = True  # any attribute would do
+    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
+    #     # test modified and already bumped
+    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
+    #     self.assertEqual(2, roles.root.signed.version)
+    #

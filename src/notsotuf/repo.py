@@ -547,7 +547,9 @@ class Repository(object):
     @classmethod
     def from_config(cls):
         """Create Repository instance from configuration file."""
-        return cls(**cls.load_config())
+        instance = cls(**cls.load_config())
+        instance._load_keys_and_roles(create_keys=False)
+        return instance
 
     def initialize(self):
         """
@@ -669,10 +671,12 @@ class Repository(object):
         Publish all modified roles. That is, if a role has changed w.r.t. to
         the version on disk:
 
-        - bump version
-        - set new expiration date
+        - update expiration date (if not yet updated)
+        - bump version (if not yet bumped)
         - sign
         - save to disk
+
+        If a role has not been modified, it is skipped.
         """
         # todo: implement custom Metadata subclass with extra methods:
         #  modified, set_expiration_date, sign, persist, etc. So we can do
@@ -684,20 +688,26 @@ class Repository(object):
             latest_file_path = self.roles.file_path(
                 role_name=role_name, version=None
             )
-            # if the file does not exist yet, we consider the role modified
+            # if the file does not exist yet, the role is considered modified,
+            # and we don't want to bump version and expiration date again
+            modified = True
+            expires_bumped = True
+            version_bumped = True
             if latest_file_path.exists():
                 latest_role = Metadata.from_file(filename=str(latest_file_path))
                 modified = role.signed != latest_role.signed
                 expires_bumped = role.signed.expires != latest_role.signed.expires
                 version_bumped = role.signed.version > latest_role.signed.version
-                if modified:
-                    if not expires_bumped:
-                        self.roles.set_expiration_date(
-                            role_name=role_name,
-                            days=self.expiration_days.get(role_name),
-                        )
-                    if not version_bumped:
-                        role.signed.version += 1
+            if modified:
+                # set new expiration date
+                if not expires_bumped:
+                    self.roles.set_expiration_date(
+                        role_name=role_name,
+                        days=self.expiration_days.get(role_name),
+                    )
+                # bump version
+                if not version_bumped:
+                    role.signed.version += 1
                 # sign metadata and persist changes
                 self.threshold_sign(
                     role_name=role_name, private_key_dirs=private_key_dirs
@@ -711,13 +721,19 @@ class Repository(object):
                     # we'll force a re-sign cascade by bumping the targets
                     # version. Note this may cause a double version bump for
                     # targets, but that should not matter.
-                    self.roles.targets.signed.version += 1
+                    if self.roles.file_path(
+                            role_name='targets', version=None
+                    ).exists():
+                        self.roles.targets.signed.version += 1
                 elif role_name == 'targets':
                     dependent = self.roles.snapshot.signed.meta[FILENAME_TARGETS]
                 elif role_name == 'snapshot':
                     dependent = self.roles.timestamp.signed.snapshot_meta
                 if dependent:
                     dependent.version = role.signed.version
+                logger.info(f'Published changes for {role_name}.')
+            else:
+                logger.info(f'No changes detected for {role_name}.')
 
     def threshold_sign(
             self,
