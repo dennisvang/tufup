@@ -473,6 +473,7 @@ class RepositoryTests(TempDirTestCase):
             'key_map',
             'keys_dir',
             'repo_dir',
+            'thresholds',
         ]
         self.assertEqual(set(expected_config_items), set(repo.config_items))
 
@@ -512,7 +513,8 @@ class RepositoryTests(TempDirTestCase):
             keys_dir=temp_dir / 'keystore',
             key_map=dict(),
             encrypted_keys=[],
-            expiration_days=dict()
+            expiration_days=dict(),
+            thresholds=dict(),
         )
         mock_config_path = Mock(
             return_value=temp_dir / Repository.config_filename

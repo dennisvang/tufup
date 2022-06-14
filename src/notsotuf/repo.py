@@ -493,7 +493,8 @@ class Repository(object):
             keys_dir: Union[pathlib.Path, str, None] = None,
             key_map: Optional[RolesDict] = None,
             encrypted_keys: Optional[List[str]] = None,
-            expiration_days: Optional[RolesDict] = None
+            expiration_days: Optional[RolesDict] = None,
+            thresholds: Optional[RolesDict] = None,
     ):
         if repo_dir is None:
             repo_dir = pathlib.Path.cwd() / DEFAULT_REPO_DIR_NAME
@@ -505,6 +506,8 @@ class Repository(object):
             encrypted_keys = []
         if expiration_days is None:
             expiration_days = DEFAULT_EXPIRATION_DAYS
+        if thresholds is None:
+            thresholds = DEFAULT_THRESHOLDS
         self.app_name = app_name
         # force path object and resolve, in case of relative paths
         self.repo_dir = pathlib.Path(repo_dir).resolve()
@@ -512,6 +515,7 @@ class Repository(object):
         self.key_map = key_map
         self.encrypted_keys = encrypted_keys
         self.expiration_days = expiration_days
+        self.thresholds = thresholds
         # keys and roles
         self.keys: Optional[Keys] = None
         self.roles: Optional[Roles] = None
@@ -786,6 +790,7 @@ class Repository(object):
                 dir_path=self.keys_dir,
                 encrypted=self.encrypted_keys,
                 key_map=self.key_map,
+                thresholds=self.thresholds,
             )
             if create_keys:
                 # safe to call if keys exist
