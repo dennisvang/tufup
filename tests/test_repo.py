@@ -367,30 +367,6 @@ class RolesTests(TempDirTestCase):
         roles.set_signature_threshold(role_name=role_name, threshold=threshold)
         self.assertEqual(threshold, roles.root.signed.roles[role_name].threshold)
 
-    def test_bump_signed_version_if_modified(self):
-        # prepare
-        roles = Roles(dir_path=self.temp_dir_path)
-        roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
-        # test file does not exist yet
-        self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-        # test not modified and not bumped
-        roles.persist_role(role_name='root')
-        self.assertFalse(roles.bump_signed_version_if_modified(role_name='root'))
-        # test forced bump (not modified)
-        self.assertTrue(
-            roles.bump_signed_version_if_modified(
-                role_name='root', force_bump=True
-            )
-        )
-        self.assertEqual(2, roles.root.signed.version)
-        # test modified but not bumped
-        roles.root.signed.version = 1
-        roles.root.signed.consistent_snapshot = True  # any attribute would do
-        self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-        # test modified and already bumped
-        self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-        self.assertEqual(2, roles.root.signed.version)
-
     def test_sign_role(self):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)

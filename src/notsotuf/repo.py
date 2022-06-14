@@ -374,29 +374,6 @@ class Roles(Base):
         if hasattr(role, 'signed'):
             role.signed.expires = in_(days)
 
-    def bump_signed_version_if_modified(
-            self, role_name: str, force_bump: bool = False
-    ):
-        # todo: refactor to e.g. check_if_modified(..., bump_version=True, ...)
-        """
-        Check if role has changed w.r.t. latest metadata file, and increment
-        version if necessary.
-        """
-        # filename without version is always the latest version
-        latest_file_path = self.file_path(role_name=role_name, version=None)
-        # if the file does not exist yet, the version must remain 1, but we
-        # consider it bumped
-        version_bumped = True
-        if latest_file_path.exists():
-            role = getattr(self, role_name)
-            latest_role = Metadata.from_file(filename=str(latest_file_path))
-            modified = role.signed != latest_role.signed
-            version_bumped = role.signed.version > latest_role.signed.version
-            if (modified or force_bump) and not version_bumped:
-                role.signed.version += 1
-                version_bumped = True
-        return version_bumped
-
     def sign_role(
             self, role_name: str, private_key_path: Union[pathlib.Path, str]
     ):
@@ -703,14 +680,24 @@ class Repository(object):
         #  role_name around
         for role_name in ['root', 'targets', 'snapshot', 'timestamp']:
             role = getattr(self.roles, role_name)
-            if self.roles.bump_signed_version_if_modified(role_name=role_name):
-                # reset expiration date (if version is bumped, we always want
-                # to reset the expiration date too, unless it has already
-                # been changed)
-                self.roles.set_expiration_date(
-                    role_name=role_name,
-                    days=self.expiration_days.get(role_name),
-                )
+            # filename without version is always the latest version
+            latest_file_path = self.roles.file_path(
+                role_name=role_name, version=None
+            )
+            # if the file does not exist yet, we consider the role modified
+            if latest_file_path.exists():
+                latest_role = Metadata.from_file(filename=str(latest_file_path))
+                modified = role.signed != latest_role.signed
+                expires_bumped = role.signed.expires != latest_role.signed.expires
+                version_bumped = role.signed.version > latest_role.signed.version
+                if modified:
+                    if not expires_bumped:
+                        self.roles.set_expiration_date(
+                            role_name=role_name,
+                            days=self.expiration_days.get(role_name),
+                        )
+                    if not version_bumped:
+                        role.signed.version += 1
                 # sign metadata and persist changes
                 self.threshold_sign(
                     role_name=role_name, private_key_dirs=private_key_dirs
@@ -722,10 +709,9 @@ class Repository(object):
                     # metadata files (e.g. we could just add some additional
                     # valid keys). However, to be on the safe side,
                     # we'll force a re-sign cascade by bumping the targets
-                    # version.
-                    self.roles.bump_signed_version_if_modified(
-                        role_name='targets', force_bump=True
-                    )
+                    # version. Note this may cause a double version bump for
+                    # targets, but that should not matter.
+                    self.roles.targets.signed.version += 1
                 elif role_name == 'targets':
                     dependent = self.roles.snapshot.signed.meta[FILENAME_TARGETS]
                 elif role_name == 'snapshot':
