@@ -60,6 +60,7 @@ DUMMY_KEY_MAP = dict(
     snapshot=['snapshot'],
     timestamp=['timestamp'],
 )
+DUMMY_THRESHOLDS = dict(root=4, targets=3, snapshot=2, timestamp=1)
 
 
 class ModuleTests(TempDirTestCase):
@@ -239,6 +240,16 @@ class KeysTests(TempDirTestCase):
         keys.root = [DUMMY_SSL_KEY]
         # test
         self.assertIn('root', keys.roles().keys())
+
+    def test_roles_thresholds(self):
+        # prepare
+        keys = Keys(dir_path=self.temp_dir_path, thresholds=DUMMY_THRESHOLDS)
+        for role_name in TOP_LEVEL_ROLE_NAMES:
+            setattr(keys, role_name, [DUMMY_SSL_KEY])
+        # test
+        roles = keys.roles()
+        for key, value in roles.items():
+            self.assertEqual(DUMMY_THRESHOLDS[key], value.threshold)
 
     def test_find_private_key(self):
         # create dummy private key files in separate folders

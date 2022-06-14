@@ -112,6 +112,7 @@ DEFAULT_META_DIR_NAME = 'metadata'
 DEFAULT_TARGETS_DIR_NAME = 'targets'
 DEFAULT_KEY_MAP = RolesDict((key, [key]) for key in TOP_LEVEL_ROLE_NAMES)  # noqa
 DEFAULT_EXPIRATION_DAYS = RolesDict(root=365, targets=7, snapshot=7, timestamp=1)
+DEFAULT_THRESHOLDS = RolesDict(root=1, targets=1, snapshot=1, timestamp=1)
 SUFFIX_JSON = '.json'
 SUFFIX_PUB = '.pub'
 FILENAME_ROOT = Root.type + SUFFIX_JSON
@@ -145,6 +146,7 @@ class Keys(Base):
             dir_path: Union[pathlib.Path, str, None] = None,
             encrypted: Optional[List[str]] = None,
             key_map: Optional[RolesDict] = None,
+            thresholds: Optional[RolesDict] = None,
     ):
         if dir_path is None:
             dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
@@ -153,8 +155,11 @@ class Keys(Base):
             encrypted = []
         if key_map is None:
             key_map = DEFAULT_KEY_MAP
+        if thresholds is None:
+            thresholds = DEFAULT_THRESHOLDS
         self.encrypted = encrypted
         self.key_map = key_map
+        self.thresholds = thresholds
         # top-level roles
         self.root: List[Dict[str, Any]] = []
         self.targets: List[Dict[str, Any]] = []
@@ -241,7 +246,9 @@ class Keys(Base):
             role_keys = None
             if ssl_keys:
                 unique_key_ids = list(set(ssl_key['keyid'] for ssl_key in ssl_keys))
-                role_keys = Role(keyids=unique_key_ids, threshold=1)
+                role_keys = Role(
+                    keyids=unique_key_ids, threshold=self.thresholds[role_name]
+                )
             roles_map[role_name] = role_keys
         return roles_map
 
