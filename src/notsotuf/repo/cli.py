@@ -81,7 +81,6 @@ def _get_config_from_user(**kwargs) -> dict:
             key_names = input_list(
                 prompt=f'Specify key names for {role_name}',
                 default=key_map.get(role_name, [role_name]),
-                item_default=role_name,
             )
         key_map[role_name] = key_names
         # encrypted_keys
