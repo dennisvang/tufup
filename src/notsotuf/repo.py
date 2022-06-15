@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import pathlib
+import setuptools.config.expand  # noqa
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 
@@ -489,6 +490,7 @@ class Repository(object):
     def __init__(
             self,
             app_name: str,
+            app_version_attr: Optional[str] = None,
             repo_dir: Union[pathlib.Path, str, None] = None,
             keys_dir: Union[pathlib.Path, str, None] = None,
             key_map: Optional[RolesDict] = None,
@@ -509,6 +511,7 @@ class Repository(object):
         if thresholds is None:
             thresholds = DEFAULT_THRESHOLDS
         self.app_name = app_name
+        self.app_version_attr = app_version_attr
         # force path object and resolve, in case of relative paths
         self.repo_dir = pathlib.Path(repo_dir).resolve()
         self.keys_dir = pathlib.Path(keys_dir).resolve()
@@ -533,6 +536,16 @@ class Repository(object):
     @property
     def targets_dir(self) -> pathlib.Path:
         return self.repo_dir / DEFAULT_TARGETS_DIR_NAME
+
+    @property
+    def app_version(self) -> str:
+        # read version from specified module attribute without importing
+        version = ''
+        if self.app_version_attr:
+            version = str(
+                setuptools.config.expand.read_attr(self.app_version_attr)  # noqa
+            )
+        return version
 
     @classmethod
     def get_config_file_path(cls) -> pathlib.Path:
@@ -623,7 +636,9 @@ class Repository(object):
                 )
 
     def add_bundle(
-            self, new_version: str, new_bundle_dir: Union[pathlib.Path, str]
+            self,
+            new_bundle_dir: Union[pathlib.Path, str],
+            new_version: Optional[str] = None,
     ):
         """
         Adds a new application bundle to the local repository.
@@ -636,6 +651,10 @@ class Repository(object):
         """
         # enforce path object
         new_bundle_dir = pathlib.Path(new_bundle_dir)
+        # determine new version
+        if new_version is None:
+            # todo: should we check for a valid version string?
+            new_version = self.app_version
         # create archive from latest app bundle
         logger.info(f'Creating new archive from bundle: {new_bundle_dir}')
         new_archive = make_gztar_archive(
