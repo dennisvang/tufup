@@ -175,6 +175,7 @@ class Client(tuf.ngclient.Updater):
             else:
                 logger.debug('patch update(s) available')
         else:
+            self.new_targets = {}
             logger.debug('no new archives found')
         return self.updates_available
 
