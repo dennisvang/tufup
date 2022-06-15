@@ -308,23 +308,34 @@ class Roles(Base):
                 # there should be only one for each role
                 setattr(self, role_name, Metadata.from_file(str(role_paths[0])))
 
-    def initialize(self, keys: Keys):
+    def initialize(
+            self, keys: Keys, expiration_days: Optional[RolesDict] = None
+    ):
+        if expiration_days is None:
+            expiration_days = DEFAULT_EXPIRATION_DAYS
         # based on python-tuf basic_repo.py
         common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
         # role-specific kwargs
         initial_data = {
             Root: dict(
-                expires=in_(0),
+                expires=in_(expiration_days['root']),
                 keys=keys.public(),
                 roles=keys.roles(),
                 # repo is relatively static, no need for consistent snapshots
                 consistent_snapshot=False,
             ),
-            Targets: dict(expires=in_(0), targets=dict()),
-            Snapshot: dict(
-                expires=in_(0), meta={FILENAME_TARGETS: MetaFile(version=1)}
+            Targets: dict(
+                expires=in_(expiration_days['targets']),
+                targets=dict(),
             ),
-            Timestamp: dict(expires=in_(0), snapshot_meta=MetaFile(version=1)),
+            Snapshot: dict(
+                expires=in_(expiration_days['snapshot']),
+                meta={FILENAME_TARGETS: MetaFile(version=1)},
+            ),
+            Timestamp: dict(
+                expires=in_(expiration_days['timestamp']),
+                snapshot_meta=MetaFile(version=1),
+            ),
         }
         for role_class, role_kwargs in initial_data.items():
             attr_name = role_class.type
@@ -818,5 +829,7 @@ class Repository(object):
         if self.roles is None:
             logger.info('Importing metadata...')
             self.roles = Roles(dir_path=self.metadata_dir)
-            self.roles.initialize(keys=self.keys)
+            self.roles.initialize(
+                keys=self.keys, expiration_days=self.expiration_days
+            )
             logger.info('Metadata imported.')

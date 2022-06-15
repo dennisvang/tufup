@@ -49,7 +49,7 @@ DUMMY_ROOT = Root(
     },
     consistent_snapshot=False,
 )
-DUMMY_EXPIRATION_DAYS = dict(root=0, targets=0, snapshot=0, timestamp=0)
+DUMMY_EXPIRATION_DAYS = dict(root=1000, targets=100, snapshot=10, timestamp=1)
 DUMMY_PRIVATE_KEY_PATHS = dict(
     (role_name, [pathlib.Path('dummy', role_name)])
     for role_name in TOP_LEVEL_ROLE_NAMES
@@ -299,12 +299,17 @@ class RolesTests(TempDirTestCase):
         # prepare
         mock_keys = Mock()
         mock_keys.public = Mock()
-        mock_keys.roles = Mock(return_value={n: None for n in TOP_LEVEL_ROLE_NAMES})
+        mock_keys.roles = Mock(
+            return_value={name: None for name in TOP_LEVEL_ROLE_NAMES}
+        )
         roles = Roles(dir_path=self.temp_dir_path)
         # test
         roles.initialize(keys=mock_keys)
         self.assertTrue(
-            all(isinstance(getattr(roles, n), Metadata) for n in TOP_LEVEL_ROLE_NAMES)
+            all(
+                isinstance(getattr(roles, n), Metadata)
+                for n in TOP_LEVEL_ROLE_NAMES
+            )
         )
         # files do not exist yet, because the roles still need to be populated
         self.assertFalse(any(roles.dir_path.iterdir()))
@@ -550,6 +555,7 @@ class RepositoryTests(TempDirTestCase):
             app_name='test',
             keys_dir=self.temp_dir_path / 'keystore',
             repo_dir=self.temp_dir_path / 'repo',
+            expiration_days=DUMMY_EXPIRATION_DAYS,
         )
         # test
         repo.initialize()
@@ -557,6 +563,10 @@ class RepositoryTests(TempDirTestCase):
         self.assertTrue(any(repo.metadata_dir.iterdir()))
         self.assertTrue(
             all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
+        )
+        self.assertEqual(
+            date.today() + timedelta(days=DUMMY_EXPIRATION_DAYS['root']),
+            repo.roles.root.signed.expires.date(),
         )
 
     def test_refresh_expiration_date(self):
