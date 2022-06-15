@@ -3,7 +3,7 @@ import logging
 
 import packaging.version
 
-from notsotuf.utils import input_bool, input_numeric, input_text
+from notsotuf.utils import input_bool, input_numeric, input_text, input_list
 from notsotuf.repo import Repository
 
 logger = logging.getLogger(__name__)
@@ -71,31 +71,42 @@ def _get_config_from_user(**kwargs) -> dict:
         )
     key_map = kwargs.get('key_map', {})
     expiration_days = kwargs.get('expiration_days', {})
+    thresholds = kwargs.get('thresholds', {})
     encrypted_keys = []
     unique_key_names = []
     for role_name in top_level_role_names:
         # key_map
-        key_name = input_text(
-            prompt=f'Specify key name for {role_name}',
-            default=key_map.get(role_name, role_name),
-        )
-        key_map[role_name] = key_name
+        key_names = []
+        while not key_names:
+            key_names = input_list(
+                prompt=f'Specify key names for {role_name}',
+                default=key_map.get(role_name, [role_name]),
+                item_default=role_name,
+            )
+        key_map[role_name] = key_names
         # encrypted_keys
-        if key_name not in unique_key_names:
-            unique_key_names.append(key_name)
-            if input_bool(
-                    prompt=f'Encrypt key "{key_name}"?',
-                    default=key_name in kwargs.get('encrypted_keys', [])
-            ):
-                encrypted_keys.append(key_name)
+        for key_name in key_names:
+            if key_name not in unique_key_names:
+                unique_key_names.append(key_name)
+                if input_bool(
+                        prompt=f'Encrypt key "{key_name}"?',
+                        default=key_name in kwargs.get('encrypted_keys', [])
+                ):
+                    encrypted_keys.append(key_name)
         # expiration_days
         expiration_days[role_name] = input_numeric(
             prompt=f'Specify number of days before {role_name} expires',
             default=expiration_days.get(role_name, 1),
         )
+        # thresholds
+        thresholds[role_name] = input_numeric(
+            prompt=f'Specify required number of signatures for {role_name}',
+            default=thresholds.get(role_name, 1),
+        )
     kwargs['key_map'] = key_map
     kwargs['expiration_days'] = expiration_days
     kwargs['encrypted_keys'] = encrypted_keys
+    kwargs['thresholds'] = thresholds
     return kwargs
 
 
