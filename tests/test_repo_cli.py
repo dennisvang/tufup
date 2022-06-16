@@ -9,11 +9,11 @@ from tests import TempDirTestCase
 
 
 class ParserTests(unittest.TestCase):
-    def test__get_parser(self):
+    def test_get_parser(self):
         parser = notsotuf.repo.cli.get_parser()
         for cmd in [
             'init',
-            'targets -a 1.0 bundle-dir'
+            'targets -a 1.0 bundle-dir -p c:\\private_keys'
             'targets -r',
             'keys -c key-name',
             'keys -a key-path',

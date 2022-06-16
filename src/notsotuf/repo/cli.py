@@ -22,10 +22,17 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_targets.add_argument(
         '-a',
         '--add',
+        nargs=2,
         metavar=('<version>', '<bundle directory>'),
         action=_StoreVersionAction,
-        nargs=2,
         help=HELP['targets_add'],
+    )
+    subparser_targets.add_argument(
+        '-p',
+        '--private_key_dirs',
+        required=False,
+        nargs='*',
+        help=HELP['private_key_dirs'],
     )
     subparser_targets.add_argument(
         '-r', '--remove', action='store_true', help=HELP['targets_remove']
@@ -155,13 +162,18 @@ def _cmd_targets(options: argparse.Namespace):
         print('Failed to load configuration. Did you initialize the repository?')
         return
     if options.add:
-        logger.debug('attempting to add bundle')
+        logger.debug('attempting to add bundle...')
         repository.add_bundle(
             new_version=options.add[0], new_bundle_dir=options.add[1]
         )
+        logger.debug('done')
     elif options.remove:
-        logger.debug('attempting to remove latest bundle')
+        logger.debug('attempting to remove latest bundle...')
         repository.remove_latest_bundle()
+        logger.debug('done')
+    logger.debug('attempting to publish changes...')
+    repository.publish_changes(private_key_dirs=options.private_key_dirs)
+    logger.debug('done')
 
 
 HELP = dict(
@@ -173,4 +185,5 @@ HELP = dict(
     keys_create='Create a new key pair and add it to the repository.',
     keys_add='Add an existing key to the repository.',
     keys_revoke='Revoke a repository key.',
+    private_key_dirs='Directories to search for private keys.',
 )
