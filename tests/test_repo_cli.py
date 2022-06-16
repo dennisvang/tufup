@@ -13,14 +13,14 @@ class ParserTests(unittest.TestCase):
         parser = notsotuf.repo.cli.get_parser()
         for cmd in [
             'init',
-            'targets -a 1.0 bundle-dir -p c:\\private_keys'
+            'targets -a 1.0 bundle-dir -k c:\\private_keys'
             'targets -r',
-            'keys -c key-name',
-            'keys -a key-path',
-            'keys -r key-name',
-            'sign -r root -p c:\\private_keys d:\\other_private_keys',
-            'sign -r root -p c:\\private_keys -e',
-            'sign -r root -p c:\\private_keys -e 100',
+            'keys -n my-key-name -c -e -r root -k c:\\private_keys',
+            'keys -n my-key-name -r root -k c:\\private_keys',
+            'keys -n my-key-name -o 5dqfdq32vdgq2v -k c:\\private_keys',
+            'sign -r root -k c:\\private_keys d:\\other_private_keys',
+            'sign -r root -k c:\\private_keys -e',
+            'sign -r root -k c:\\private_keys -e 100',
         ]:
             options = parser.parse_args(cmd.split())
             self.assertTrue(options.func)
@@ -38,11 +38,16 @@ class CommandTests(TempDirTestCase):
             expiration_days=notsotuf.repo.DEFAULT_EXPIRATION_DAYS,
         )
         mock_return_config = Mock(return_value=self.config)
-        mock_repo = Mock(**self.config)
+        mock_keys = Mock()
+        mock_keys.create_key_pair = Mock()
+        mock_roles = Mock()
+        mock_roles.add_public_key = Mock()
+        mock_repo = Mock(keys=mock_keys, roles=mock_roles, **self.config)
         mock_repo.save_config = Mock()
         mock_repo.initialize = Mock()
         mock_repo.add_bundle = Mock()
         mock_repo.remove_latest_bundle = Mock()
+        mock_repo.replace_key = Mock()
         mock_repo.refresh_expiration_date = Mock()
         mock_repo.threshold_sign = Mock()
         mock_repo.publish_changes = Mock()
@@ -62,10 +67,47 @@ class CommandTests(TempDirTestCase):
                     notsotuf.repo.cli._cmd_init(options=argparse.Namespace())
         self.mock_repo.initialize.assert_called()
 
-    def test__cmd_keys(self):
-        # todo
-        options = argparse.Namespace(add=None, create=None, revoke=None)
-        notsotuf.repo.cli._cmd_keys(options=options)
+    def test__cmd_keys_create(self):
+        options = argparse.Namespace(
+            key_name='test',
+            role_name=None,
+            encrypted=True,
+            create=True,
+            old_key_id=None,
+            key_dirs=None,
+        )
+        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
+            notsotuf.repo.cli._cmd_keys(options=options)
+        self.mock_repo.keys.create_key_pair.assert_called()
+
+    def test__cmd_keys_create_and_add_key(self):
+        options = argparse.Namespace(
+            key_name='test',
+            role_name='root',
+            encrypted=True,
+            create=True,
+            old_key_id=None,
+            key_dirs=['c:\\my_private_keys'],
+        )
+        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
+            notsotuf.repo.cli._cmd_keys(options=options)
+        self.mock_repo.keys.create_key_pair.assert_called()
+        self.mock_repo.roles.add_public_key.assert_called()
+        self.mock_repo.publish_changes.assert_called()
+
+    def test__cmd_keys_replace_key(self):
+        options = argparse.Namespace(
+            key_name='test',
+            role_name=None,
+            encrypted=False,
+            create=False,
+            old_key_id='someoldkeyid',
+            key_dirs=['c:\\my_private_keys'],
+        )
+        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
+            notsotuf.repo.cli._cmd_keys(options=options)
+        self.mock_repo.replace_key.assert_called()
+        self.mock_repo.publish_changes.assert_called()
 
     def test__cmd_targets_add(self):
         version = '1.0'
