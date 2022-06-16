@@ -29,7 +29,7 @@ def get_parser() -> argparse.ArgumentParser:
     )
     subparser_targets.add_argument(
         '-p',
-        '--private_key_dirs',
+        '--private-key-dirs',
         required=False,
         nargs='*',
         help=HELP['private_key_dirs'],
@@ -43,6 +43,33 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_keys.add_argument('-c', '--create', help=HELP['keys_create'])
     subparser_keys.add_argument('-a', '--add', help=HELP['keys_add'])
     subparser_keys.add_argument('-r', '--revoke', help=HELP['keys_revoke'])
+    # sign
+    subparser_sign = subparsers.add_parser('sign')
+    subparser_sign.set_defaults(func=_cmd_sign)
+    subparser_sign.add_argument(
+        '-r',
+        '--role-name',
+        required=True,
+        choices=('root', 'targets', 'snapshot', 'timestamp'),
+        help=HELP['sign_role_name'],
+    )
+
+    subparser_sign.add_argument(
+        '-p',
+        '--private-key-dirs',
+        required=False,
+        nargs='*',
+        help=HELP['private_key_dirs'],
+    )
+    subparser_sign.add_argument(
+        '-e',
+        '--expiration-days',
+        required=False,
+        nargs='?',
+        const='default',  # if option -e is specified without value
+        default=None,  # if option -e is not specified at all
+        help=HELP['sign_expiration_days'],
+    )
     return parser
 
 
@@ -176,6 +203,34 @@ def _cmd_targets(options: argparse.Namespace):
     logger.debug('done')
 
 
+def _cmd_sign(options: argparse.Namespace):
+    logger.debug(f'command sign: {vars(options)}')
+    try:
+        repository = Repository.from_config()
+    except TypeError:
+        print(
+            'Failed to load configuration. Did you initialize the repository?')
+        return
+    if options.expiration_days:
+        # default or custom
+        days = repository.expiration_days.get(options.role_name)
+        if options.expiration_days.isnumeric():
+            days = int(options.expiration_days)
+        # change expiration date in signed metadata
+        repository.refresh_expiration_date(
+            role_name=options.role_name, days=days
+        )
+        # also update version and expiration date for dependent roles, and sign
+        # modified roles
+        repository.publish_changes(private_key_dirs=options.private_key_dirs)
+    else:
+        # sign without changing the signed metadata (for threshold signing)
+        repository.threshold_sign(
+            role_name=options.role_name,
+            private_key_dirs=options.private_key_dirs,
+        )
+
+
 HELP = dict(
     targets_add=(
         'Add specified app bundle to the repository. Creates archive and '
@@ -185,5 +240,10 @@ HELP = dict(
     keys_create='Create a new key pair and add it to the repository.',
     keys_add='Add an existing key to the repository.',
     keys_revoke='Revoke a repository key.',
+    sign_role_name='Name of role to be signed.',
+    sign_expiration_days=(
+        'Set expiration date as number of days from today. Metadata version '
+        'and expiration date for dependent roles will also be updated.'
+    ),
     private_key_dirs='Directories to search for private keys.',
 )
