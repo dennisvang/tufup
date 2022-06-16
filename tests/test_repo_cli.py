@@ -112,11 +112,11 @@ class CommandTests(TempDirTestCase):
     def test__cmd_targets_add(self):
         version = '1.0'
         bundle_dir = 'dummy'
-        private_key_dirs = ['c:\\my_private_keys']
+        key_dirs = ['c:\\my_private_keys']
         options = argparse.Namespace(
             add=[version, bundle_dir],
             remove=False,
-            private_key_dirs=private_key_dirs,
+            key_dirs=key_dirs,
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_targets(options=options)
@@ -124,37 +124,33 @@ class CommandTests(TempDirTestCase):
             new_version=version, new_bundle_dir=bundle_dir
         )
         self.mock_repo.publish_changes.assert_called_with(
-            private_key_dirs=private_key_dirs
+            private_key_dirs=key_dirs
         )
 
     def test__cmd_targets_remove(self):
-        options = argparse.Namespace(
-            add=None, remove=True, private_key_dirs=None
-        )
+        options = argparse.Namespace(add=None, remove=True, key_dirs=None)
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_targets(options=options)
         self.mock_repo.remove_latest_bundle.assert_called()
 
     def test__cmd_sign_threshold(self):
         role_name = 'root'
-        private_key_dirs = ['c:\\my_private_keys']
+        key_dirs = ['c:\\my_private_keys']
         options = argparse.Namespace(
-            role_name=role_name,
-            private_key_dirs=private_key_dirs,
-            expiration_days=None,
+            role_name=role_name, key_dirs=key_dirs, expiration_days=None
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_sign(options=options)
         self.mock_repo.threshold_sign.assert_called_with(
-            role_name=role_name, private_key_dirs=private_key_dirs
+            role_name=role_name, private_key_dirs=key_dirs
         )
 
     def test__cmd_sign_expired(self):
         role_name = 'root'
-        private_key_dirs = ['c:\\my_private_keys']
+        key_dirs = ['c:\\my_private_keys']
         options = argparse.Namespace(
             role_name=role_name,
-            private_key_dirs=private_key_dirs,
+            key_dirs=key_dirs,
             expiration_days='default',  # i.e. specify -e without a value
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
@@ -163,7 +159,7 @@ class CommandTests(TempDirTestCase):
             role_name=role_name, days=self.config['expiration_days'][role_name]
         )
         self.mock_repo.publish_changes.assert_called_with(
-            private_key_dirs=private_key_dirs
+            private_key_dirs=key_dirs
         )
 
     def test__get_config_from_user_no_kwargs(self):

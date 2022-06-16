@@ -242,7 +242,7 @@ def _cmd_targets(options: argparse.Namespace):
         repository.remove_latest_bundle()
         logger.debug('done')
     logger.debug('attempting to publish changes...')
-    repository.publish_changes(private_key_dirs=options.private_key_dirs)
+    repository.publish_changes(private_key_dirs=options.key_dirs)
     logger.debug('done')
 
 
@@ -260,10 +260,10 @@ def _cmd_sign(options: argparse.Namespace):
         )
         # also update version and expiration date for dependent roles, and sign
         # modified roles
-        repository.publish_changes(private_key_dirs=options.private_key_dirs)
+        repository.publish_changes(private_key_dirs=options.key_dirs)
     else:
         # sign without changing the signed metadata (for threshold signing)
         repository.threshold_sign(
             role_name=options.role_name,
-            private_key_dirs=options.private_key_dirs,
+            private_key_dirs=options.key_dirs,
         )
