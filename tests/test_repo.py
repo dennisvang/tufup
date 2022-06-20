@@ -469,19 +469,20 @@ class RepositoryTests(TempDirTestCase):
     def test_defaults(self):
         self.assertTrue(Repository(app_name='test'))
 
-    def test_config_items(self):
-        repo = Repository(app_name='test')
-        expected_config_items = [
-            'app_name',
-            'app_version_attr',
-            'encrypted_keys',
-            'expiration_days',
-            'key_map',
-            'keys_dir',
-            'repo_dir',
-            'thresholds',
-        ]
-        self.assertEqual(set(expected_config_items), set(repo.config_items))
+    def test_config_dict(self):
+        app_name = 'test'
+        repo = Repository(app_name=app_name)
+        expected_config_dict = {
+            'app_name': app_name,
+            'app_version_attr': None,
+            'encrypted_keys': None,
+            'expiration_days': None,
+            'key_map': None,
+            'keys_dir': None,
+            'repo_dir': None,
+            'thresholds': None,
+        }
+        self.assertEqual(set(expected_config_dict), set(repo.config_dict))
 
     def test_app_version(self):
         # for convenience we use the notosotuf version attribute here,
@@ -545,7 +546,7 @@ class RepositoryTests(TempDirTestCase):
             repo = Repository.from_config()
         self.assertEqual(
             config_data,
-            {item: getattr(repo, item) for item in repo.config_items}
+            {item: getattr(repo, item) for item in config_data.keys()},
         )
         self.assertTrue(mock_load_keys_and_roles.called)
 

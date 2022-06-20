@@ -535,10 +535,11 @@ class Repository(object):
         self.roles: Optional[Roles] = None
 
     @property
-    def config_items(self):
-        """Returns names of attributes that are saved to configuration file."""
+    def config_dict(self):
+        """dict to be saved to configuration file."""
         # attributes matching __init__ arguments are stored as configuration
-        return inspect.signature(self.__init__).parameters.keys()
+        config_items = inspect.signature(self.__init__).parameters.keys()
+        return {item: getattr(self, item) for item in config_items}
 
     @property
     def metadata_dir(self) -> pathlib.Path:
@@ -564,10 +565,9 @@ class Repository(object):
 
     def save_config(self):
         """Save current configuration."""
-        config_dict = {item: getattr(self, item) for item in self.config_items}
         file_path = self.get_config_file_path()
         file_path.write_text(
-            data=json.dumps(config_dict, default=str), encoding='utf-8'
+            data=json.dumps(self.config_dict, default=str), encoding='utf-8'
         )
 
     @classmethod
