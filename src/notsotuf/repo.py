@@ -568,7 +568,10 @@ class Repository(object):
         """Save current configuration."""
         file_path = self.get_config_file_path()
         file_path.write_text(
-            data=json.dumps(self.config_dict, default=str), encoding='utf-8'
+            data=json.dumps(
+                self.config_dict, default=str, sort_keys=True, indent=4
+            ),
+            encoding='utf-8',
         )
 
     @classmethod
