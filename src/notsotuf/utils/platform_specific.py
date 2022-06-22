@@ -1,14 +1,16 @@
 import logging
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
 from tempfile import NamedTemporaryFile
 from typing import Union
-import platform
+
 from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
+
 
 def install_update(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
@@ -19,6 +21,7 @@ def install_update(
         return _install_update_mac(src_dir, dst_dir)
     else:
         raise RuntimeError("This platform is not supported!")
+
 
 MOVE_FILES_BAT = """@echo off
 rem /e: include subdirs, /move: move files and dirs, /v: verbose, /purge: delete stale files and dirs in destination folder
@@ -53,6 +56,7 @@ def _install_update_win(
     logger.debug('exiting')
     sys.exit(0)
 
+
 def _install_update_mac(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
@@ -62,5 +66,5 @@ def _install_update_mac(
     logger.debug(f"Removing src directory {src_dir}.")
     remove_path(pathlib.Path(src_dir))
     logger.debug(f"Restarting application, running {sys.executable}.")
-    subprocess.Popen(sys.executable, shell=True) # nosec
+    subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
