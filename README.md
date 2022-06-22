@@ -73,7 +73,7 @@ When a new release of your application is ready, the following steps need to be 
 The signed metadata and hashes ensure both authenticity and integrity of the update files (see [tuf docs][2]).
 In order to sign the metadata, we need access to the private key files for the applicable `tuf` roles.
 
-The `notsotuf.tools.repo` module provides a convenient way to streamline the above procedure, based on the `tuf` [basic repo example][7].
+The `notsotuf.repo` module provides a convenient way to streamline the above procedure, based on the `tuf` [basic repo example][7].
 
 ## How updates are applied (client-side)
 
@@ -99,7 +99,7 @@ From here on, new updates will be deployed using `notsotuf`.
 
 The `notsotuf` package is aimed primarily at **Windows** and **macOS** applications. 
 
-Although `notsotuf` could also be used on Linux, Linux applications are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft. 
+Although `notsotuf` could also be used for Linux applications, those are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft. 
 Read the [Python packaging overview][8] for more information.
 
 The `notsotuf.repo` functionality is platform independent, as it is just a thin layer on top of `python-tuf`. 
