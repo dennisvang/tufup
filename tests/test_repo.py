@@ -596,7 +596,9 @@ class RepositoryTests(TempDirTestCase):
         )['keyid']
         # test
         repo.replace_key(
-            old_key_name=old_key_name, new_public_key_path=new_public_key_path
+            old_key_name=old_key_name,
+            new_public_key_path=new_public_key_path,
+            new_private_key_encrypted=True,  # pretend the key is encrypted
         )
         self.assertEqual(1, len(repo.roles.root.signed.roles[role_name].keyids))
         # old key removed?
@@ -610,6 +612,7 @@ class RepositoryTests(TempDirTestCase):
             new_key_id, repo.roles.root.signed.roles[role_name].keyids
         )
         self.assertIn(new_key_name, repo.key_map[role_name])
+        self.assertIn(new_key_name, repo.encrypted_keys)
 
     def test_add_bundle(self):
         # prepare
@@ -662,12 +665,13 @@ class RepositoryTests(TempDirTestCase):
             repo_dir=self.temp_dir_path / 'repo',
         )
         repo.initialize()  # todo: make test independent...
-        # create dummy "revoked key"
+        # create dummy "revoked key" and pretend it is encrypted
         revoked_key_name = 'revoked'
         repo.keys.create_key_pair(
             private_key_path=keys_dir / revoked_key_name, encrypted=False
         )
         repo.revoked_key_names.append(revoked_key_name)
+        repo.encrypted_keys.append(revoked_key_name)
         # dummy modification
         repo.roles.root.signed.spec_version = 'x'
         versioned_file_path = repo.metadata_dir / f'1.{role_name}.json'
@@ -681,6 +685,7 @@ class RepositoryTests(TempDirTestCase):
         )
         self.assertEqual(2, count)  # existing key and revoked key
         self.assertFalse(repo.revoked_key_names)
+        self.assertFalse(repo.encrypted_keys)
         # files should have been modified
         self.assertGreater(
             versioned_file_path.stat().st_mtime_ns, versioned_last_modified

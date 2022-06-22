@@ -624,6 +624,7 @@ class Repository(object):
             self,
             old_key_name: str,
             new_public_key_path: Union[pathlib.Path, str],
+            new_private_key_encrypted: bool,
     ):
         """
         Replace an existing key by a new one, e.g. after a key compromise.
@@ -664,6 +665,9 @@ class Repository(object):
                 )
                 # add new key to key map
                 self.key_map[role_name].append(new_key_name)
+                # add new key to encrypted keys if necessary
+                if new_private_key_encrypted:
+                    self.encrypted_keys.append(new_key_name)
 
     def add_bundle(
             self,
@@ -836,6 +840,8 @@ class Repository(object):
                 signature_count += 1
                 if key_name in self.revoked_key_names:
                     self.revoked_key_names.remove(key_name)
+                    if key_name in self.encrypted_keys:
+                        self.encrypted_keys.remove(key_name)
             else:
                 logger.warning(f'Private key not found: {key_name}')
         if not signature_count:
