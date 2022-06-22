@@ -566,6 +566,7 @@ class Repository(object):
 
     def save_config(self):
         """Save current configuration."""
+        # todo: write directories relative to config file dir?
         file_path = self.get_config_file_path()
         file_path.write_text(
             data=json.dumps(

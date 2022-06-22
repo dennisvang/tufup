@@ -137,3 +137,21 @@ repo = Repository.from_config()
 # Re-sign expired roles (downstream roles are refreshed automatically)
 repo.refresh_expiration_date(role_name='snapshot', days=9)
 repo.publish_changes(private_key_dirs=[ONLINE_DIR])
+
+# Time goes by
+...
+
+# Rotate root key (new key is not encrypted, for convenience only)
+new_private_key_path = OFFLINE_DIR_2 / 'root_three'
+repo = Repository.from_config()
+new_public_key_path = repo.keys.create_key_pair(
+    private_key_path=new_private_key_path, encrypted=False
+)
+repo.replace_key(
+    old_key_name='root_two',
+    new_public_key_path=new_public_key_path,
+    new_private_key_encrypted=False,
+)
+repo.publish_changes(
+    private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR]
+)
