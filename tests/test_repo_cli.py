@@ -29,13 +29,14 @@ class ParserTests(unittest.TestCase):
 class CommandTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
+        role_names = ['root', 'targets', 'snapshot', 'timestamp']
         self.config = dict(
             app_name='my-app',
             repo_dir=self.temp_dir_path / 'repo',
             keys_dir=self.temp_dir_path / 'keys',
-            key_map=notsotuf.repo.DEFAULT_KEY_MAP,
+            key_map={name: [name] for name in role_names},
             encrypted_keys=[],
-            expiration_days=notsotuf.repo.DEFAULT_EXPIRATION_DAYS,
+            expiration_days={name: 1 for name in role_names},
         )
         mock_return_config = Mock(return_value=self.config)
         mock_keys = Mock()
@@ -202,15 +203,16 @@ class CommandTests(TempDirTestCase):
         self.assertTrue(config_kwargs)
 
     def test__get_config_from_user_with_kwargs(self):
+        role_names = ['root', 'targets', 'snapshot', 'timestamp']
         original_kwargs = dict(
             app_name='my-app',
             app_version_attr='my_app.__version__',
             repo_dir='repo/dir',
             keys_dir='keys/dir',
-            key_map=notsotuf.repo.DEFAULT_KEY_MAP,
+            key_map={name: [name] for name in role_names},
             encrypted_keys=['root'],
-            expiration_days=notsotuf.repo.DEFAULT_EXPIRATION_DAYS,
-            thresholds=notsotuf.repo.DEFAULT_THRESHOLDS,
+            expiration_days={name: 1 for name in role_names},
+            thresholds={name: 1 for name in role_names},
         )
         default = ''
         with patch('builtins.input', Mock(return_value=default)):

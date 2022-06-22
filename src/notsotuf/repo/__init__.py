@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timedelta
 import inspect
 import json
@@ -155,9 +156,9 @@ class Keys(Base):
         if encrypted is None:
             encrypted = []
         if key_map is None:
-            key_map = DEFAULT_KEY_MAP
+            key_map = deepcopy(DEFAULT_KEY_MAP)
         if thresholds is None:
-            thresholds = DEFAULT_THRESHOLDS
+            thresholds = DEFAULT_THRESHOLDS.copy()
         self.encrypted = encrypted
         self.key_map = key_map
         self.thresholds = thresholds
@@ -312,7 +313,7 @@ class Roles(Base):
             self, keys: Keys, expiration_days: Optional[RolesDict] = None
     ):
         if expiration_days is None:
-            expiration_days = DEFAULT_EXPIRATION_DAYS
+            expiration_days = DEFAULT_EXPIRATION_DAYS.copy()
         # based on python-tuf basic_repo.py
         common_kwargs = dict(version=1, spec_version=SPEC_VERSION)
         # role-specific kwargs
@@ -514,13 +515,13 @@ class Repository(object):
         if keys_dir is None:
             keys_dir = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
         if key_map is None:
-            key_map = DEFAULT_KEY_MAP
+            key_map = deepcopy(DEFAULT_KEY_MAP)
         if encrypted_keys is None:
             encrypted_keys = []
         if expiration_days is None:
-            expiration_days = DEFAULT_EXPIRATION_DAYS
+            expiration_days = DEFAULT_EXPIRATION_DAYS.copy()
         if thresholds is None:
-            thresholds = DEFAULT_THRESHOLDS
+            thresholds = DEFAULT_THRESHOLDS.copy()
         self.app_name = app_name
         self.app_version_attr = app_version_attr
         # force path object and resolve, in case of relative paths

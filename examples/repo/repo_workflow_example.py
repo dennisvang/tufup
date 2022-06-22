@@ -1,3 +1,4 @@
+import copy
 import logging
 import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
@@ -46,7 +47,7 @@ TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 # Settings
 EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
 THRESHOLDS = dict(root=2, targets=1, snapshot=1, timestamp=1)
-KEY_MAP = DEFAULT_KEY_MAP.copy()
+KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
 KEY_MAP['root'].append('root_two')  # use two keys for root
 ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
 
