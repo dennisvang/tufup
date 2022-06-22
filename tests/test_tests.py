@@ -31,4 +31,4 @@ class TempDirTestCaseTests(TempDirTestCase):
         current_cwd = pathlib.Path.cwd()
         self.assertNotIn('tests', str(current_cwd))
         self.assertNotEqual(self.original_cwd, current_cwd)
-        self.assertEqual(self.temp_dir_path.resolve(), current_cwd)
+        self.assertEqual(self.temp_dir_path.resolve(), current_cwd.resolve())
