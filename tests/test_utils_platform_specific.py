@@ -1,7 +1,11 @@
 import subprocess
 import sys
 from time import sleep
+import unittest
 
+from notsotuf.utils.platform_specific import (
+    CURRENT_PLATFORM, SUPPORTED_PLATFORMS_FOR_CLIENT
+)
 from tests import BASE_DIR, TempDirTestCase
 
 DUMMY_APP_CONTENT = f"""
@@ -13,6 +17,10 @@ install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2])
 
 
 class UtilsTests(TempDirTestCase):
+    @unittest.skipIf(
+        condition=CURRENT_PLATFORM not in SUPPORTED_PLATFORMS_FOR_CLIENT,
+        reason='install_update() is only actively supported on windows and mac',
+    )
     def test_install_update(self):
         # create src dir with dummy app file, and dst dir with stale subdir
         test_dir = self.temp_dir_path / 'notsotuf_tests'

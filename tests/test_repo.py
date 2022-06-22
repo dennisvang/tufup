@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from securesystemslib.interface import (
     generate_and_write_unencrypted_ed25519_keypair,
     generate_and_write_ed25519_keypair,
+    import_ed25519_publickey_from_file,
 )
 from tuf.api.metadata import (
     Metadata,
@@ -469,19 +470,20 @@ class RepositoryTests(TempDirTestCase):
     def test_defaults(self):
         self.assertTrue(Repository(app_name='test'))
 
-    def test_config_items(self):
-        repo = Repository(app_name='test')
-        expected_config_items = [
-            'app_name',
-            'app_version_attr',
-            'encrypted_keys',
-            'expiration_days',
-            'key_map',
-            'keys_dir',
-            'repo_dir',
-            'thresholds',
-        ]
-        self.assertEqual(set(expected_config_items), set(repo.config_items))
+    def test_config_dict(self):
+        app_name = 'test'
+        repo = Repository(app_name=app_name)
+        expected_config_dict = {
+            'app_name': app_name,
+            'app_version_attr': None,
+            'encrypted_keys': None,
+            'expiration_days': None,
+            'key_map': None,
+            'keys_dir': None,
+            'repo_dir': None,
+            'thresholds': None,
+        }
+        self.assertEqual(set(expected_config_dict), set(repo.config_dict))
 
     def test_app_version(self):
         # for convenience we use the notosotuf version attribute here,
@@ -495,28 +497,20 @@ class RepositoryTests(TempDirTestCase):
         self.assertTrue(Repository.get_config_file_path())
 
     def test_save_config(self):
-        mock_config_path = Mock(
-            return_value=self.temp_dir_path / Repository.config_filename
-        )
         # prepare
         repo = Repository(app_name='test')
         # test
-        with patch.object(Repository, 'get_config_file_path', mock_config_path):
-            repo.save_config()
-        self.assertTrue(mock_config_path().exists())
-        print(mock_config_path().read_text())
+        repo.save_config()
+        self.assertTrue(repo.get_config_file_path().exists())
+        print(repo.get_config_file_path().read_text())
 
     def test_load_config(self):
         # file does not exist
         self.assertEqual(dict(), Repository.load_config())
         # file exists but invalid
-        mock_config_path = Mock(
-            return_value=self.temp_dir_path / Repository.config_filename
-        )
-        mock_config_path().touch()
+        Repository.get_config_file_path().touch()
         # test
-        with patch.object(Repository, 'get_config_file_path', mock_config_path):
-            self.assertEqual(dict(), Repository.load_config())
+        self.assertEqual(dict(), Repository.load_config())
 
     def test_from_config(self):
         temp_dir = self.temp_dir_path.resolve()
@@ -531,21 +525,18 @@ class RepositoryTests(TempDirTestCase):
             expiration_days=dict(),
             thresholds=dict(),
         )
-        mock_config_path = Mock(
-            return_value=temp_dir / Repository.config_filename
+        Repository.get_config_file_path().write_text(
+            json.dumps(config_data, default=str)
         )
-        mock_config_path().write_text(json.dumps(config_data, default=str))
         mock_load_keys_and_roles = Mock()
         # test
-        with patch.multiple(
-                Repository,
-                get_config_file_path=mock_config_path,
-                _load_keys_and_roles=mock_load_keys_and_roles,
+        with patch.object(
+                Repository, '_load_keys_and_roles', mock_load_keys_and_roles,
         ):
             repo = Repository.from_config()
         self.assertEqual(
             config_data,
-            {item: getattr(repo, item) for item in repo.config_items}
+            {item: getattr(repo, item) for item in config_data.keys()},
         )
         self.assertTrue(mock_load_keys_and_roles.called)
 
@@ -592,19 +583,36 @@ class RepositoryTests(TempDirTestCase):
             repo_dir=self.temp_dir_path / 'repo',
         )
         repo.initialize()  # todo: make test independent...
+        old_key_name = role_name
+        old_key_id = repo.roles.root.signed.roles[role_name].keyids[0]
         # create new key pair to replace old one
-        new_private_key_path = repo.keys_dir / 'new_key'
+        new_key_name = 'new_key'
+        new_private_key_path = repo.keys_dir / new_key_name
         new_public_key_path = Keys.create_key_pair(
             private_key_path=new_private_key_path, encrypted=False
         )
-        old_key_id = repo.roles.root.signed.roles[role_name].keyids[0]
+        new_key_id = import_ed25519_publickey_from_file(
+            filepath=str(new_public_key_path)
+        )['keyid']
         # test
         repo.replace_key(
-            old_key_id=old_key_id, new_public_key_path=new_public_key_path
+            old_key_name=old_key_name,
+            new_public_key_path=new_public_key_path,
+            new_private_key_encrypted=True,  # pretend the key is encrypted
         )
+        self.assertEqual(1, len(repo.roles.root.signed.roles[role_name].keyids))
+        # old key removed?
         self.assertNotIn(
             old_key_id, repo.roles.root.signed.roles[role_name].keyids
         )
+        self.assertNotIn(old_key_name, repo.key_map[role_name])
+        self.assertIn(old_key_name, repo.revoked_key_names)
+        # new key added?
+        self.assertIn(
+            new_key_id, repo.roles.root.signed.roles[role_name].keyids
+        )
+        self.assertIn(new_key_name, repo.key_map[role_name])
+        self.assertIn(new_key_name, repo.encrypted_keys)
 
     def test_add_bundle(self):
         # prepare
@@ -657,8 +665,15 @@ class RepositoryTests(TempDirTestCase):
             repo_dir=self.temp_dir_path / 'repo',
         )
         repo.initialize()  # todo: make test independent...
+        # create dummy "revoked key" and pretend it is encrypted
+        revoked_key_name = 'revoked'
+        repo.keys.create_key_pair(
+            private_key_path=keys_dir / revoked_key_name, encrypted=False
+        )
+        repo.revoked_key_names.append(revoked_key_name)
+        repo.encrypted_keys.append(revoked_key_name)
         # dummy modification
-        repo.roles.root_modified = True
+        repo.roles.root.signed.spec_version = 'x'
         versioned_file_path = repo.metadata_dir / f'1.{role_name}.json'
         non_versioned_file_path = repo.metadata_dir / f'{role_name}.json'
         versioned_last_modified = versioned_file_path.stat().st_mtime_ns
@@ -668,7 +683,9 @@ class RepositoryTests(TempDirTestCase):
         count = repo.threshold_sign(
             role_name=role_name, private_key_dirs=[repo.keys_dir]
         )
-        self.assertEqual(1, count)
+        self.assertEqual(2, count)  # existing key and revoked key
+        self.assertFalse(repo.revoked_key_names)
+        self.assertFalse(repo.encrypted_keys)
         # files should have been modified
         self.assertGreater(
             versioned_file_path.stat().st_mtime_ns, versioned_last_modified
@@ -731,10 +748,13 @@ class RepositoryTests(TempDirTestCase):
                     repo_dir=temp_dir_path / 'repo',
                 )
                 repo.initialize()  # todo: make test independent...
-                # make a change (in memory)
+                # make a change to metadata (in memory)
                 repo.roles.set_expiration_date(
                     role_name=test_role_name, days=days
                 )
+                # make a change to config
+                config_change = 'dummy'
+                repo.encrypted_keys.append(config_change)
                 # test
                 repo.publish_changes(private_key_dirs=[repo.keys_dir])
                 for role_name in role_names:
@@ -751,28 +771,8 @@ class RepositoryTests(TempDirTestCase):
                     date.today() + timedelta(days=days),
                     root.signed.expires.date(),
                 )
-
- # def test_bump_signed_version_if_modified(self):
-    #     # prepare
-    #     roles = Roles(dir_path=self.temp_dir_path)
-    #     roles.root = Metadata(signed=DUMMY_ROOT, signatures=dict())
-    #     # test file does not exist yet
-    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-    #     # test not modified and not bumped
-    #     roles.persist_role(role_name='root')
-    #     self.assertFalse(roles.bump_signed_version_if_modified(role_name='root'))
-    #     # test forced bump (not modified)
-    #     self.assertTrue(
-    #         roles.bump_signed_version_if_modified(
-    #             role_name='root', force_bump=True
-    #         )
-    #     )
-    #     self.assertEqual(2, roles.root.signed.version)
-    #     # test modified but not bumped
-    #     roles.root.signed.version = 1
-    #     roles.root.signed.consistent_snapshot = True  # any attribute would do
-    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-    #     # test modified and already bumped
-    #     self.assertTrue(roles.bump_signed_version_if_modified(role_name='root'))
-    #     self.assertEqual(2, roles.root.signed.version)
-    #
+                # verify change in config
+                config_from_disk = repo.load_config()
+                self.assertIn(
+                    config_change, config_from_disk['encrypted_keys']
+                )

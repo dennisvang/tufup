@@ -533,12 +533,14 @@ class Repository(object):
         # keys and roles
         self.keys: Optional[Keys] = None
         self.roles: Optional[Roles] = None
+        self.revoked_key_names = []
 
     @property
-    def config_items(self):
-        """Returns names of attributes that are saved to configuration file."""
+    def config_dict(self):
+        """dict to be saved to configuration file."""
         # attributes matching __init__ arguments are stored as configuration
-        return inspect.signature(self.__init__).parameters.keys()
+        config_items = inspect.signature(self.__init__).parameters.keys()
+        return {item: getattr(self, item) for item in config_items}
 
     @property
     def metadata_dir(self) -> pathlib.Path:
@@ -564,10 +566,13 @@ class Repository(object):
 
     def save_config(self):
         """Save current configuration."""
-        config_dict = {item: getattr(self, item) for item in self.config_items}
+        # todo: write directories relative to config file dir?
         file_path = self.get_config_file_path()
         file_path.write_text(
-            data=json.dumps(config_dict, default=str), encoding='utf-8'
+            data=json.dumps(
+                self.config_dict, default=str, sort_keys=True, indent=4
+            ),
+            encoding='utf-8',
         )
 
     @classmethod
@@ -620,31 +625,53 @@ class Repository(object):
         self.roles.set_expiration_date(role_name=role_name, days=days)
 
     def replace_key(
-            self, old_key_id: str, new_public_key_path: Union[pathlib.Path, str]
+            self,
+            old_key_name: str,
+            new_public_key_path: Union[pathlib.Path, str],
+            new_private_key_encrypted: bool,
     ):
         """
         Replace an existing key by a new one, e.g. after a key compromise.
 
-        Note the changes are not published yet: call publish_changes() for that
+        Note the changes are not published yet: call publish_changes() for that.
         """
-        # Based on root key rotation example from tuf basic_repo.py.
-        # a key may be used for multiple roles, so we check the key id for
-        # all roles
+        self.revoked_key_names = []
+        # Load old public key from file to obtain its key_id
+        public_key_path = self.keys.public_key_path(key_name=old_key_name)
+        old_key_id = import_ed25519_publickey_from_file(
+            filepath=str(public_key_path)
+        )['keyid']
+        # Get new key name from public key path
+        new_public_key_path = pathlib.Path(new_public_key_path)  # force path
+        new_key_name = new_public_key_path.with_suffix('').name
+        # A key may be used for multiple roles, so we check the key id for
+        # all roles.
         for role_name in TOP_LEVEL_ROLE_NAMES:
             try:
-                # key id is removed from roles dict, if found, and key is
-                # removed from keys dict if it is no longer used by any roles
+                # remove old key_id from roles dict, if found, and remove key
+                # from keys dict if it is no longer used by any roles
                 self.roles.root.signed.remove_key(
                     role=role_name, keyid=old_key_id
                 )
-                # todo: we must ensure both keys will still be used for signing
+                # move old key name from key_map to revoked_key_map
+                self.key_map[role_name].remove(old_key_name)
+                # to ensure continuity, changes to root must be signed both
+                # with the new key and the old key (in addition to unmodified
+                # keys), so we keep track of revoked keys until signed
+                self.revoked_key_names.append(old_key_name)
+                logger.debug(f'Key revoked for {role_name}: {old_key_name}')
             except ValueError:
-                logger.debug(f'{role_name} does not have key {old_key_id}')
+                logger.debug(f'{role_name} does not have key {old_key_name}')
             else:
-                # add the new key
+                # add new key to metadata
                 self.roles.add_public_key(
                     role_name=role_name, public_key_path=new_public_key_path
                 )
+                # add new key to key map
+                self.key_map[role_name].append(new_key_name)
+                # add new key to encrypted keys if necessary
+                if new_private_key_encrypted:
+                    self.encrypted_keys.append(new_key_name)
 
     def add_bundle(
             self,
@@ -778,6 +805,10 @@ class Repository(object):
                 logger.info(f'Published changes for {role_name}.')
             else:
                 logger.info(f'No changes detected for {role_name}.')
+        # update config if key_map has changed
+        if self.config_dict != self.load_config():
+            self.save_config()
+            logger.info('Config file updated.')
 
     def threshold_sign(
             self,
@@ -790,11 +821,18 @@ class Repository(object):
         Use this to sign and save without making any changes to the actual
         signed metadata.
 
+        In case of root key rotation, both the old private key and the new
+        private key are required.
+
         Returns the number of signatures created.
         """
         signature_count = 0
         # sign role with all required keys that can be found
-        for key_name in self.key_map.get(role_name, []):
+        key_names = set(self.key_map.get(role_name, []))
+        if role_name == 'root':
+            # set ensures uniqueness
+            key_names = key_names.union(self.revoked_key_names)
+        for key_name in key_names:
             private_key_path = self.keys.find_private_key(
                 key_name=key_name, key_dirs=private_key_dirs
             )
@@ -804,8 +842,12 @@ class Repository(object):
                     private_key_path=private_key_path,
                 )
                 signature_count += 1
+                if key_name in self.revoked_key_names:
+                    self.revoked_key_names.remove(key_name)
+                    if key_name in self.encrypted_keys:
+                        self.encrypted_keys.remove(key_name)
             else:
-                logger.warning(f'private key not found: {key_name}')
+                logger.warning(f'Private key not found: {key_name}')
         if not signature_count:
             raise Exception(f'No private keys found for {role_name}.')
         # save changes to disk

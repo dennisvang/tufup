@@ -11,16 +11,21 @@ from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
 
+WINDOWS = 'Windows'
+MAC = 'Darwin'
+SUPPORTED_PLATFORMS_FOR_CLIENT = [WINDOWS, MAC]
+CURRENT_PLATFORM = platform.system()
+
 
 def install_update(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
-    if platform.system() == "Windows":
+    if CURRENT_PLATFORM == WINDOWS:
         return _install_update_win(src_dir, dst_dir)
-    if platform.system() == "Darwin":
+    if CURRENT_PLATFORM == MAC:
         return _install_update_mac(src_dir, dst_dir)
     else:
-        raise RuntimeError("This platform is not supported!")
+        raise RuntimeError('This platform is not supported.')
 
 
 MOVE_FILES_BAT = """@echo off
@@ -60,11 +65,11 @@ def _install_update_win(
 def _install_update_mac(
         src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
 ):
-    logger.debug(f"Moving content of {src_dir} to {dst_dir}.")
+    logger.debug(f'Moving content of {src_dir} to {dst_dir}.')
     remove_path(pathlib.Path(dst_dir))
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    logger.debug(f"Removing src directory {src_dir}.")
+    logger.debug(f'Removing src directory {src_dir}.')
     remove_path(pathlib.Path(src_dir))
-    logger.debug(f"Restarting application, running {sys.executable}.")
+    logger.debug(f'Restarting application, running {sys.executable}.')
     subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
