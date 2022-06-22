@@ -24,11 +24,11 @@ class CreateToggleGeneratorTests(TestCase):
 
 class TempDirTestCaseTests(TempDirTestCase):
     def setUp(self) -> None:
-        self.original_cwd = pathlib.Path.cwd().resolve()
+        self.original_cwd = pathlib.Path.cwd()
         super().setUp()
 
     def test_temporary_cwd(self):
-        current_cwd = pathlib.Path.cwd().resolve()
+        current_cwd = pathlib.Path.cwd()
         self.assertNotIn('tests', str(current_cwd))
         self.assertNotEqual(self.original_cwd, current_cwd)
-        self.assertEqual(self.temp_dir_path, current_cwd)
+        self.assertEqual(self.temp_dir_path.resolve(), current_cwd)
