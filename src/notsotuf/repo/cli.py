@@ -210,6 +210,9 @@ def _cmd_init(options: argparse.Namespace):
 
 def _cmd_keys(options: argparse.Namespace):
     logger.debug(f'command keys: {vars(options)}')
+    if (options.role_name or options.old_key_name) and not options.key_dirs:
+        logger.error('The --key-dirs option (-k) is required for repo changes.')
+        return
     repository = _get_repo()
     public_key_path = repository.keys.public_key_path(
         key_name=options.new_key_name
