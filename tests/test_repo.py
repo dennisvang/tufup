@@ -577,16 +577,20 @@ class RepositoryTests(TempDirTestCase):
     def test_replace_key(self):
         role_name = 'root'
         # prepare
+        new_key_name = 'new_key'
+        old_key_name = 'old-key'
+        key_map = {name: [name] for name in TOP_LEVEL_ROLE_NAMES}
+        key_map['root'].append(old_key_name)
+        key_map['targets'] = [old_key_name]
         repo = Repository(
             app_name='test',
             keys_dir=self.temp_dir_path / 'keystore',
             repo_dir=self.temp_dir_path / 'repo',
+            key_map=key_map,
         )
         repo.initialize()  # todo: make test independent...
-        old_key_name = role_name
-        old_key_id = repo.roles.root.signed.roles[role_name].keyids[0]
+        old_key_id = repo.roles.root.signed.roles['targets'].keyids[0]
         # create new key pair to replace old one
-        new_key_name = 'new_key'
         new_private_key_path = repo.keys_dir / new_key_name
         new_public_key_path = Keys.create_key_pair(
             private_key_path=new_private_key_path, encrypted=False
@@ -595,12 +599,16 @@ class RepositoryTests(TempDirTestCase):
             filepath=str(new_public_key_path)
         )['keyid']
         # test
+        expected_key_count = len(key_map[role_name])
         repo.replace_key(
             old_key_name=old_key_name,
             new_public_key_path=new_public_key_path,
             new_private_key_encrypted=True,  # pretend the key is encrypted
         )
-        self.assertEqual(1, len(repo.roles.root.signed.roles[role_name].keyids))
+        self.assertEqual(
+            expected_key_count,
+            len(repo.roles.root.signed.roles[role_name].keyids),
+        )
         # old key removed?
         self.assertNotIn(
             old_key_id, repo.roles.root.signed.roles[role_name].keyids
@@ -613,6 +621,12 @@ class RepositoryTests(TempDirTestCase):
         )
         self.assertIn(new_key_name, repo.key_map[role_name])
         self.assertIn(new_key_name, repo.encrypted_keys)
+        # no duplicates in encrypted_keys?
+        self.assertEqual(1, len(repo.encrypted_keys))
+        # other keys still in key map?
+        self.assertEqual(expected_key_count, len(repo.key_map[role_name]))
+        # keys replaced for all roles?
+        self.assertIn(new_key_name, repo.key_map['targets'])
 
     def test_add_bundle(self):
         # prepare

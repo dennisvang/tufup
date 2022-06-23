@@ -669,9 +669,11 @@ class Repository(object):
                     role_name=role_name, public_key_path=new_public_key_path
                 )
                 # add new key to key map
-                self.key_map[role_name].append(new_key_name)
+                if new_key_name not in self.key_map[role_name]:
+                    self.key_map[role_name].append(new_key_name)
                 # add new key to encrypted keys if necessary
-                if new_private_key_encrypted:
+                already_present = new_key_name in self.encrypted_keys
+                if new_private_key_encrypted and not already_present:
                     self.encrypted_keys.append(new_key_name)
 
     def add_bundle(
