@@ -40,7 +40,7 @@ def _get_repo():
 
 
 def _add_key_dirs_argument(parser: argparse.ArgumentParser):
-    parser.add_argument('key-dirs', nargs='+', help=HELP['common_key_dirs'])
+    parser.add_argument('key_dirs', nargs='+', help=HELP['common_key_dirs'])
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -60,12 +60,12 @@ def get_parser() -> argparse.ArgumentParser:
         'add', help=HELP['targets_add']
     )
     subparser_targets_add.add_argument(
-        'app-version',
+        'app_version',
         action=_StoreVersionAction,
         help=HELP['targets_add_app_version'],
     )
     subparser_targets_add.add_argument(
-        'bundle-dir', help=HELP['targets_add_bundle_dir']
+        'bundle_dir', help=HELP['targets_add_bundle_dir']
     )
     subparser_targets_remove = targets_subparsers.add_parser(
         'remove-latest', help=HELP['targets_remove_latest']
@@ -75,7 +75,9 @@ def get_parser() -> argparse.ArgumentParser:
     # keys
     subparser_keys = subparsers.add_parser('keys')
     subparser_keys.set_defaults(func=_cmd_keys)
-    subparser_keys.add_argument('new-key-name', help=HELP['keys_new_key_name'])
+    subparser_keys.add_argument(
+        'new_key_name', help=HELP['keys_new_key_name']
+    )
     subparser_keys.add_argument(
         '-c', '--create', action='store_true', help=HELP['keys_create']
     )
@@ -88,11 +90,11 @@ def get_parser() -> argparse.ArgumentParser:
     )
     subparser_keys_add = keys_subparsers.add_parser('add')
     subparser_keys_add.add_argument(
-        'role-name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['keys_role_name']
+        'role_name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['keys_role_name']
     )
     subparser_keys_replace = keys_subparsers.add_parser('replace')
     subparser_keys_replace.add_argument(
-        'old-key-name', help=HELP['keys_old_key_name']
+        'old_key_name', help=HELP['keys_old_key_name']
     )
     for sp in [subparser_keys_add, subparser_keys_replace]:
         _add_key_dirs_argument(parser=sp)
@@ -100,7 +102,7 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_sign = subparsers.add_parser('sign')
     subparser_sign.set_defaults(func=_cmd_sign)
     subparser_sign.add_argument(
-        'role-name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['sign_role_name']
+        'role_name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['sign_role_name']
     )
     subparser_sign.add_argument(
         '-e',
@@ -226,23 +228,26 @@ def _cmd_keys(options: argparse.Namespace):
         repository.keys.create_key_pair(
             private_key_path=private_key_path, encrypted=options.encrypted
         )
-    if options.old_key_name:
+    replace = hasattr(options, 'old_key_name')
+    add = hasattr(options, 'role_name')
+    if replace:
         repository.replace_key(
             old_key_name=options.old_key_name,
             new_public_key_path=public_key_path,
             new_private_key_encrypted=options.encrypted,
         )
-    elif options.role_name:
+    elif add:
         repository.roles.add_public_key(
             role_name=options.role_name, public_key_path=public_key_path
         )
-    repository.publish_changes(private_key_dirs=options.key_dirs)
+    if replace or add:
+        repository.publish_changes(private_key_dirs=options.key_dirs)
 
 
 def _cmd_targets(options: argparse.Namespace):
     logger.debug(f'command targets: {vars(options)}')
     repository = _get_repo()
-    if options.app_version and options.bundle_dir:
+    if hasattr(options, 'app_version') and hasattr(options, 'bundle_dir'):
         logger.debug('adding bundle...')
         repository.add_bundle(
             new_version=options.app_version, new_bundle_dir=options.bundle_dir

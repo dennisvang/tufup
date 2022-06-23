@@ -13,7 +13,7 @@ class ParserTests(unittest.TestCase):
         parser = notsotuf.repo.cli.get_parser()
         for cmd in [
             'init',
-            'targets add 1.0 c:\\my_bundle_dir c:\\private_keys'
+            'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets remove-latest c:\\private_keys',
             'keys my-key-name -c -e',
             'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
@@ -75,12 +75,7 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_create(self):
         options = argparse.Namespace(
-            new_key_name='test',
-            old_key_name=None,
-            role_name=None,
-            encrypted=True,
-            create=True,
-            key_dirs=None,
+            new_key_name='test', encrypted=True, create=True
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_keys(options=options)
@@ -88,12 +83,11 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_create_and_add_key(self):
         options = argparse.Namespace(
-            new_key_name='test',
-            old_key_name=None,
-            role_name='root',
-            encrypted=True,
             create=True,
+            encrypted=True,
             key_dirs=['c:\\my_private_keys'],
+            new_key_name='test',
+            role_name='root',
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_keys(options=options)
@@ -103,12 +97,11 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_replace_key(self):
         options = argparse.Namespace(
+            create=True,
+            encrypted=False,
+            key_dirs=['c:\\my_private_keys'],
             new_key_name='some new key to be created',
             old_key_name='some old key name',
-            role_name=None,
-            encrypted=False,
-            create=True,
-            key_dirs=['c:\\my_private_keys'],
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_keys(options=options)
@@ -132,11 +125,9 @@ class CommandTests(TempDirTestCase):
             private_key_dirs=key_dirs
         )
 
-    def test__cmd_targets_remove(self):
+    def test__cmd_targets_remove_latest(self):
         key_dirs = ['c:\\my_private_keys']
-        options = argparse.Namespace(
-            app_version=None, bundle_dir=None, key_dirs=key_dirs
-        )
+        options = argparse.Namespace(key_dirs=key_dirs)
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_targets(options=options)
         self.mock_repo.remove_latest_bundle.assert_called()
