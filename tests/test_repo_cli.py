@@ -13,16 +13,16 @@ class ParserTests(unittest.TestCase):
         parser = notsotuf.repo.cli.get_parser()
         for cmd in [
             'init',
-            'targets -a 1.0 bundle-dir -k c:\\private_keys'
-            'targets -r',
+            'targets add 1.0 c:\\my_bundle_dir c:\\private_keys'
+            'targets remove-latest c:\\private_keys',
             'keys my-key-name -c -e',
             'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
             'keys my-key-name -c -e add root c:\\private_keys',
             'keys my-key-name replace old-key-name c:\\private_keys',
             'keys my-key-name -c -e replace old-key-name c:\\private_keys',
-            'sign -r root -k c:\\private_keys d:\\other_private_keys',
-            'sign -r root -k c:\\private_keys -e',
-            'sign -r root -k c:\\private_keys -e 100',
+            'sign root c:\\private_keys d:\\other_private_keys',
+            'sign root c:\\private_keys -e',
+            'sign root c:\\private_keys -e 100',
         ]:
             with self.subTest(msg=cmd):
                 args = cmd.split()
@@ -121,9 +121,7 @@ class CommandTests(TempDirTestCase):
         bundle_dir = 'dummy'
         key_dirs = ['c:\\my_private_keys']
         options = argparse.Namespace(
-            add=[version, bundle_dir],
-            remove=False,
-            key_dirs=key_dirs,
+            app_version=version, bundle_dir=bundle_dir, key_dirs=key_dirs
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_targets(options=options)
@@ -135,7 +133,10 @@ class CommandTests(TempDirTestCase):
         )
 
     def test__cmd_targets_remove(self):
-        options = argparse.Namespace(add=None, remove=True, key_dirs=None)
+        key_dirs = ['c:\\my_private_keys']
+        options = argparse.Namespace(
+            app_version=None, bundle_dir=None, key_dirs=key_dirs
+        )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_targets(options=options)
         self.mock_repo.remove_latest_bundle.assert_called()

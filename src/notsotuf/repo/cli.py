@@ -10,12 +10,14 @@ from notsotuf.repo import Repository
 logger = logging.getLogger(__name__)
 
 HELP = dict(
-    common_key_dirs='Directories containing private and/or public keys.',
+    common_key_dirs='Directories to search for private and/or public keys.',
     targets_add=(
-        'Add specified app bundle to the repository. Creates archive and '
-        'patch from bundle files. '
+        'Add app bundle to the repository. Creates archive and patch from'
+        ' bundle files.'
     ),
-    targets_remove='Remove latest app bundle from the repository.',
+    targets_add_app_version='Application version (PEP440 compliant)',
+    targets_add_bundle_dir='Directory containing application bundle.',
+    targets_remove_latest='Remove latest app bundle from the repository.',
     keys_subcommands='Optional commands to add or replace keys.',
     keys_new_key_name='Name of new private key (public key gets .pub suffix).',
     keys_role_name='Register public key for this role.',
@@ -37,37 +39,39 @@ def _get_repo():
         print('Failed to load config. Did you initialize the repository?')
 
 
+def _add_key_dirs_argument(parser: argparse.ArgumentParser):
+    parser.add_argument('key-dirs', nargs='+', help=HELP['common_key_dirs'])
+
+
 def get_parser() -> argparse.ArgumentParser:
     # https://docs.python.org/3/library/argparse.html#sub-commands
     # https://docs.python.org/3/library/argparse.html#parents
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
-    # parent parser with common arguments
-    common_parser = argparse.ArgumentParser(add_help=False)
-    common_parser.add_argument(
-        '-k',
-        '--key-dirs',
-        required=False,
-        nargs='*',
-        help=HELP['common_key_dirs'],
-    )
     # init
     subparser_init = subparsers.add_parser('init')
     subparser_init.set_defaults(func=_cmd_init)
     # targets
-    subparser_targets = subparsers.add_parser('targets', parents=[common_parser])
+    subparser_targets = subparsers.add_parser('targets')
     subparser_targets.set_defaults(func=_cmd_targets)
-    subparser_targets.add_argument(
-        '-a',
-        '--add',
-        nargs=2,
-        metavar=('<version>', '<bundle directory>'),
+    # we use nested subparsers to deal with mutually dependent arguments
+    targets_subparsers = subparser_targets.add_subparsers()
+    subparser_targets_add = targets_subparsers.add_parser(
+        'add', help=HELP['targets_add']
+    )
+    subparser_targets_add.add_argument(
+        'app-version',
         action=_StoreVersionAction,
-        help=HELP['targets_add'],
+        help=HELP['targets_add_app_version'],
     )
-    subparser_targets.add_argument(
-        '-r', '--remove', action='store_true', help=HELP['targets_remove']
+    subparser_targets_add.add_argument(
+        'bundle-dir', help=HELP['targets_add_bundle_dir']
     )
+    subparser_targets_remove = targets_subparsers.add_parser(
+        'remove-latest', help=HELP['targets_remove_latest']
+    )
+    for sp in [subparser_targets_add, subparser_targets_remove]:
+        _add_key_dirs_argument(parser=sp)
     # keys
     subparser_keys = subparsers.add_parser('keys')
     subparser_keys.set_defaults(func=_cmd_keys)
@@ -91,16 +95,12 @@ def get_parser() -> argparse.ArgumentParser:
         'old-key-name', help=HELP['keys_old_key_name']
     )
     for sp in [subparser_keys_add, subparser_keys_replace]:
-        sp.add_argument('key-dirs', nargs='+', help=HELP['common_key_dirs'])
+        _add_key_dirs_argument(parser=sp)
     # sign
-    subparser_sign = subparsers.add_parser('sign', parents=[common_parser])
+    subparser_sign = subparsers.add_parser('sign')
     subparser_sign.set_defaults(func=_cmd_sign)
     subparser_sign.add_argument(
-        '-r',
-        '--role-name',
-        required=True,
-        choices=TOP_LEVEL_ROLE_NAMES,
-        help=HELP['sign_role_name'],
+        'role-name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['sign_role_name']
     )
     subparser_sign.add_argument(
         '-e',
@@ -111,6 +111,7 @@ def get_parser() -> argparse.ArgumentParser:
         default=None,  # if option -e is not specified at all
         help=HELP['sign_expiration_days'],
     )
+    _add_key_dirs_argument(parser=subparser_sign)
     return parser
 
 
@@ -241,17 +242,17 @@ def _cmd_keys(options: argparse.Namespace):
 def _cmd_targets(options: argparse.Namespace):
     logger.debug(f'command targets: {vars(options)}')
     repository = _get_repo()
-    if options.add:
-        logger.debug('attempting to add bundle...')
+    if options.app_version and options.bundle_dir:
+        logger.debug('adding bundle...')
         repository.add_bundle(
-            new_version=options.add[0], new_bundle_dir=options.add[1]
+            new_version=options.app_version, new_bundle_dir=options.bundle_dir
         )
         logger.debug('done')
-    elif options.remove:
-        logger.debug('attempting to remove latest bundle...')
+    else:
+        logger.debug('removing latest bundle...')
         repository.remove_latest_bundle()
         logger.debug('done')
-    logger.debug('attempting to publish changes...')
+    logger.debug('publishing changes...')
     repository.publish_changes(private_key_dirs=options.key_dirs)
     logger.debug('done')
 
