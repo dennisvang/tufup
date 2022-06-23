@@ -15,15 +15,20 @@ class ParserTests(unittest.TestCase):
             'init',
             'targets -a 1.0 bundle-dir -k c:\\private_keys'
             'targets -r',
-            'keys -n my-key-name -c -e -r root -k c:\\private_keys',
-            'keys -n my-key-name -r root -k c:\\private_keys',
-            'keys -n my-key-name -o 5dqfdq32vdgq2v -k c:\\private_keys',
+            'keys my-key-name -c -e',
+            'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
+            'keys my-key-name -c -e add root c:\\private_keys',
+            'keys my-key-name replace old-key-name c:\\private_keys',
+            'keys my-key-name -c -e replace old-key-name c:\\private_keys',
             'sign -r root -k c:\\private_keys d:\\other_private_keys',
             'sign -r root -k c:\\private_keys -e',
             'sign -r root -k c:\\private_keys -e 100',
         ]:
-            options = parser.parse_args(cmd.split())
-            self.assertTrue(options.func)
+            with self.subTest(msg=cmd):
+                args = cmd.split()
+                options = parser.parse_args(args)
+                expected_func_name = '_cmd_' + args[0]
+                self.assertEqual(expected_func_name, options.func.__name__)
 
 
 class CommandTests(TempDirTestCase):

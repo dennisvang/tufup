@@ -2,6 +2,7 @@ import argparse
 import logging
 
 import packaging.version
+from tuf.api.metadata import TOP_LEVEL_ROLE_NAMES
 
 from notsotuf.utils import input_bool, input_numeric, input_text, input_list
 from notsotuf.repo import Repository
@@ -15,7 +16,8 @@ HELP = dict(
         'patch from bundle files. '
     ),
     targets_remove='Remove latest app bundle from the repository.',
-    keys_new_key_name='Name of private key (public key gets .pub suffix).',
+    keys_subcommands='Optional commands to add or replace keys.',
+    keys_new_key_name='Name of new private key (public key gets .pub suffix).',
     keys_role_name='Register public key for this role.',
     keys_encrypted='New private key is (to be) encrypted.',
     keys_create='Create a new key pair (private & public).',
@@ -67,27 +69,29 @@ def get_parser() -> argparse.ArgumentParser:
         '-r', '--remove', action='store_true', help=HELP['targets_remove']
     )
     # keys
-    subparser_keys = subparsers.add_parser('keys', parents=[common_parser])
+    subparser_keys = subparsers.add_parser('keys')
     subparser_keys.set_defaults(func=_cmd_keys)
+    subparser_keys.add_argument('new-key-name', help=HELP['keys_new_key_name'])
     subparser_keys.add_argument(
-        '-n', '--new-key-name', required=True, help=HELP['keys_new_key_name']
-    )
-    subparser_keys.add_argument(
-        '-o', '--old-key-name', required=False, help=HELP['keys_old_key_name']
-    )
-    subparser_keys.add_argument(
-        '-r',
-        '--role-name',
-        required=False,
-        choices=('root', 'targets', 'snapshot', 'timestamp'),
-        help=HELP['keys_role_name'],
+        '-c', '--create', action='store_true', help=HELP['keys_create']
     )
     subparser_keys.add_argument(
         '-e', '--encrypted', action='store_true', help=HELP['keys_encrypted']
     )
-    subparser_keys.add_argument(
-        '-c', '--create', action='store_true', help=HELP['keys_create']
+    # we use nested subparsers to deal with mutually dependent arguments
+    keys_subparsers = subparser_keys.add_subparsers(
+        help=HELP['keys_subcommands']
     )
+    subparser_keys_add = keys_subparsers.add_parser('add')
+    subparser_keys_add.add_argument(
+        'role-name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['keys_role_name']
+    )
+    subparser_keys_replace = keys_subparsers.add_parser('replace')
+    subparser_keys_replace.add_argument(
+        'old-key-name', help=HELP['keys_old_key_name']
+    )
+    for sp in [subparser_keys_add, subparser_keys_replace]:
+        sp.add_argument('key-dirs', nargs='+', help=HELP['common_key_dirs'])
     # sign
     subparser_sign = subparsers.add_parser('sign', parents=[common_parser])
     subparser_sign.set_defaults(func=_cmd_sign)
@@ -95,7 +99,7 @@ def get_parser() -> argparse.ArgumentParser:
         '-r',
         '--role-name',
         required=True,
-        choices=('root', 'targets', 'snapshot', 'timestamp'),
+        choices=TOP_LEVEL_ROLE_NAMES,
         help=HELP['sign_role_name'],
     )
     subparser_sign.add_argument(
@@ -210,9 +214,6 @@ def _cmd_init(options: argparse.Namespace):
 
 def _cmd_keys(options: argparse.Namespace):
     logger.debug(f'command keys: {vars(options)}')
-    if (options.role_name or options.old_key_name) and not options.key_dirs:
-        logger.error('The --key-dirs option (-k) is required for repo changes.')
-        return
     repository = _get_repo()
     public_key_path = repository.keys.public_key_path(
         key_name=options.new_key_name
