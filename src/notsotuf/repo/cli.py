@@ -15,11 +15,11 @@ HELP = dict(
         'patch from bundle files. '
     ),
     targets_remove='Remove latest app bundle from the repository.',
-    keys_name='Name of private key (public key gets .pub suffix).',
+    keys_new_key_name='Name of private key (public key gets .pub suffix).',
     keys_role_name='Register public key for this role.',
-    keys_encrypted='Private key is (to be) encrypted.',
+    keys_encrypted='New private key is (to be) encrypted.',
     keys_create='Create a new key pair (private & public).',
-    keys_old_key_id='Revoke old key id, replace by new public key.',
+    keys_old_key_name='Revoke old public key, replace by new public key.',
     sign_role_name='Name of role to be signed.',
     sign_expiration_days=(
         'Set expiration date as number of days from today. Metadata version '
@@ -70,7 +70,10 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_keys = subparsers.add_parser('keys', parents=[common_parser])
     subparser_keys.set_defaults(func=_cmd_keys)
     subparser_keys.add_argument(
-        '-n', '--key-name', required=True, help=HELP['keys_name']
+        '-n', '--new-key-name', required=True, help=HELP['keys_new_key_name']
+    )
+    subparser_keys.add_argument(
+        '-o', '--old-key-name', required=False, help=HELP['keys_old_key_name']
     )
     subparser_keys.add_argument(
         '-r',
@@ -84,9 +87,6 @@ def get_parser() -> argparse.ArgumentParser:
     )
     subparser_keys.add_argument(
         '-c', '--create', action='store_true', help=HELP['keys_create']
-    )
-    subparser_keys.add_argument(
-        '-o', '--old-key-id', help=HELP['keys_old_key_id']
     )
     # sign
     subparser_sign = subparsers.add_parser('sign', parents=[common_parser])
@@ -211,16 +211,21 @@ def _cmd_init(options: argparse.Namespace):
 def _cmd_keys(options: argparse.Namespace):
     logger.debug(f'command keys: {vars(options)}')
     repository = _get_repo()
-    public_key_path = repository.keys.public_key_path(key_name=options.key_name)
-    private_key_path = repository.keys.private_key_path(key_name=options.key_name)
+    public_key_path = repository.keys.public_key_path(
+        key_name=options.new_key_name
+    )
+    private_key_path = repository.keys.private_key_path(
+        key_name=options.new_key_name
+    )
     if options.create:
         repository.keys.create_key_pair(
             private_key_path=private_key_path, encrypted=options.encrypted
         )
-    if options.old_key_id:
+    if options.old_key_name:
         repository.replace_key(
-            old_key_id=options.old_key_id,
+            old_key_name=options.old_key_name,
             new_public_key_path=public_key_path,
+            new_private_key_encrypted=options.encrypted,
         )
     elif options.role_name:
         repository.roles.add_public_key(

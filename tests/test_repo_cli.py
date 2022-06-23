@@ -70,11 +70,11 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_create(self):
         options = argparse.Namespace(
-            key_name='test',
+            new_key_name='test',
+            old_key_name=None,
             role_name=None,
             encrypted=True,
             create=True,
-            old_key_id=None,
             key_dirs=None,
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
@@ -83,11 +83,11 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_create_and_add_key(self):
         options = argparse.Namespace(
-            key_name='test',
+            new_key_name='test',
+            old_key_name=None,
             role_name='root',
             encrypted=True,
             create=True,
-            old_key_id=None,
             key_dirs=['c:\\my_private_keys'],
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
@@ -98,11 +98,11 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_replace_key(self):
         options = argparse.Namespace(
-            key_name='test',
+            new_key_name='test',
+            old_key_name='some old key name',
             role_name=None,
             encrypted=False,
             create=False,
-            old_key_id='someoldkeyid',
             key_dirs=['c:\\my_private_keys'],
         )
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
