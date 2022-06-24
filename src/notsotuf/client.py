@@ -71,6 +71,7 @@ class Client(tuf.ngclient.Updater):
                 TargetMeta(target_path=key)
                 for key in self._trusted_set.targets.signed.targets.keys()
             ]
+            logger.debug(f'targets metadata found: {_trusted_target_metas}')
         else:
             logger.warning('targets metadata not found')
         return _trusted_target_metas
@@ -132,12 +133,14 @@ class Client(tuf.ngclient.Updater):
                 sys.exit()
             return False
         # check for new target files (archives and patches)
+        logger.debug(f'current archive: {self.current_archive.filename}')
         all_new_targets = dict(
             (target_meta, self.get_targetinfo(target_meta))
             for target_meta in self.trusted_target_metas
             if target_meta.name == self.current_archive.name
             and target_meta.version > self.current_archive.version
         )
+        logger.debug(f'all new targets: {all_new_targets}')
         # determine latest archive, filtered by the specified pre-release level
         new_archives = dict(
             item for item in all_new_targets.items()
@@ -145,6 +148,7 @@ class Client(tuf.ngclient.Updater):
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
         if new_archives:
+            logger.debug(f'new archives found: {new_archives}')
             new_archive_meta, self.new_archive_info = sorted(
                 new_archives.items()
             )[-1]
