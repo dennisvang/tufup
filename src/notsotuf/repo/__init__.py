@@ -827,6 +827,16 @@ class Repository(object):
                 logger.info(f'Published changes for {role_name}.')
             else:
                 logger.info(f'No changes detected for {role_name}.')
+                # Check if signature count meets threshold
+                threshold = self.roles.root.signed.roles[role_name].threshold
+                if len(role.signatures) < threshold:
+                    logger.info(
+                        f'{role_name} threshold not met. Trying to sign...'
+                    )
+                    signature_count = self.threshold_sign(
+                        role_name=role_name, private_key_dirs=private_key_dirs
+                    )
+                    logger.info(f'Added {signature_count} signatures.')
         # update config if key_map has changed
         if self.config_dict != self.load_config():
             self.save_config()

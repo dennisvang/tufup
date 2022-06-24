@@ -771,6 +771,7 @@ class RepositoryTests(TempDirTestCase):
             keys_dir=self.temp_dir_path / 'keystore',
             repo_dir=self.temp_dir_path / 'repo',
         )
+        # note that initialize() already calls publish_changes...
         repo.initialize()  # todo: make test independent...
         # test
         repo.publish_changes(private_key_dirs=[repo.keys_dir])
@@ -779,6 +780,26 @@ class RepositoryTests(TempDirTestCase):
             with self.subTest(msg=role_name):
                 self.assertEqual(1, role.signed.version)
                 self.assertTrue(role.signatures)
+
+    def test_publish_changes_threshold(self):
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        # note that initialize() already calls publish_changes...
+        repo.initialize()  # todo: make test independent...
+        # remove the root signature
+        repo.roles.root.signatures = {}
+        # test
+        repo.publish_changes(private_key_dirs=[repo.keys_dir])
+        for role_name in ['root', 'targets', 'snapshot', 'timestamp']:
+            with self.subTest(msg=role_name):
+                role = getattr(repo.roles, role_name)
+                self.assertEqual(
+                    repo.thresholds[role_name], len(role.signatures)
+                )
 
     def test_publish_changes(self):
         days = 999
@@ -792,6 +813,7 @@ class RepositoryTests(TempDirTestCase):
                     keys_dir=temp_dir_path / 'keystore',
                     repo_dir=temp_dir_path / 'repo',
                 )
+                # note that initialize() already calls publish_changes...
                 repo.initialize()  # todo: make test independent...
                 # make a change to metadata (in memory)
                 repo.roles.set_expiration_date(
