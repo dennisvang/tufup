@@ -202,17 +202,17 @@ def _cmd_init(options: argparse.Namespace):
             message = 'Modifying existing configuration.'
         else:
             message = 'Using existing configuration.'
-    print(message)
+    logger.info(message)
     if modify:
         config_dict = _get_config_from_user(**config_dict)
     # create repository instance
     repository = Repository(**config_dict)
     # save new or updated configuration
     repository.save_config()
-    print('Config saved.')
+    logger.info('Config saved.')
     # create directories, keys, and root metadata file
     repository.initialize()
-    print('Repository initialized.')
+    logger.info('Repository initialized.')
 
 
 def _cmd_keys(options: argparse.Namespace):
@@ -225,49 +225,59 @@ def _cmd_keys(options: argparse.Namespace):
         key_name=options.new_key_name
     )
     if options.create:
+        logger.info(f'Creating key pair for {options.new_key_name}...')
         repository.keys.create_key_pair(
             private_key_path=private_key_path, encrypted=options.encrypted
         )
+        logger.info(f'Key pair created.')
     replace = hasattr(options, 'old_key_name')
     add = hasattr(options, 'role_name')
     if replace:
+        logger.info(
+            f'Replacing key {options.old_key_name} by {options.new_key_name}...'
+        )
         repository.replace_key(
             old_key_name=options.old_key_name,
             new_public_key_path=public_key_path,
             new_private_key_encrypted=options.encrypted,
         )
+        logger.info('Key replaced.')
     elif add:
+        logger.info(f'Adding key {options.new_key_name}...')
         repository.add_key(
             role_name=options.role_name,
             public_key_path=public_key_path,
             encrypted=options.encrypted,
         )
+        logger.info('Key added.')
     if replace or add:
+        logger.info('Publishing changes...')
         repository.publish_changes(private_key_dirs=options.key_dirs)
+        logger.info('Changes published.')
 
 
 def _cmd_targets(options: argparse.Namespace):
     logger.debug(f'command targets: {vars(options)}')
     repository = _get_repo()
     if hasattr(options, 'app_version') and hasattr(options, 'bundle_dir'):
-        logger.debug('adding bundle...')
+        logger.info('Adding bundle...')
         repository.add_bundle(
             new_version=options.app_version, new_bundle_dir=options.bundle_dir
         )
-        logger.debug('done')
+        logger.info('Bundle added.')
     else:
-        logger.debug('removing latest bundle...')
+        logger.debug('Removing latest bundle...')
         repository.remove_latest_bundle()
-        logger.debug('done')
-    logger.debug('publishing changes...')
+        logger.info('Latest bundle removed.')
+    logger.info('Publishing changes...')
     repository.publish_changes(private_key_dirs=options.key_dirs)
-    logger.debug('done')
+    logger.info('Changes published.')
 
 
 def _cmd_sign(options: argparse.Namespace):
     logger.debug(f'command sign: {vars(options)}')
     repository = _get_repo()
-    if options.expiration_days:
+    if options.expiration_days is not None:
         # default or custom
         days = repository.expiration_days.get(options.role_name)
         if options.expiration_days.isnumeric():

@@ -1,6 +1,7 @@
 import copy
 from datetime import date, datetime, timedelta
 import json
+import logging
 import pathlib
 from tempfile import TemporaryDirectory
 from time import sleep
@@ -467,6 +468,10 @@ class RolesTests(TempDirTestCase):
 
 
 class RepositoryTests(TempDirTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        logging.basicConfig(level=logging.DEBUG)
+
     def test_defaults(self):
         self.assertTrue(Repository(app_name='test'))
 
