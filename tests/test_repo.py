@@ -628,6 +628,37 @@ class RepositoryTests(TempDirTestCase):
         # keys replaced for all roles?
         self.assertIn(new_key_name, repo.key_map['targets'])
 
+    def test_add_key(self):
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        # create new key pair to add
+        new_key_name = 'new-key'
+        new_private_key_path = repo.keys_dir / new_key_name
+        new_public_key_path = Keys.create_key_pair(
+            private_key_path=new_private_key_path, encrypted=False
+        )
+        new_key_id = import_ed25519_publickey_from_file(
+            filepath=str(new_public_key_path)
+        )['keyid']
+        # test
+        role_name = 'root'
+        repo.add_key(
+            role_name=role_name,
+            public_key_path=new_public_key_path,
+            encrypted=True,  # pretend the key is encrypted
+        )
+        # new key added?
+        self.assertEqual(2, len(repo.roles.root.signed.roles[role_name].keyids))
+        self.assertIn(
+            new_key_id, repo.roles.root.signed.roles[role_name].keyids
+        )
+        self.assertIn(new_key_name, repo.key_map[role_name])
+        self.assertIn(new_key_name, repo.encrypted_keys)
+
     def test_add_bundle(self):
         # prepare
         bundle_dir = self.temp_dir_path / 'dist' / 'test_app'

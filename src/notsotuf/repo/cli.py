@@ -237,8 +237,10 @@ def _cmd_keys(options: argparse.Namespace):
             new_private_key_encrypted=options.encrypted,
         )
     elif add:
-        repository.roles.add_public_key(
-            role_name=options.role_name, public_key_path=public_key_path
+        repository.add_key(
+            role_name=options.role_name,
+            public_key_path=public_key_path,
+            encrypted=options.encrypted,
         )
     if replace or add:
         repository.publish_changes(private_key_dirs=options.key_dirs)

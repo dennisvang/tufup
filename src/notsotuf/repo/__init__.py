@@ -644,7 +644,6 @@ class Repository(object):
         )['keyid']
         # Get new key name from public key path
         new_public_key_path = pathlib.Path(new_public_key_path)  # force path
-        new_key_name = new_public_key_path.with_suffix('').name
         # A key may be used for multiple roles, so we check the key id for
         # all roles.
         for role_name in TOP_LEVEL_ROLE_NAMES:
@@ -664,17 +663,37 @@ class Repository(object):
             except ValueError:
                 logger.debug(f'{role_name} does not have key {old_key_name}')
             else:
-                # add new key to metadata
-                self.roles.add_public_key(
-                    role_name=role_name, public_key_path=new_public_key_path
+                # add new key_id
+                self.add_key(
+                    role_name=role_name,
+                    public_key_path=new_public_key_path,
+                    encrypted=new_private_key_encrypted,
                 )
-                # add new key to key map
-                if new_key_name not in self.key_map[role_name]:
-                    self.key_map[role_name].append(new_key_name)
-                # add new key to encrypted keys if necessary
-                already_present = new_key_name in self.encrypted_keys
-                if new_private_key_encrypted and not already_present:
-                    self.encrypted_keys.append(new_key_name)
+
+    def add_key(
+            self,
+            role_name: str,
+            public_key_path: Union[pathlib.Path, str],
+            encrypted: bool,
+    ):
+        """
+        Register a new public key for the specified role.
+
+        Note the changes are not published yet: call publish_changes() for that.
+        """
+        public_key_path = pathlib.Path(public_key_path)
+        # add new key to metadata
+        self.roles.add_public_key(
+            role_name=role_name, public_key_path=public_key_path
+        )
+        # add new key to key map
+        key_name = public_key_path.with_suffix('').name
+        if key_name not in self.key_map[role_name]:
+            self.key_map[role_name].append(key_name)
+        # add new key to encrypted keys if necessary
+        already_present = key_name in self.encrypted_keys
+        if encrypted and not already_present:
+            self.encrypted_keys.append(key_name)
 
     def add_bundle(
             self,

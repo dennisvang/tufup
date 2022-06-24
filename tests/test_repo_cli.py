@@ -46,13 +46,12 @@ class CommandTests(TempDirTestCase):
         mock_return_config = Mock(return_value=self.config)
         mock_keys = Mock()
         mock_keys.create_key_pair = Mock()
-        mock_roles = Mock()
-        mock_roles.add_public_key = Mock()
-        mock_repo = Mock(keys=mock_keys, roles=mock_roles, **self.config)
+        mock_repo = Mock(keys=mock_keys, **self.config)
         mock_repo.save_config = Mock()
         mock_repo.initialize = Mock()
         mock_repo.add_bundle = Mock()
         mock_repo.remove_latest_bundle = Mock()
+        mock_repo.add_key = Mock()
         mock_repo.replace_key = Mock()
         mock_repo.refresh_expiration_date = Mock()
         mock_repo.threshold_sign = Mock()
@@ -92,7 +91,7 @@ class CommandTests(TempDirTestCase):
         with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
             notsotuf.repo.cli._cmd_keys(options=options)
         self.mock_repo.keys.create_key_pair.assert_called()
-        self.mock_repo.roles.add_public_key.assert_called()
+        self.mock_repo.add_key.assert_called()
         self.mock_repo.publish_changes.assert_called()
 
     def test__cmd_keys_replace_key(self):
