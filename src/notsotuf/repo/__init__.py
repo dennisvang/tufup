@@ -802,6 +802,7 @@ class Repository(object):
                 if not version_bumped:
                     role.signed.version += 1
                 # sign metadata and persist changes
+                role.signatures.clear()
                 self.threshold_sign(
                     role_name=role_name, private_key_dirs=private_key_dirs
                 )
