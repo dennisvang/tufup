@@ -2,6 +2,7 @@
 
 ![Build](https://github.com/dennisvang/notsotuf/actions/workflows/python-package.yml/badge.svg)
 ![PyPI](https://img.shields.io/pypi/v/notsotuf)
+[![Documentation Status](https://readthedocs.org/projects/notsotuf/badge/?version=latest)](https://notsotuf.readthedocs.io/en/latest/?badge=latest)
 
 A simple software updater for stand-alone Python *applications*.
 
