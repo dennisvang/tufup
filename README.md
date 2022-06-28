@@ -91,11 +91,15 @@ Here's one way to migrate from another update framework, such as `pyupdater`, to
 
 1. Add `notsotuf` to your main application environment as a core dependency, and move `pyupdater` from core dependencies to development dependencies.
 2. Replace all `pyupdater` client code (and configuration) in your application by the `notsotuf` client.
-3. Build, package, and sign using `pyupdater`, and deploy to your server, as usual. 
-This will ensure your `pyupdater` clients currently in the field will be able to update to the new `notsotuf` client.
-From here on, new updates will be deployed using `notsotuf`.
-4. Set up your `notsotuf` repository (on the same server or another server), but keep the `pyupdater` repository in place as long as necessary to allow all clients to update.
-5. From now on, build, package, sign and deploy using `notsotuf`, as described elsewhere in this document.
+3. Initialize the `notsotuf` repository, so the root metadata file `root.json` exists.
+4. Modify your PyInstaller `.spec` file (from PyUpdater) to ensure that the `root.json` file is included in your package.
+5. Build, package, and sign using `pyupdater`, and deploy to your server, as usual. 
+This ensures that your `pyupdater` clients currently in the field will be able to update to the new `notsotuf` client.
+6. From here on, new updates will be deployed using `notsotuf`.
+7. If you want to enable a patch update from the `pyupdater` version to the new `notsotuf` version, extract the latest PyUpdater archive and add the resulting bundle to the `notsotuf` repository. 
+8. To skip patch creation, just create a new app bundle and add that to the `notsotuf` repository. 
+9. BEWARE: Keep the `pyupdater` repository in place as long as necessary to allow all clients to update.
+10. From now on, build, package, sign and deploy using `notsotuf`, as described elsewhere in this document.
 
 ## Platform support
 
