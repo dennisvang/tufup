@@ -110,9 +110,13 @@ class Client(tuf.ngclient.Updater):
         if self.updates_available and self._download_updates():
             self._apply_updates(install=install)
 
-    def check_for_updates(self, pre: Optional[str] = None, patch: bool = True) -> bool:
+    def check_for_updates(
+            self, pre: Optional[str] = None, patch: bool = True
+    ) -> Optional[TargetMeta]:
         """
         Check if any updates are available, based on current app version.
+
+        Returns latest archive meta, if a new archive is found.
 
         Final releases are always included. Pre-releases are excluded by
         default. If `pre` is specified, pre-releases are included, down to
@@ -147,6 +151,7 @@ class Client(tuf.ngclient.Updater):
             if item[0].is_archive
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
+        new_archive_meta = None
         if new_archives:
             logger.debug(f'new archives found: {new_archives}')
             new_archive_meta, self.new_archive_info = sorted(
@@ -181,7 +186,7 @@ class Client(tuf.ngclient.Updater):
         else:
             self.new_targets = {}
             logger.debug('no new archives found')
-        return self.updates_available
+        return new_archive_meta
 
     def _download_updates(self) -> bool:
         # download the new targets selected in check_for_updates
