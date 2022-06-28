@@ -200,12 +200,16 @@ class ClientTests(TempDirTestCase):
         client.new_archive_local_path = pathlib.Path(
             client.target_dir, client.new_archive_info.path
         )
-        # test
+        # test confirmation
         mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
-            client._apply_updates(install=mock_install, confirm=True)
+            client._apply_updates(install=mock_install, skip_confirmation=False)
         self.assertTrue(any(client.extract_dir.iterdir()))
         self.assertTrue(mock_install.called)
+        # test skip confirmation
+        mock_install = Mock()
+        client._apply_updates(install=mock_install, skip_confirmation=True)
+        mock_install.assert_called()
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):
