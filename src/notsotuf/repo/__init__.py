@@ -4,7 +4,11 @@ import inspect
 import json
 import logging
 import pathlib
-import setuptools.config.expand  # noqa
+try:
+    # workaround for PyInstaller issue 6911 (setuptools issue 3089)
+    import setuptools.config.expand  # noqa
+except AssertionError as e:
+    pass  # assuming we are on the client side...
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 
