@@ -90,7 +90,9 @@ class Client(tuf.ngclient.Updater):
         else:
             return len(self.new_targets) > 0
 
-    def download_and_apply_update(self, install: Optional[Callable] = None):
+    def download_and_apply_update(
+            self, confirm: bool = True, install: Optional[Callable] = None,
+    ):
         """
         Download and apply available updates.
 
@@ -108,7 +110,7 @@ class Client(tuf.ngclient.Updater):
         if install is None:
             install = install_update
         if self.updates_available and self._download_updates():
-            self._apply_updates(install=install)
+            self._apply_updates(install=install, confirm=confirm)
 
     def check_for_updates(
             self, pre: Optional[str] = None, patch: bool = True
@@ -135,7 +137,7 @@ class Client(tuf.ngclient.Updater):
             if self.refresh_required:
                 logger.warning('Exiting: refresh is required')
                 sys.exit()
-            return False
+            return None
         # check for new target files (archives and patches)
         logger.debug(f'current archive: {self.current_archive.filename}')
         all_new_targets = dict(
@@ -199,7 +201,7 @@ class Client(tuf.ngclient.Updater):
             self.downloaded_target_files[target_meta] = pathlib.Path(local_path_str)
         return len(self.downloaded_target_files) == len(self.new_targets)
 
-    def _apply_updates(self, install: Callable):
+    def _apply_updates(self, install: Callable, confirm: bool):
         """
         Note this has a side-effect: if self.extract_dir is not specified,
         an extract_dir is created in a platform-specific temporary location.
@@ -234,7 +236,7 @@ class Client(tuf.ngclient.Updater):
         logger.debug(f'files extracted to {self.extract_dir}')
         # install
         confirmation_message = f'Install update in {self.app_install_dir}? [y]/n'
-        if input(confirmation_message) in ['y', '']:
+        if confirm and input(confirmation_message) in ['y', '']:
             # start a script that moves the extracted files to the app install
             # directory (overwrites existing files), then exit current process
             install(src_dir=self.extract_dir, dst_dir=self.app_install_dir)

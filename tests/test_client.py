@@ -203,7 +203,7 @@ class ClientTests(TempDirTestCase):
         # test
         mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
-            client._apply_updates(install=mock_install)
+            client._apply_updates(install=mock_install, confirm=True)
         self.assertTrue(any(client.extract_dir.iterdir()))
         self.assertTrue(mock_install.called)
 
