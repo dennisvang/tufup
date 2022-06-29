@@ -40,7 +40,7 @@ rem /e: include subdirs, /move: move files and dirs, /v: verbose, /purge: delete
 echo Moving app files...
 rem wait a few seconds for caller to relinquish locks etc. 
 timeout /t 3
-robocopy {src} {dst} /e /move /v /purge
+robocopy "{src}" "{dst}" /e /move /v /purge
 echo Done.
 rem wait for user confirmation (allow user to read any error messages)
 timeout /t -1
