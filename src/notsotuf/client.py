@@ -94,6 +94,7 @@ class Client(tuf.ngclient.Updater):
             self,
             skip_confirmation: bool = False,
             install: Optional[Callable] = None,
+            **kwargs,
     ):
         """
         Download and apply available updates.
@@ -108,12 +109,15 @@ class Client(tuf.ngclient.Updater):
         The default `install` callable purges the `app_install_dir`,
         moves the files from `extract_dir` to `app_install_dir`, and exits
         the application (not necessarily in that order).
+
+        kwargs are passed on to the 'install' callable
         """
         if install is None:
             install = install_update
+            kwargs['as_admin'] = kwargs.get('as_admin', False)
         if self.updates_available and self._download_updates():
             self._apply_updates(
-                install=install, skip_confirmation=skip_confirmation
+                install=install, skip_confirmation=skip_confirmation, **kwargs
             )
 
     def check_for_updates(
@@ -205,8 +209,15 @@ class Client(tuf.ngclient.Updater):
             self.downloaded_target_files[target_meta] = pathlib.Path(local_path_str)
         return len(self.downloaded_target_files) == len(self.new_targets)
 
-    def _apply_updates(self, install: Callable, skip_confirmation: bool):
+    def _apply_updates(
+            self,
+            install: Callable,
+            skip_confirmation: bool,
+            **kwargs,
+    ):
         """
+        kwargs are passed on to the 'install' callable
+
         Note this has a side-effect: if self.extract_dir is not specified,
         an extract_dir is created in a platform-specific temporary location.
         """
@@ -243,7 +254,11 @@ class Client(tuf.ngclient.Updater):
         if skip_confirmation or input(confirmation_message) in ['y', '']:
             # start a script that moves the extracted files to the app install
             # directory (overwrites existing files), then exit current process
-            install(src_dir=self.extract_dir, dst_dir=self.app_install_dir)
+            install(
+                src_dir=self.extract_dir,
+                dst_dir=self.app_install_dir,
+                **kwargs,
+            )
         else:
             logger.warning('Installation aborted.')
         # todo: clean up deprecated local archive
