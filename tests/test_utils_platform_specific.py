@@ -14,7 +14,9 @@ DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from notsotuf.utils.platform_specific import install_update
-install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2])
+install_update(
+    src_dir=sys.argv[1], dst_dir=sys.argv[2], as_admin=False, debug=False
+)
 """
 
 ON_GITHUB = os.getenv('GITHUB_ACTIONS')
@@ -65,8 +67,9 @@ class UtilsTests(TempDirTestCase):
         )
         print(sys.executable)
         completed_process.check_returncode()
-        # allow some time for the batch file to complete
-        sleep(1)
+        # allow some time for the batch file to complete (it also waits a few
+        # seconds, so we have to wait longer)
+        sleep(3)
         # ensure file has been moved from src to dst
         self.assertTrue(any(dst_dir.iterdir()))
         self.assertTrue((dst_dir / src_file_name).exists())

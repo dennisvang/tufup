@@ -22,28 +22,33 @@ def install_update(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
         as_admin: bool = False,
+        debug: bool = False,
 ):
     if ON_WINDOWS:
         return _install_update_win(
-            src_dir=src_dir, dst_dir=dst_dir, as_admin=as_admin
+            src_dir=src_dir, dst_dir=dst_dir, as_admin=as_admin, debug=debug
         )
     if ON_MAC:
-        # todo: implement as_admin for mac
+        # todo: implement as_admin and debug for mac
         return _install_update_mac(src_dir=src_dir, dst_dir=dst_dir)
     else:
         raise RuntimeError('This platform is not supported.')
 
+
+DEBUG_BAT = """
+rem wait for user confirmation (allow user to read any error messages)
+timeout /t -1
+"""
 
 # https://stackoverflow.com/a/20333575
 MOVE_FILES_BAT = """@echo off
 rem /e: include subdirs, /move: move files and dirs, /v: verbose, /purge: delete stale files and dirs in destination folder
 echo Moving app files...
 rem wait a few seconds for caller to relinquish locks etc. 
-timeout /t 3
+timeout /t 2
 robocopy "{src}" "{dst}" /e /move /v /purge
 echo Done.
-rem wait for user confirmation (allow user to read any error messages)
-timeout /t -1
+{debug_lines}
 rem Delete self
 (goto) 2>nul & del "%~f0"
 """
@@ -73,6 +78,7 @@ def _install_update_win(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
         as_admin: bool,
+        debug: bool,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
@@ -81,7 +87,12 @@ def _install_update_win(
     The script is created in a default temporary directory, and deletes
     itself when done.
     """
-    script_content = MOVE_FILES_BAT.format(src=src_dir, dst=dst_dir)
+    debug_lines = ''
+    if debug:
+        debug_lines = DEBUG_BAT
+    script_content = MOVE_FILES_BAT.format(
+        src=src_dir, dst=dst_dir, debug_lines=debug_lines
+    )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
             mode='w', prefix='notsotuf', suffix='.bat', delete=False
