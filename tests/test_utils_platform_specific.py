@@ -29,7 +29,7 @@ class UtilsTests(TempDirTestCase):
     def test_run_bat_as_admin(self):
         output_path = self.temp_dir_path / 'output.txt'
         bat_path = self.temp_dir_path / 'tell_me_who_i_am.bat'
-        bat_path.write_text(f'whoami > "{output_path}"')
+        bat_path.write_text(f'whoami > "{output_path}"\ntimeout /t -1')
         # NOTE: this will open a UAC prompt (User Access Control)
         self.assertTrue(run_bat_as_admin(file_path=bat_path))
         # doesn't block, so we'll pause for a while
