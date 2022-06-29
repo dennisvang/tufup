@@ -1,3 +1,4 @@
+from ctypes import windll
 import logging
 import pathlib
 import platform
@@ -11,35 +12,65 @@ from notsotuf.utils import remove_path
 
 logger = logging.getLogger(__name__)
 
-WINDOWS = 'Windows'
-MAC = 'Darwin'
-SUPPORTED_PLATFORMS_FOR_CLIENT = [WINDOWS, MAC]
 CURRENT_PLATFORM = platform.system()
+ON_WINDOWS = CURRENT_PLATFORM == 'Windows'
+ON_MAC = CURRENT_PLATFORM == 'Darwin'
+PLATFORM_SUPPORTED = ON_WINDOWS or ON_MAC
 
 
 def install_update(
-        src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
+        src_dir: Union[pathlib.Path, str],
+        dst_dir: Union[pathlib.Path, str],
+        as_admin: bool = False,
 ):
-    if CURRENT_PLATFORM == WINDOWS:
-        return _install_update_win(src_dir, dst_dir)
-    if CURRENT_PLATFORM == MAC:
-        return _install_update_mac(src_dir, dst_dir)
+    if ON_WINDOWS:
+        return _install_update_win(
+            src_dir=src_dir, dst_dir=dst_dir, as_admin=as_admin
+        )
+    if ON_MAC:
+        # todo: implement as_admin for mac
+        return _install_update_mac(src_dir=src_dir, dst_dir=dst_dir)
     else:
         raise RuntimeError('This platform is not supported.')
 
 
+# https://stackoverflow.com/a/20333575
 MOVE_FILES_BAT = """@echo off
 rem /e: include subdirs, /move: move files and dirs, /v: verbose, /purge: delete stale files and dirs in destination folder
 echo Moving app files...
+rem wait a few seconds for caller to relinquish locks etc. 
+timeout /t 3
 robocopy {src} {dst} /e /move /v /purge
 echo Done.
-rem Delete self (https://stackoverflow.com/a/20333575)
+rem Delete self
 (goto) 2>nul & del "%~f0"
 """
 
 
+def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
+    """
+    Request elevation for windows command interpreter (opens UAC prompt) and
+    then run the specified .bat file.
+
+    Returns True if successfully started, does not block, can continue after
+    calling process exits.
+    """
+    # https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew
+    result = windll.shell32.ShellExecuteW(
+        None,  # handle to parent window
+        'runas',  # verb
+        'cmd.exe',  # file on which verb acts
+        ' '.join(['/c', str(file_path)]),  # parameters
+        None,  # working directory (default is cwd)
+        1,  # show window normally
+    )
+    return result > 32
+
+
 def _install_update_win(
-        src_dir: Union[pathlib.Path, str], dst_dir: Union[pathlib.Path, str]
+        src_dir: Union[pathlib.Path, str],
+        dst_dir: Union[pathlib.Path, str],
+        as_admin: bool,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
@@ -54,10 +85,15 @@ def _install_update_win(
             mode='w', prefix='notsotuf', suffix='.bat', delete=False
     ) as temp_file:
         temp_file.write(script_content)
-    print(f'Temporary batch script created: {temp_file.name}')
+    logger.debug(f'temporary batch script created: {temp_file.name}')
     script_path = pathlib.Path(temp_file.name).resolve()
     logger.debug(f'starting script in new console: {script_path}')
-    subprocess.Popen([script_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+    if as_admin:
+        run_bat_as_admin(file_path=script_path)
+    else:
+        subprocess.Popen(
+            [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
     logger.debug('exiting')
     sys.exit(0)
 
