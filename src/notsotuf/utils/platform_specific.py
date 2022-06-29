@@ -1,4 +1,3 @@
-from ctypes import windll
 import logging
 import pathlib
 import platform
@@ -62,6 +61,7 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
     Returns True if successfully started, does not block, can continue after
     calling process exits.
     """
+    from ctypes import windll
     # https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew
     result = windll.shell32.ShellExecuteW(
         None,  # handle to parent window
