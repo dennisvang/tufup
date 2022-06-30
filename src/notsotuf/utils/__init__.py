@@ -1,9 +1,10 @@
 import logging
 import pathlib
 import shutil
+import sys
 from typing import List, Optional, Union
 
-logger = logging.getLogger(__name__)
+utils_logger = logging.getLogger(__name__)
 
 _INPUT_SEPARATOR = ' '
 
@@ -22,14 +23,39 @@ def remove_path(path: Union[pathlib.Path, str]) -> bool:
     try:
         if path.is_dir():
             shutil.rmtree(path=path)
-            logger.debug(f'Removed directory {path}')
+            utils_logger.debug(f'Removed directory {path}')
         elif path.is_file():
             path.unlink()
-            logger.debug(f'Removed file {path}')
+            utils_logger.debug(f'Removed file {path}')
     except Exception as e:
-        logger.error(f'Failed to remove {path}: {e}')
+        utils_logger.error(f'Failed to remove {path}: {e}')
         return False
     return True
+
+
+def log_print(message: str, logger: logging.Logger, level: int = logging.INFO):
+    """
+    Log message with specified level.
+
+    Print message too, if logger is not enabled for specified level,
+    or if logger does not have a handler that streams to stdout.
+    """
+    message_logged_to_stdout = False
+    current_logger = logger
+    while current_logger and not message_logged_to_stdout:
+        is_enabled = current_logger.isEnabledFor(level)
+        logs_to_stdout = any(
+            getattr(handler, 'stream', None) == sys.stdout
+            for handler in current_logger.handlers
+        )
+        message_logged_to_stdout = is_enabled and logs_to_stdout
+        if not current_logger.propagate:
+            current_logger = None
+        else:
+            current_logger = current_logger.parent
+    if not message_logged_to_stdout:
+        print(message)
+    logger.log(level=level, msg=message)
 
 
 def input_bool(prompt: str, default: bool) -> bool:
@@ -38,14 +64,17 @@ def input_bool(prompt: str, default: bool) -> bool:
     if default:
         default_str = ' ([y]/n)'
         true_inputs.append('')
-    return input(prompt + default_str + _INPUT_SEPARATOR) in true_inputs
+    prompt += default_str + _INPUT_SEPARATOR
+    answer = input(prompt)
+    utils_logger.debug(f'{prompt}: {answer}')
+    return answer in true_inputs
 
 
 def input_list(
         prompt: str, default: List[str], item_default: Optional[str] = None
 ) -> List[str]:
     new_list = []
-    print(prompt)
+    log_print(message=prompt, level=logging.DEBUG, logger=utils_logger)
     # handle existing items
     for existing_item in default or []:
         if input_bool(f'{existing_item}\nKeep this item?', default=True):
@@ -60,8 +89,10 @@ def input_list(
 def input_numeric(prompt: str, default: int) -> int:
     answer = 'not empty, not numeric'
     default_str = f' (default: {default})'
+    prompt += default_str + _INPUT_SEPARATOR
     while answer and not answer.isnumeric():
-        answer = input(prompt + default_str + _INPUT_SEPARATOR)
+        answer = input(prompt)
+        utils_logger.debug(f'{prompt}: {answer}')
     if answer:
         return int(answer)
     else:
@@ -77,6 +108,7 @@ def input_text(
     prompt += _INPUT_SEPARATOR
     while not answer:
         answer = input(prompt) or default
+        utils_logger.debug(f'{prompt}: {answer}')
         if optional:
             break
     return answer

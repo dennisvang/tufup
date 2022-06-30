@@ -4,7 +4,9 @@ import logging
 import packaging.version
 from tuf.api.metadata import TOP_LEVEL_ROLE_NAMES
 
-from notsotuf.utils import input_bool, input_numeric, input_text, input_list
+from notsotuf.utils import (
+    log_print, input_bool, input_numeric, input_text, input_list
+)
 from notsotuf.repo import Repository
 
 logger = logging.getLogger(__name__)
@@ -32,11 +34,17 @@ HELP = dict(
 )
 
 
+def _print_info(message: str):
+    return log_print(message=message, level=logging.INFO, logger=logger)
+
+
 def _get_repo():
     try:
         return Repository.from_config()
     except TypeError:
-        print('Failed to load config. Did you initialize the repository?')
+        _print_info(
+            'Failed to load config. Did you initialize the repository?'
+        )
 
 
 def _add_key_dirs_argument(parser: argparse.ArgumentParser):
@@ -207,17 +215,18 @@ def _cmd_init(options: argparse.Namespace):
             message = 'Modifying existing configuration.'
         else:
             message = 'Using existing configuration.'
-    logger.info(message)
+    _print_info(message)
     if modify:
         config_dict = _get_config_from_user(**config_dict)
     # create repository instance
     repository = Repository(**config_dict)
     # save new or updated configuration
+    _print_info('Saving config...')
     repository.save_config()
-    logger.info('Config saved.')
     # create directories, keys, and root metadata file
+    _print_info('Initializing repository...')
     repository.initialize()
-    logger.info('Repository initialized.')
+    _print_info('Done.')
 
 
 def _cmd_keys(options: argparse.Namespace):
@@ -230,15 +239,15 @@ def _cmd_keys(options: argparse.Namespace):
         key_name=options.new_key_name
     )
     if options.create:
-        logger.info(f'Creating key pair for {options.new_key_name}...')
+        _print_info(f'Creating key pair for {options.new_key_name}...')
         repository.keys.create_key_pair(
             private_key_path=private_key_path, encrypted=options.encrypted
         )
-        logger.info(f'Key pair created.')
+        _print_info(f'Key pair created.')
     replace = hasattr(options, 'old_key_name')
     add = hasattr(options, 'role_name')
     if replace:
-        logger.info(
+        _print_info(
             f'Replacing key {options.old_key_name} by {options.new_key_name}...'
         )
         repository.replace_key(
@@ -246,37 +255,33 @@ def _cmd_keys(options: argparse.Namespace):
             new_public_key_path=public_key_path,
             new_private_key_encrypted=options.encrypted,
         )
-        logger.info('Key replaced.')
     elif add:
-        logger.info(f'Adding key {options.new_key_name}...')
+        _print_info(f'Adding key {options.new_key_name}...')
         repository.add_key(
             role_name=options.role_name,
             public_key_path=public_key_path,
             encrypted=options.encrypted,
         )
-        logger.info('Key added.')
     if replace or add:
-        logger.info('Publishing changes...')
+        _print_info('Publishing changes...')
         repository.publish_changes(private_key_dirs=options.key_dirs)
-        logger.info('Changes published.')
+    _print_info('Done.')
 
 
 def _cmd_targets(options: argparse.Namespace):
     logger.debug(f'command targets: {vars(options)}')
     repository = _get_repo()
     if hasattr(options, 'app_version') and hasattr(options, 'bundle_dir'):
-        logger.info('Adding bundle...')
+        _print_info('Adding bundle...')
         repository.add_bundle(
             new_version=options.app_version, new_bundle_dir=options.bundle_dir
         )
-        logger.info('Bundle added.')
     else:
-        logger.debug('Removing latest bundle...')
+        _print_info('Removing latest bundle...')
         repository.remove_latest_bundle()
-        logger.info('Latest bundle removed.')
-    logger.info('Publishing changes...')
+    _print_info('Publishing changes...')
     repository.publish_changes(private_key_dirs=options.key_dirs)
-    logger.info('Changes published.')
+    _print_info('Done.')
 
 
 def _cmd_sign(options: argparse.Namespace):
@@ -288,15 +293,19 @@ def _cmd_sign(options: argparse.Namespace):
         if options.expiration_days.isnumeric():
             days = int(options.expiration_days)
         # change expiration date in signed metadata
+        _print_info(f'Setting expiration date {days} days from now...')
         repository.refresh_expiration_date(
             role_name=options.role_name, days=days
         )
         # also update version and expiration date for dependent roles, and sign
         # modified roles
+        _print_info('Publishing changes...')
         repository.publish_changes(private_key_dirs=options.key_dirs)
     else:
         # sign without changing the signed metadata (for threshold signing)
+        _print_info('Adding signature...')
         repository.threshold_sign(
             role_name=options.role_name,
             private_key_dirs=options.key_dirs,
         )
+    _print_info('Done.')
