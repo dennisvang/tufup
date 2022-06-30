@@ -5,7 +5,8 @@ from notsotuf.repo import cli
 from notsotuf.utils import input_bool
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
-__version__ = 2022.0
+# https://semver.org/
+__version__ = '0.1.0'
 
 logger = logging.getLogger(__name__)
 
