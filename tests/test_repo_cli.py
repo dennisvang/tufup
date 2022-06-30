@@ -13,7 +13,9 @@ class ParserTests(unittest.TestCase):
         parser = notsotuf.repo.cli.get_parser()
         for cmd in [
             'init',
+            'init --debug',
             'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
+            'targets -d add 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets remove-latest c:\\private_keys',
             'keys my-key-name -c -e',
             'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
