@@ -40,6 +40,9 @@ def log_print(message: str, logger: logging.Logger, level: int = logging.INFO):
     Print message too, if logger is not enabled for specified level,
     or if logger does not have a handler that streams to stdout.
     """
+    # log normally
+    logger.log(level=level, msg=message)
+    # print if necessary
     message_logged_to_stdout = False
     current_logger = logger
     while current_logger and not message_logged_to_stdout:
@@ -55,7 +58,6 @@ def log_print(message: str, logger: logging.Logger, level: int = logging.INFO):
             current_logger = current_logger.parent
     if not message_logged_to_stdout:
         print(message)
-    logger.log(level=level, msg=message)
 
 
 def input_bool(prompt: str, default: bool) -> bool:
