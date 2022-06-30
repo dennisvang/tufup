@@ -48,11 +48,16 @@ def get_parser() -> argparse.ArgumentParser:
     # https://docs.python.org/3/library/argparse.html#parents
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
+    # add debug option
+    debug_parser = argparse.ArgumentParser(add_help=False)
+    debug_parser.add_argument(
+        '-d', '--debug', action='store_true', required=False
+    )
     # init
-    subparser_init = subparsers.add_parser('init')
+    subparser_init = subparsers.add_parser('init', parents=[debug_parser])
     subparser_init.set_defaults(func=_cmd_init)
     # targets
-    subparser_targets = subparsers.add_parser('targets')
+    subparser_targets = subparsers.add_parser('targets', parents=[debug_parser])
     subparser_targets.set_defaults(func=_cmd_targets)
     # we use nested subparsers to deal with mutually dependent arguments
     targets_subparsers = subparser_targets.add_subparsers()
@@ -73,7 +78,7 @@ def get_parser() -> argparse.ArgumentParser:
     for sp in [subparser_targets_add, subparser_targets_remove]:
         _add_key_dirs_argument(parser=sp)
     # keys
-    subparser_keys = subparsers.add_parser('keys')
+    subparser_keys = subparsers.add_parser('keys', parents=[debug_parser])
     subparser_keys.set_defaults(func=_cmd_keys)
     subparser_keys.add_argument(
         'new_key_name', help=HELP['keys_new_key_name']
@@ -99,7 +104,7 @@ def get_parser() -> argparse.ArgumentParser:
     for sp in [subparser_keys_add, subparser_keys_replace]:
         _add_key_dirs_argument(parser=sp)
     # sign
-    subparser_sign = subparsers.add_parser('sign')
+    subparser_sign = subparsers.add_parser('sign', parents=[debug_parser])
     subparser_sign.set_defaults(func=_cmd_sign)
     subparser_sign.add_argument(
         'role_name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['sign_role_name']

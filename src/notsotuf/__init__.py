@@ -19,6 +19,10 @@ def main(args=None):
     # parse command line arguments
     options = cli.get_parser().parse_args(args=args)
 
+    # cli debugging
+    if options.debug:
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, force=True)
+
     # process command
     try:
         options.func(options)
