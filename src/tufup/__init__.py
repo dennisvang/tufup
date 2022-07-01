@@ -1,8 +1,8 @@
 import logging
 import sys
 
-from notsotuf.repo import cli
-from notsotuf.utils import input_bool
+from tufup.repo import cli
+from tufup.utils import input_bool
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 # https://semver.org/
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def main(args=None):
-    print(f'notsotuf version: {__version__}')
+    print(f'tufup version: {__version__}')
     # default to --help
     if args is None:
         args = sys.argv[1:] or ['--help']

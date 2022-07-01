@@ -10,9 +10,9 @@ from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
 from tuf.api.metadata import TargetFile
 
-from notsotuf.client import AuthRequestsFetcher, Client
-from notsotuf.common import TargetMeta
 from tests import TempDirTestCase, TEST_REPO_DIR
+from tufup.client import AuthRequestsFetcher, Client
+from tufup.common import TargetMeta
 
 ROOT_FILENAME = 'root.json'
 TARGETS_FILENAME = 'targets.json'
@@ -107,7 +107,7 @@ class ClientTests(TempDirTestCase):
     def test_updates_available(self):
         client = Client(**self.client_kwargs)
         # test check_for_updates not called
-        with self.assertLogs(logger='notsotuf.client', level=logging.WARNING) as cm:
+        with self.assertLogs(logger='tufup.client', level=logging.WARNING) as cm:
             self.assertFalse(client.updates_available)
         self.assertIn('check_for_updates', cm.output[0])
         # test check_for_updates called and update available

@@ -7,7 +7,7 @@ import sys
 from tempfile import NamedTemporaryFile
 from typing import Union
 
-from notsotuf.utils import remove_path
+from tufup.utils import remove_path
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def _install_update_win(
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
-            mode='w', prefix='notsotuf', suffix='.bat', delete=False
+            mode='w', prefix='tufup', suffix='.bat', delete=False
     ) as temp_file:
         temp_file.write(script_content)
     logger.debug(f'temporary batch script created: {temp_file.name}')

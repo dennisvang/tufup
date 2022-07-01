@@ -3,8 +3,8 @@ import pathlib
 import bsdiff4
 from packaging.version import Version
 
-from notsotuf.common import Patcher, TargetMeta
 from tests import TempDirTestCase
+from tufup.common import Patcher, TargetMeta
 
 
 class TestTargetMeta(TempDirTestCase):

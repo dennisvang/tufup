@@ -5,15 +5,15 @@ import sys
 from time import sleep
 import unittest
 
-from notsotuf.utils.platform_specific import (
+from tests import BASE_DIR, TempDirTestCase
+from tufup.utils.platform_specific import (
     ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin
 )
-from tests import BASE_DIR, TempDirTestCase
 
 DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
-from notsotuf.utils.platform_specific import install_update
+from tufup.utils.platform_specific import install_update
 install_update(
     src_dir=sys.argv[1], dst_dir=sys.argv[2], as_admin=False, debug=False
 )
@@ -50,7 +50,7 @@ class UtilsTests(TempDirTestCase):
     )
     def test_install_update(self):
         # create src dir with dummy app file, and dst dir with stale subdir
-        test_dir = self.temp_dir_path / 'notsotuf_tests'
+        test_dir = self.temp_dir_path / 'tufup_tests'
         src_dir = test_dir / 'src'
         src_dir.mkdir(parents=True)
         dst_dir = test_dir / 'dst'

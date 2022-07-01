@@ -9,21 +9,21 @@ API Documentation
 A single page with the entire API reference.
 
 
-notsotuf.client:
+tufup.client:
 ####################
 
-.. automodule:: notsotuf.client     
+.. automodule:: tufup.client
 
 
 
-notsotuf.repo:
+tufup.repo:
 ####################
 
-.. automodule:: notsotuf.repo     
+.. automodule:: tufup.repo
 
 
-notsotuf.common:
+tufup.common:
 ####################
 
-.. automodule:: notsotuf.common     
+.. automodule:: tufup.common
 

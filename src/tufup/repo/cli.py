@@ -4,10 +4,10 @@ import logging
 import packaging.version
 from tuf.api.metadata import TOP_LEVEL_ROLE_NAMES
 
-from notsotuf.utils import (
+from tufup.utils import (
     log_print, input_bool, input_numeric, input_text, input_list
 )
-from notsotuf.repo import Repository
+from tufup.repo import Repository
 
 logger = logging.getLogger(__name__)
 

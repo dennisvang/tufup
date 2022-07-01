@@ -23,12 +23,12 @@ from tuf.api.metadata import (
     TOP_LEVEL_ROLE_NAMES
 )
 
-from notsotuf.common import TargetMeta
-import notsotuf.repo  # for patching
-from notsotuf.repo import (
+from tests import TempDirTestCase, TEST_REPO_DIR
+from tufup.common import TargetMeta
+import tufup.repo  # for patching
+from tufup.repo import (
     Base, in_, Keys, make_gztar_archive, Repository, Roles, SUFFIX_PUB
 )
-from tests import TempDirTestCase, TEST_REPO_DIR
 
 
 mock_input = Mock(return_value='')
@@ -292,7 +292,7 @@ class RolesTests(TempDirTestCase):
             for filename in filenames:
                 (self.temp_dir_path / filename).touch()
         # test
-        with patch.object(notsotuf.repo.Metadata, 'from_file', mock_from_file):
+        with patch.object(tufup.repo.Metadata, 'from_file', mock_from_file):
             roles = Roles(dir_path=self.temp_dir_path)
             for role_name in TOP_LEVEL_ROLE_NAMES:
                 self.assertEqual(role_name, getattr(roles, role_name))
@@ -494,9 +494,9 @@ class RepositoryTests(TempDirTestCase):
         # for convenience we use the notosotuf version attribute here,
         # but normally this would point to an external app version e.g.
         # 'my_app.__version__'
-        app_version_attr = 'notsotuf.__version__'
+        app_version_attr = 'tufup.__version__'
         repo = Repository(app_name='test', app_version_attr=app_version_attr)
-        self.assertEqual(str(notsotuf.__version__), repo.app_version)
+        self.assertEqual(str(tufup.__version__), repo.app_version)
 
     def test_get_config_file_path(self):
         self.assertTrue(Repository.get_config_file_path())

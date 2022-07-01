@@ -2,7 +2,7 @@ import logging
 import pathlib
 import shutil
 
-from notsotuf.client import Client
+from tufup.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 APP_NAME = 'example_app'
 CURRENT_VERSION = '1.0'
 
-# For this example, all files are stored in the notsotuf/examples/client
+# For this example, all files are stored in the tufup/examples/client
 # directory. On Windows 10, a typical location for the BASE_DIR would be
 # %PROGRAMDATA%\MyApp (per-machine), or %LOCALAPPDATA%\MyApp (per-user).
 BASE_DIR = pathlib.Path(__file__).resolve().parent

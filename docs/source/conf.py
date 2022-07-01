@@ -12,7 +12,7 @@
 #
 import configparser
 from datetime import date
-import notsotuf
+import tufup
 from urllib import parse
 import pathlib
 import sys
@@ -30,7 +30,7 @@ author = config['metadata']['author']
 copyright = f'{date.today().year}, {author}'
 
 # The full version, including alpha/beta/rc tags
-release = notsotuf.__version__
+release = tufup.__version__
 
 
 # -- General configuration ---------------------------------------------------

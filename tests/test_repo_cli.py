@@ -2,15 +2,15 @@ import argparse
 import unittest
 from unittest.mock import Mock, patch
 
-import notsotuf
-import notsotuf.repo.cli
-import notsotuf.utils
+import tufup
+import tufup.repo.cli
+import tufup.utils
 from tests import TempDirTestCase
 
 
 class ParserTests(unittest.TestCase):
     def test_get_parser(self):
-        parser = notsotuf.repo.cli.get_parser()
+        parser = tufup.repo.cli.get_parser()
         for cmd in [
             'init',
             'init --debug',
@@ -65,21 +65,21 @@ class CommandTests(TempDirTestCase):
         self.mock_repo_class = MockRepository
 
     def test__cmd_init(self):
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            with patch('notsotuf.repo.cli.input_bool', Mock(return_value=True)):
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            with patch('tufup.repo.cli.input_bool', Mock(return_value=True)):
                 with patch(
-                        'notsotuf.repo.cli._get_config_from_user',
+                        'tufup.repo.cli._get_config_from_user',
                         self.mock_repo_class.load_config,
                 ):
-                    notsotuf.repo.cli._cmd_init(options=argparse.Namespace())
+                    tufup.repo.cli._cmd_init(options=argparse.Namespace())
         self.mock_repo.initialize.assert_called()
 
     def test__cmd_keys_create(self):
         options = argparse.Namespace(
             new_key_name='test', encrypted=True, create=True
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_keys(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_keys(options=options)
         self.mock_repo.keys.create_key_pair.assert_called()
 
     def test__cmd_keys_create_and_add_key(self):
@@ -90,8 +90,8 @@ class CommandTests(TempDirTestCase):
             new_key_name='test',
             role_name='root',
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_keys(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_keys(options=options)
         self.mock_repo.keys.create_key_pair.assert_called()
         self.mock_repo.add_key.assert_called()
         self.mock_repo.publish_changes.assert_called()
@@ -104,8 +104,8 @@ class CommandTests(TempDirTestCase):
             new_key_name='some new key to be created',
             old_key_name='some old key name',
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_keys(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_keys(options=options)
         self.mock_repo.replace_key.assert_called()
         self.mock_repo.keys.create_key_pair.assert_called()
         self.mock_repo.publish_changes.assert_called()
@@ -117,8 +117,8 @@ class CommandTests(TempDirTestCase):
         options = argparse.Namespace(
             app_version=version, bundle_dir=bundle_dir, key_dirs=key_dirs
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_targets(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.add_bundle.assert_called_with(
             new_version=version, new_bundle_dir=bundle_dir
         )
@@ -129,8 +129,8 @@ class CommandTests(TempDirTestCase):
     def test__cmd_targets_remove_latest(self):
         key_dirs = ['c:\\my_private_keys']
         options = argparse.Namespace(key_dirs=key_dirs)
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_targets(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.remove_latest_bundle.assert_called()
 
     def test__cmd_sign_threshold(self):
@@ -139,8 +139,8 @@ class CommandTests(TempDirTestCase):
         options = argparse.Namespace(
             role_name=role_name, key_dirs=key_dirs, expiration_days=None
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_sign(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_sign(options=options)
         self.mock_repo.threshold_sign.assert_called_with(
             role_name=role_name, private_key_dirs=key_dirs
         )
@@ -153,8 +153,8 @@ class CommandTests(TempDirTestCase):
             key_dirs=key_dirs,
             expiration_days='default',  # i.e. specify -e without a value
         )
-        with patch('notsotuf.repo.cli.Repository', self.mock_repo_class):
-            notsotuf.repo.cli._cmd_sign(options=options)
+        with patch('tufup.repo.cli.Repository', self.mock_repo_class):
+            tufup.repo.cli._cmd_sign(options=options)
         self.mock_repo.refresh_expiration_date.assert_called_with(
             role_name=role_name, days=self.config['expiration_days'][role_name]
         )
@@ -198,7 +198,7 @@ class CommandTests(TempDirTestCase):
             ]
         )
         with patch('builtins.input', lambda *_, **__: next(user_inputs)):
-            config_kwargs = notsotuf.repo.cli._get_config_from_user()
+            config_kwargs = tufup.repo.cli._get_config_from_user()
         self.assertTrue(config_kwargs)
 
     def test__get_config_from_user_with_kwargs(self):
@@ -215,7 +215,7 @@ class CommandTests(TempDirTestCase):
         )
         default = ''
         with patch('builtins.input', Mock(return_value=default)):
-            config_kwargs = notsotuf.repo.cli._get_config_from_user(
+            config_kwargs = tufup.repo.cli._get_config_from_user(
                 **original_kwargs
             )
         self.assertEqual(config_kwargs, original_kwargs)

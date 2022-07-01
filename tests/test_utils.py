@@ -2,7 +2,7 @@ import pathlib
 import unittest
 from unittest.mock import Mock, patch
 
-import notsotuf.utils
+import tufup.utils
 from tests import TempDirTestCase
 
 
@@ -21,7 +21,7 @@ class RemovePathTests(TempDirTestCase):
             # test
             with self.subTest(msg=arg_type):
                 self.assertTrue(
-                    notsotuf.utils.remove_path(path=arg_type(dir_path))
+                    tufup.utils.remove_path(path=arg_type(dir_path))
                 )
                 self.assertFalse(dir_path.exists())
 
@@ -36,7 +36,7 @@ class InputTests(unittest.TestCase):
                 with patch('builtins.input', Mock(return_value=user_input)):
                     self.assertEqual(
                         expected,
-                        notsotuf.utils.input_bool(prompt='', default=default),
+                        tufup.utils.input_bool(prompt='', default=default),
                     )
 
     def test_input_list(self):
@@ -47,17 +47,17 @@ class InputTests(unittest.TestCase):
         text_inputs = iter(['', new_item])
         # we use iterators to simulate sequences of user inputs
         with patch.object(
-                notsotuf.utils, 'input_bool', lambda *_, **__: next(bool_inputs)
+                tufup.utils, 'input_bool', lambda *_, **__: next(bool_inputs)
         ):
             with patch.object(
-                    notsotuf.utils,
+                    tufup.utils,
                     'input_text',
                     lambda *_, **__: next(text_inputs) or item_default,
             ):
                 expected = default + [item_default, new_item]
                 self.assertEqual(
                     expected,
-                    notsotuf.utils.input_list(
+                    tufup.utils.input_list(
                         prompt='', default=default, item_default=item_default
                     )
                 )
@@ -70,11 +70,11 @@ class InputTests(unittest.TestCase):
         # and return '' instead of raising StopIteration
         with patch('builtins.input', lambda *_: next(user_inputs, '')):
             self.assertEqual(
-                answer, notsotuf.utils.input_numeric(prompt='', default=default)
+                answer, tufup.utils.input_numeric(prompt='', default=default)
             )
             # iterator exhausted, so next user input is ''
             self.assertEqual(
-                default, notsotuf.utils.input_numeric(prompt='', default=default)
+                default, tufup.utils.input_numeric(prompt='', default=default)
             )
 
     def test_input_text(self):
@@ -83,17 +83,17 @@ class InputTests(unittest.TestCase):
         with patch('builtins.input', lambda *_: next(user_inputs, '')):
             # this should iterate until we get a non-empty answer
             self.assertEqual(
-                answer, notsotuf.utils.input_text(prompt='', default='')
+                answer, tufup.utils.input_text(prompt='', default='')
             )
             # iterator exhausted, so next user input is ''
             self.assertEqual(
-                answer, notsotuf.utils.input_text(prompt='', default=answer)
+                answer, tufup.utils.input_text(prompt='', default=answer)
             )
 
     def test_input_text_optional(self):
         with patch('builtins.input', Mock(return_value='')):
             self.assertIsNone(
-                notsotuf.utils.input_text(
+                tufup.utils.input_text(
                     prompt='', default=None, optional=True
                 )
             )

@@ -5,7 +5,7 @@ import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
-from notsotuf.repo import (
+from tufup.repo import (
     DEFAULT_KEY_MAP,
     DEFAULT_KEYS_DIR_NAME,
     DEFAULT_META_DIR_NAME,
@@ -21,7 +21,7 @@ NOTE: The repo content can be served for local testing as follows:
     python -m http.server -d examples/repo/content
 
 NOTE: This script creates subdirectories and files in the 
-notsotuf/examples/repo directory. 
+tufup/examples/repo directory. 
 
 NOTE: When running this script in PyCharm, ensure "Emulate terminal in output 
 console" is enabled in the run configuration, otherwise the encryption 

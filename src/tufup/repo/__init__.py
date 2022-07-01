@@ -35,7 +35,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from notsotuf.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
+from tufup.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
 
 logger = logging.getLogger(__name__)
 
@@ -501,7 +501,7 @@ class Roles(Base):
 
 class Repository(object):
     """High-level tools for repository management."""
-    config_filename = '.notsotuf-repo-config'
+    config_filename = '.tufup-repo-config'
 
     def __init__(
             self,

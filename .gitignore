@@ -9,4 +9,4 @@ examples/repo/keystore/
 examples/repo/repository/
 
 # files
-.notsotuf-repo-config
+.tufup-repo-config

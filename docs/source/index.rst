@@ -1,5 +1,7 @@
-Welcome to notsotuf's documentation!
-====================================
+Welcome to the documentation for tuf-up
+======================================
+
+The tufup package enables automated updates for stand-alone Python applications.
 
 
 

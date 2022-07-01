@@ -15,12 +15,12 @@ import tuf.ngclient
 # RequestsFetcher is "private", but we'll just have to live with that, for now.
 from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
-from notsotuf.common import TargetMeta
-from notsotuf.utils.platform_specific import install_update
+from tufup.common import TargetMeta
+from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'notsotuf'
+DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
 
 
 class Client(tuf.ngclient.Updater):
