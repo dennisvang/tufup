@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 import shutil
 from typing import Optional
@@ -17,7 +18,7 @@ ROOT_FILENAME = 'root.json'
 TARGETS_FILENAME = 'targets.json'
 SNAPSHOT_FILENAME = 'snapshot.json'
 TIMESTAMP_FILENAME = 'timestamp.json'
-
+ON_GITHUB = os.getenv('GITHUB_ACTIONS')
 
 class ClientTests(TempDirTestCase):
     def setUp(self) -> None:
@@ -217,7 +218,8 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         self.session_auth = {
             'https://example.net': None,
             'https://example.com': ('username', 'password'),
-            'https://example.org': HTTPBasicAuth(username='name', password='pw'),
+            'https://example.org': HTTPBasicAuth(username='x', password='y'),
+            'http://localhost:8000': ('username', 'password'),
         }
 
     def test_init(self):
@@ -229,7 +231,27 @@ class AuthRequestsFetcherTests(unittest.TestCase):
 
     def test__get_session(self):
         fetcher = AuthRequestsFetcher(session_auth=self.session_auth)
-        for url, auth in self.session_auth.items():
+        for scheme_and_server, auth in self.session_auth.items():
+            url = scheme_and_server + '/some/path?query=something'
             with self.subTest(msg=url):
                 session = fetcher._get_session(url=url)
                 self.assertEqual(auth, session.auth)
+
+    @unittest.skipIf(condition=ON_GITHUB, reason='external dependency')
+    def test_fetch_basic_auth(self):
+        # kind of an integration test, as it connects to an external server...
+        scheme_and_server = 'https://httpbin.org'
+        user = 'me'
+        passwd = 'mypassword'
+        url = f'{scheme_and_server}/basic-auth/{user}/{passwd}'
+        session_auth = {
+            scheme_and_server: HTTPBasicAuth(username=user, password=passwd)
+        }
+        fetcher = AuthRequestsFetcher(session_auth=session_auth)
+        # we don't have direct access to the response, so we'll just check
+        # that RequestsFetcher.fetch() doesn't raise an error, such as a
+        # status "401 Unauthorized" or "403 Forbidden"
+        try:
+            fetcher.fetch(url=url)
+        except tuf.api.exceptions.DownloadHTTPError as e:
+            self.fail(msg=f'fetch() raised unexpected HTTPError: {e}')

@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 from typing import Callable, Dict, Optional, Tuple, Union
+from urllib import parse
 
 import requests
 from requests.auth import AuthBase
@@ -277,20 +278,38 @@ class AuthRequestsFetcher(RequestsFetcher):
 
         session_auth (optional):
 
-            dict of the form {<url>: (<username>, <password>), ...}
-            or {<url>: <requests.auth.AuthBase>, ...} or a combination
+            dict of the form {<scheme and server>: (<username>, <password>), ...}
+            or {<scheme and server>: <requests.auth.AuthBase>, ...}
+            or some combination of those
 
-        Also see session authentication example in requests docs:
+        where <scheme and server> can be e.g. https://example.com
+        or http://localhost:8000.
 
-        https://docs.python-requests.org/en/master/user/advanced/#session-objects
-        https://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
-        https://docs.python-requests.org/en/master/api/#sessionapi
+        Naming follows [RFC 2396][1], which defines a generic uri as:
+
+            <scheme>://<authority><path>?<query>
+
+        where <authority> can be <server>.
+
+        Also see session authentication example in requests docs: [1][2][3]
+
+        [1]: https://datatracker.ietf.org/doc/html/rfc2396#section-3
+        [2]: https://docs.python-requests.org/en/master/user/advanced/#session-objects
+        [3]: https://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
+        [4]: https://docs.python-requests.org/en/master/api/#sessionapi
         """
         super().__init__()
         self.session_auth = session_auth or {}
 
     def _get_session(self, url: str) -> requests.Session:
-        # set the Session.auth attribute for the specified url, if available
+        # set the Session.auth attribute for the specified server, if available
         session = super()._get_session(url=url)
-        session.auth = self.session_auth.get(url)
+        # determine session_auth key
+        parsed_url = parse.urlparse(url)
+        key = parse.urlunparse(
+            parse.ParseResult._make(
+                [parsed_url.scheme, parsed_url.netloc, '', '', '', '']
+            )
+        )
+        session.auth = self.session_auth.get(key)
         return session
