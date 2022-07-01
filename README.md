@@ -25,7 +25,7 @@ For details and best practices, refer to the [tuf docs][2].
 Based on the intended use, the `notsotuf` package supports only the top-level roles offered by `tuf`. At this time we do not support delegations.
 Hence the name *"notsotuf"*.
 
-*Disclaimer: It turns out there was once another package called [No-So-TUF][9] created by the author of PyUpdater.
+*Disclaimer: It turns out there was once another package called [Not-So-TUF][9] created by the author of PyUpdater.
 These packages are not related, and the matching name is a pure coincidence.
 The name did not appear on PyPI at the time our repo was created, nor did it appear on GitHub, as far as I know.*
 

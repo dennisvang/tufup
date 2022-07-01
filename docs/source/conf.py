@@ -10,19 +10,27 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
+import configparser
+from datetime import date
+import notsotuf
+from urllib import parse
+import pathlib
 import sys
-sys.path.insert(0, os.path.abspath('../../src/'))
+
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
+SRC_DIR = ROOT_DIR / 'src'
+sys.path.insert(0, str(SRC_DIR))
 
 
 # -- Project information -----------------------------------------------------
-
-project = 'notsotuf'
-copyright = '2022, dennisvang'
-author = 'dennisvang'
+config = configparser.ConfigParser()
+config.read(ROOT_DIR / 'setup.cfg')
+project = config['metadata']['name']
+author = config['metadata']['author']
+copyright = f'{date.today().year}, {author}'
 
 # The full version, including alpha/beta/rc tags
-release = '2022.0'
+release = notsotuf.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -79,5 +87,11 @@ autodoc_default_options = {
     'inherited-members': True,
 }
 
-html_baseurl = 'https://notsotuf.readthedocs.io'
+#  find documentation url
+project_urls = config['metadata']['project_urls'].split('\n')
+html_baseurl = ''
+for line in project_urls:
+    if 'readthedocs' in line:
+        parsed_url = parse.urlparse(line.split('=')[1].strip())
+        html_baseurl = f'{parsed_url.scheme}://{parsed_url.netloc}'
 html_extra_path = ['robots.txt']
