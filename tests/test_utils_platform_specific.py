@@ -91,4 +91,5 @@ class UtilsTests(TempDirTestCase):
         # stale dst content has been removed (robocopy /purge)
         self.assertFalse(dst_subdir.exists())
         # file to keep must still be present
-        self.assertTrue(keep_file_path.exists())
+        if ON_WINDOWS:
+            self.assertTrue(keep_file_path.exists())
