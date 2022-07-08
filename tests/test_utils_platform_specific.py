@@ -14,9 +14,7 @@ DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from tufup.utils.platform_specific import install_update
-install_update(
-    src_dir=sys.argv[1], dst_dir=sys.argv[2], as_admin=False, debug=False
-)
+install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2], {{extra_kwargs}})
 """
 
 ON_GITHUB = os.getenv('GITHUB_ACTIONS')
@@ -59,7 +57,22 @@ class UtilsTests(TempDirTestCase):
         (dst_subdir / 'stale.file').touch()
         src_file_name = 'dummy_app.py'
         src_file_path = src_dir / src_file_name
-        src_file_path.write_text(DUMMY_APP_CONTENT)
+        keep_file_path = dst_dir / 'keep.file'
+        keep_file_path.touch()
+        # write dummy app content to file
+        extra_kwargs = ''
+        if ON_WINDOWS:
+            keep_file_str = str(keep_file_path).replace('\\', '\\\\')
+            extra_kwargs = ', '.join(
+                [
+                    'as_admin=False',
+                    'debug=False',
+                    f'extra_robocopy_options=["/xf", "{keep_file_str}"]',
+                ]
+            )
+        dummy_app_content = DUMMY_APP_CONTENT.format(extra_kwargs=extra_kwargs)
+        print(dummy_app_content)
+        src_file_path.write_text(dummy_app_content)
         # run the dummy app in a separate process, which, in turn, will run
         # another process that moves the file
         completed_process = subprocess.run(
@@ -77,3 +90,6 @@ class UtilsTests(TempDirTestCase):
         self.assertFalse(src_file_path.exists())
         # stale dst content has been removed (robocopy /purge)
         self.assertFalse(dst_subdir.exists())
+        # file to keep must still be present
+        if ON_WINDOWS:
+            self.assertTrue(keep_file_path.exists())

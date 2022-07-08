@@ -115,8 +115,6 @@ class Client(tuf.ngclient.Updater):
         """
         if install is None:
             install = install_update
-            kwargs['as_admin'] = kwargs.get('as_admin', False)
-            kwargs['debug'] = kwargs.get('debug', False)
         if self.updates_available and self._download_updates():
             self._apply_updates(
                 install=install, skip_confirmation=skip_confirmation, **kwargs
