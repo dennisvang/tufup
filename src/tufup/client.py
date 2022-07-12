@@ -4,12 +4,15 @@ import pathlib
 import shutil
 import sys
 import tempfile
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Iterator, Optional, Tuple, Union
 from urllib import parse
 
 import requests
+from requests.adapters import ReadTimeoutError
 from requests.auth import AuthBase
-from tuf.api.exceptions import DownloadError, UnsignedMetadataError
+from tuf.api.exceptions import (
+    DownloadError, SlowRetrievalError, UnsignedMetadataError
+)
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
 # RequestsFetcher is "private", but we'll just have to live with that, for now.
@@ -311,3 +314,23 @@ class AuthRequestsFetcher(RequestsFetcher):
         )
         session.auth = self.session_auth.get(key)
         return session
+
+    def _chunks(self, response: "requests.Response") -> Iterator[bytes]:
+        """
+        Temporarily override _chunks() to prevent automatic decoding of gzip
+        files.
+
+        todo: remove this when a fix for python-tuf issue #2047 is released
+        """
+        try:
+            while True:
+                data = response.raw.read(
+                    amt=self.chunk_size, decode_content=False
+                )
+                if not data:
+                    break
+                yield data
+        except ReadTimeoutError as e:
+            raise SlowRetrievalError from e
+        finally:
+            response.close()
