@@ -6,7 +6,7 @@ from tufup.utils import input_bool
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 # https://semver.org/
-__version__ = '0.1.3'
+__version__ = '0.2.0'
 
 logger = logging.getLogger(__name__)
 
