@@ -4,7 +4,7 @@ import pathlib
 import shutil
 import sys
 import tempfile
-from typing import Callable, Dict, Iterator, Optional, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
 import requests
@@ -98,6 +98,7 @@ class Client(tuf.ngclient.Updater):
             self,
             skip_confirmation: bool = False,
             install: Optional[Callable] = None,
+            progress_hook: Optional[Callable] = None,
             **kwargs,
     ):
         """
@@ -118,7 +119,9 @@ class Client(tuf.ngclient.Updater):
         """
         if install is None:
             install = install_update
-        if self.updates_available and self._download_updates():
+        if self.updates_available and self._download_updates(
+                progress_hook=progress_hook
+        ):
             self._apply_updates(
                 install=install, skip_confirmation=skip_confirmation, **kwargs
             )
@@ -201,12 +204,17 @@ class Client(tuf.ngclient.Updater):
             logger.debug('no new archives found')
         return new_archive_meta
 
-    def _download_updates(self) -> bool:
+    def _download_updates(self, progress_hook: Optional[Callable]) -> bool:
         # download the new targets selected in check_for_updates
         for target_meta, target_file in self.new_targets.items():
             # check if the target file has already been downloaded
             local_path_str = self.find_cached_target(targetinfo=target_file)
             if not local_path_str:
+                # attach progress hook
+                if progress_hook:
+                    self._fetcher.attach_progress_hook(
+                        hook=progress_hook, bytes_expected=target_file.length
+                    )
                 # download the target file
                 local_path_str = self.download_target(targetinfo=target_file)
             self.downloaded_target_files[target_meta] = pathlib.Path(local_path_str)
@@ -301,6 +309,27 @@ class AuthRequestsFetcher(RequestsFetcher):
         """
         super().__init__()
         self.session_auth = session_auth or {}
+        # default progress hook does nothing
+        self._progress = lambda bytes_new: None
+
+    def attach_progress_hook(self, hook: Callable, bytes_expected: int):
+        """
+        Allow clients to attach a progress hook which gets called after every
+        downloaded chunk.
+
+        The hook must accept two kwargs: bytes_downloaded and bytes_expected
+        """
+        def progress(
+                bytes_new: int,
+                _cache: List[int] = [],  # noqa: mutable default intentional
+        ):
+            # mutable default is used to keep track of downloaded chunk sizes
+            _cache.append(bytes_new)
+            return hook(
+                bytes_downloaded=sum(_cache), bytes_expected=bytes_expected
+            )
+
+        self._progress = progress
 
     def _get_session(self, url: str) -> requests.Session:
         # set the Session.auth attribute for the specified server, if available
@@ -317,10 +346,11 @@ class AuthRequestsFetcher(RequestsFetcher):
 
     def _chunks(self, response: "requests.Response") -> Iterator[bytes]:
         """
-        Temporarily override _chunks() to prevent automatic decoding of gzip
-        files.
+        Override _chunks() to:
+        - prevent automatic decoding of gzip files (python-tuf issue #2047)
+        - call progress hook
 
-        todo: remove this when a fix for python-tuf issue #2047 is released
+        todo: adapt, if necessary, when a fix for python-tuf #2047 is released
         """
         try:
             while True:
@@ -329,6 +359,7 @@ class AuthRequestsFetcher(RequestsFetcher):
                 )
                 if not data:
                     break
+                self._progress(bytes_new=len(data))
                 yield data
         except ReadTimeoutError as e:
             raise SlowRetrievalError from e

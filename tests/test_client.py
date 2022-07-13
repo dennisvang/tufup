@@ -20,6 +20,7 @@ SNAPSHOT_FILENAME = 'snapshot.json'
 TIMESTAMP_FILENAME = 'timestamp.json'
 ON_GITHUB = os.getenv('GITHUB_ACTIONS')
 
+
 class ClientTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -176,7 +177,7 @@ class ClientTests(TempDirTestCase):
                     find_cached_target=Mock(return_value=cached_path),
                     download_target=Mock(return_value=downloaded_path),
             ):
-                self.assertTrue(client._download_updates())
+                self.assertTrue(client._download_updates(progress_hook=None))
                 local_path = next(iter(client.downloaded_target_files.values()))
                 if cached_path:
                     self.assertEqual(cached_path, str(local_path))
@@ -255,3 +256,60 @@ class AuthRequestsFetcherTests(unittest.TestCase):
             fetcher.fetch(url=url)
         except tuf.api.exceptions.DownloadHTTPError as e:
             self.fail(msg=f'fetch() raised unexpected HTTPError: {e}')
+
+    def test_attach_progress_hook(self):
+        mock_hook = Mock()
+        bytes_expected = 10
+        fetcher = AuthRequestsFetcher()
+        fetcher.attach_progress_hook(
+            hook=mock_hook, bytes_expected=bytes_expected
+        )
+        bytes_new = 1
+        bytes_downloaded = 0
+        while bytes_downloaded < bytes_expected:
+            bytes_downloaded += bytes_new
+            fetcher._progress(bytes_new=bytes_new)
+            mock_hook.assert_called_with(
+                bytes_downloaded=bytes_downloaded, bytes_expected=bytes_expected
+            )
+
+    def test__chunks_without_progress_hook(self):
+        chunk_size = 10
+        chunk_count = 10
+        chunks = [b'x' * chunk_size] * chunk_count
+
+        def mock_read(**kwargs):
+            if chunks:
+                return chunks.pop()
+
+        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        fetcher = AuthRequestsFetcher()
+        fetcher.chunk_size = chunk_size
+        # _chunks should work even if attach_progress_hook was not called
+        try:
+            for __ in fetcher._chunks(response=mock_response):
+                pass
+        except Exception as e:
+            self.fail(msg=f'_chunks raised an unexpected exception: {e}')
+
+    def test__chunks_with_progress_hook(self):
+        chunk_size = 10
+        chunk_count = 10
+        chunks = [b'x' * chunk_size] * chunk_count
+
+        def mock_read(**kwargs):
+            if chunks:
+                return chunks.pop()
+
+        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        fetcher = AuthRequestsFetcher()
+        fetcher.chunk_size = chunk_size
+        # test custom progress hook
+        mock_hook = Mock()
+        bytes_expected = chunk_size * chunk_count
+        fetcher.attach_progress_hook(
+            hook=mock_hook, bytes_expected=bytes_expected
+        )
+        for __ in fetcher._chunks(response=mock_response):
+            pass
+        self.assertEqual(chunk_count, mock_hook.call_count)
