@@ -20,6 +20,7 @@ SNAPSHOT_FILENAME = 'snapshot.json'
 TIMESTAMP_FILENAME = 'timestamp.json'
 ON_GITHUB = os.getenv('GITHUB_ACTIONS')
 
+
 class ClientTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -255,3 +256,19 @@ class AuthRequestsFetcherTests(unittest.TestCase):
             fetcher.fetch(url=url)
         except tuf.api.exceptions.DownloadHTTPError as e:
             self.fail(msg=f'fetch() raised unexpected HTTPError: {e}')
+
+    def test_attach_progress_hook(self):
+        mock_hook = Mock()
+        bytes_expected = 10
+        fetcher = AuthRequestsFetcher()
+        fetcher.attach_progress_hook(
+            hook=mock_hook, bytes_expected=bytes_expected
+        )
+        bytes_new = 1
+        bytes_downloaded = 0
+        while bytes_downloaded < bytes_expected:
+            bytes_downloaded += bytes_new
+            fetcher._progress(bytes_new=bytes_new)
+            mock_hook.assert_called_with(
+                bytes_downloaded=bytes_downloaded, bytes_expected=bytes_expected
+            )
