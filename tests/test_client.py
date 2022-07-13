@@ -177,7 +177,7 @@ class ClientTests(TempDirTestCase):
                     find_cached_target=Mock(return_value=cached_path),
                     download_target=Mock(return_value=downloaded_path),
             ):
-                self.assertTrue(client._download_updates())
+                self.assertTrue(client._download_updates(progress_hook=None))
                 local_path = next(iter(client.downloaded_target_files.values()))
                 if cached_path:
                     self.assertEqual(cached_path, str(local_path))

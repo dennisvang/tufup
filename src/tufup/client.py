@@ -39,7 +39,6 @@ class Client(tuf.ngclient.Updater):
             extract_dir: Optional[pathlib.Path] = None,
             refresh_required: bool = False,
             session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
-            progress_hook: Optional[Callable] = None,
             **kwargs,
     ):
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
@@ -60,7 +59,6 @@ class Client(tuf.ngclient.Updater):
         self.new_archive_info: Optional[TargetFile] = None
         self.new_targets: Optional[dict] = None
         self.downloaded_target_files = {}
-        self.progress_hook = progress_hook
 
     @property
     def trusted_target_metas(self) -> list:
@@ -100,6 +98,7 @@ class Client(tuf.ngclient.Updater):
             self,
             skip_confirmation: bool = False,
             install: Optional[Callable] = None,
+            progress_hook: Optional[Callable] = None,
             **kwargs,
     ):
         """
@@ -120,7 +119,9 @@ class Client(tuf.ngclient.Updater):
         """
         if install is None:
             install = install_update
-        if self.updates_available and self._download_updates():
+        if self.updates_available and self._download_updates(
+                progress_hook=progress_hook
+        ):
             self._apply_updates(
                 install=install, skip_confirmation=skip_confirmation, **kwargs
             )
@@ -203,17 +204,16 @@ class Client(tuf.ngclient.Updater):
             logger.debug('no new archives found')
         return new_archive_meta
 
-    def _download_updates(self) -> bool:
+    def _download_updates(self, progress_hook: Optional[Callable]) -> bool:
         # download the new targets selected in check_for_updates
         for target_meta, target_file in self.new_targets.items():
             # check if the target file has already been downloaded
             local_path_str = self.find_cached_target(targetinfo=target_file)
             if not local_path_str:
                 # attach progress hook
-                if self.progress_hook:
+                if progress_hook:
                     self._fetcher.attach_progress_hook(
-                        hook=self.progress_hook,
-                        bytes_expected=target_file.length,
+                        hook=progress_hook, bytes_expected=target_file.length
                     )
                 # download the target file
                 local_path_str = self.download_target(targetinfo=target_file)
