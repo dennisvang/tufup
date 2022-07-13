@@ -272,3 +272,44 @@ class AuthRequestsFetcherTests(unittest.TestCase):
             mock_hook.assert_called_with(
                 bytes_downloaded=bytes_downloaded, bytes_expected=bytes_expected
             )
+
+    def test__chunks_without_progress_hook(self):
+        chunk_size = 10
+        chunk_count = 10
+        chunks = [b'x' * chunk_size] * chunk_count
+
+        def mock_read(**kwargs):
+            if chunks:
+                return chunks.pop()
+
+        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        fetcher = AuthRequestsFetcher()
+        fetcher.chunk_size = chunk_size
+        # _chunks should work even if attach_progress_hook was not called
+        try:
+            for __ in fetcher._chunks(response=mock_response):
+                pass
+        except Exception as e:
+            self.fail(msg=f'_chunks raised an unexpected exception: {e}')
+
+    def test__chunks_with_progress_hook(self):
+        chunk_size = 10
+        chunk_count = 10
+        chunks = [b'x' * chunk_size] * chunk_count
+
+        def mock_read(**kwargs):
+            if chunks:
+                return chunks.pop()
+
+        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        fetcher = AuthRequestsFetcher()
+        fetcher.chunk_size = chunk_size
+        # test custom progress hook
+        mock_hook = Mock()
+        bytes_expected = chunk_size * chunk_count
+        fetcher.attach_progress_hook(
+            hook=mock_hook, bytes_expected=bytes_expected
+        )
+        for __ in fetcher._chunks(response=mock_response):
+            pass
+        self.assertEqual(chunk_count, mock_hook.call_count)
