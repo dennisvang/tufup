@@ -278,11 +278,10 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         chunk_count = 10
         chunks = [b'x' * chunk_size] * chunk_count
 
-        def mock_read(**kwargs):
-            if chunks:
-                return chunks.pop()
+        def mock_iter_content(*args):
+            yield from chunks
 
-        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        mock_response = Mock(iter_content=mock_iter_content, close=Mock())
         fetcher = AuthRequestsFetcher()
         fetcher.chunk_size = chunk_size
         # _chunks should work even if attach_progress_hook was not called
@@ -297,11 +296,10 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         chunk_count = 10
         chunks = [b'x' * chunk_size] * chunk_count
 
-        def mock_read(**kwargs):
-            if chunks:
-                return chunks.pop()
+        def mock_iter_content(*args):
+            yield from chunks
 
-        mock_response = Mock(raw=Mock(read=mock_read), close=Mock())
+        mock_response = Mock(iter_content=mock_iter_content, close=Mock())
         fetcher = AuthRequestsFetcher()
         fetcher.chunk_size = chunk_size
         # test custom progress hook

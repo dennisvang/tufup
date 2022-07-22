@@ -8,11 +8,8 @@ from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
 import requests
-from requests.adapters import ReadTimeoutError
 from requests.auth import AuthBase
-from tuf.api.exceptions import (
-    DownloadError, SlowRetrievalError, UnsignedMetadataError
-)
+from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
 # RequestsFetcher is "private", but we'll just have to live with that, for now.
@@ -345,23 +342,7 @@ class AuthRequestsFetcher(RequestsFetcher):
         return session
 
     def _chunks(self, response: "requests.Response") -> Iterator[bytes]:
-        """
-        Override _chunks() to:
-        - prevent automatic decoding of gzip files (python-tuf issue #2047)
-        - call progress hook
-
-        todo: adapt, if necessary, when a fix for python-tuf #2047 is released
-        """
-        try:
-            while True:
-                data = response.raw.read(
-                    amt=self.chunk_size, decode_content=False
-                )
-                if not data:
-                    break
-                self._progress(bytes_new=len(data))
-                yield data
-        except ReadTimeoutError as e:
-            raise SlowRetrievalError from e
-        finally:
-            response.close()
+        """Call progress hook for every chunk."""
+        for data in super()._chunks(response=response):
+            self._progress(bytes_new=len(data))
+            yield data
