@@ -8,11 +8,8 @@ from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
 import requests
-from requests.adapters import ReadTimeoutError
 from requests.auth import AuthBase
-from tuf.api.exceptions import (
-    DownloadError, SlowRetrievalError, UnsignedMetadataError
-)
+from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
 # RequestsFetcher is "private", but we'll just have to live with that, for now.
