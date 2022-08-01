@@ -116,7 +116,7 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 
 [1]: https://github.com/theupdateframework/python-tuf
 [2]: https://theupdateframework.io/
-[3]: https://www.pyupdater.org/
+[3]: https://github.com/Digital-Sapphire/PyUpdater/
 [4]: https://theupdateframework.io/overview/#software-updates-101
 [5]: https://peps.python.org/pep-0458/
 [6]: https://peps.python.org/pep-0440/
