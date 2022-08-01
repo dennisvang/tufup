@@ -8,9 +8,9 @@
 A simple software updater for stand-alone Python *applications*.
 
 The `tufup` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework).
+It is advisable to read the [TUF documentation][11] before proceeding. 
 
-The initial implementation is focused on Windows and macOS.
-The package can be used on other platforms, but these are not actively supported.
+An application example can be found in the companion repository: [tufup-example][10]
 
 ## About
 
@@ -26,19 +26,23 @@ Based on the intended use, the `tufup` package supports only the top-level roles
 
 ## Overview
 
-Borrowing `tuf` terminology, we have tools for the repository (*repo*) side and tools for the *client* side.
+Borrowing TUF terminology, we distinguish between a *repo*-side (repository) and a *client*-side (application).
 
-The *repo* tools are used by the app developer to:
+Below you'll find a list of the basic steps that occur in an application update cycle. 
+Steps covered by `tufup` are **highlighted**.
 
-- create update files (e.g. using PyInstaller)
-- sign the resulting files (cryptographically)
-- deploy these files to a server
+On the *repo*-side, the app *developer*
 
-The *client* tools are used by the app itself to:
+- modifies the application code
+- **creates a new application archive file and corresponding patch file**
+- **signs the resulting files cryptographically**
+- deploys these files to a server
 
-- check for updates
-- download update files
-- apply the update files
+On the *client*-side, the *application*
+
+- **checks for updates**
+- **downloads update files**
+- **applies the update files (i.e. installation)**
 
 The `tuf` package is used under the hood to check for updates and download update files in a secure manner, so `tufup` can safely apply the update.
 See the [tuf docs][4] for more information.
@@ -74,11 +78,13 @@ The `tufup.repo` module provides a convenient way to streamline the above proced
 
 ## How updates are applied (client-side)
 
-Updates are applied by replacing all files in the current app installation path with files from the latest archive.
+By default, updates are applied by replacing all files in the current app installation path with files from the latest archive.
 The latest archive is either downloaded in full (as described above), or it is derived from the current archive by applying one or more downloaded patches.
+
 Once the latest archive is available, it is decompressed to a temporary location.
 From there, a script is started that clears the current app installation dir, and moves the new files into place.
-After starting the script, the currently running process will exit.
+After starting the script, the currently running process will exit. 
+Alternatively, you can specify a custom installation script.
 
 ## Migrating from other update frameworks
 
@@ -98,14 +104,13 @@ This ensures that your `pyupdater` clients currently in the field will be able t
 
 ## Platform support
 
-The `tufup` package is aimed primarily at **Windows** and **macOS** applications. 
+The `tufup.client` tools are aimed primarily at **Windows** and **macOS** applications, whereas the `tufup.repo` tools are platform independent, as `tufup.repo` is just a thin layer on top of `python-tuf`. 
 
-Although `tufup` could also be used for Linux applications, those are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft. 
+Although `tufup.client` could also be used for Linux applications, those are probably better off using native packaging solutions, or solutions such as Flatpak or Snapcraft. 
 Read the [Python packaging overview][8] for more information.
 
-The `tufup.repo` functionality is platform independent, as it is just a thin layer on top of `python-tuf`. 
-Platform dependence for `tufup.client` is mainly related to file handling and process handling during the installation procedure.
-A custom, platform dependent, installation procedure can be specified via the optional `install` argument for the `Client.update()` method.
+Platform dependence for `tufup.client` is related to file handling and process handling during the installation procedure, as can be seen in [tufup.utils.platform_specific][12].
+A custom, platform *de*pendent, installation procedure can be specified via the optional `install` argument for the `Client.update()` method.
 
 
 
@@ -118,3 +123,6 @@ A custom, platform dependent, installation procedure can be specified via the op
 [7]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/repo_example/basic_repo.py
 [8]: https://packaging.python.org/en/latest/overview/
 [9]: https://pythonhosted.org/not-so-tuf/
+[10]: https://github.com/dennisvang/tufup-example
+[11]: https://theupdateframework.io/metadata/
+[12]: https://github.com/dennisvang/tufup/blob/master/src/tufup/utils/platform_specific.py
