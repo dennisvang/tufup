@@ -654,7 +654,7 @@ class Repository(object):
             try:
                 # remove old key_id from roles dict, if found, and remove key
                 # from keys dict if it is no longer used by any roles
-                self.roles.root.signed.remove_key(
+                self.roles.root.signed.revoke_key(
                     role=role_name, keyid=old_key_id
                 )
                 # move old key name from key_map to revoked_key_map
