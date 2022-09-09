@@ -78,13 +78,20 @@ The `tufup.repo` module provides a convenient way to streamline the above proced
 
 ## How updates are applied (client-side)
 
-By default, updates are applied by replacing all files in the current app installation path with files from the latest archive.
-The latest archive is either downloaded in full (as described above), or it is derived from the current archive by applying one or more downloaded patches.
+By default, updates are applied by copying all files and folders from the latest archive to the current app installation directory.
 
-Once the latest archive is available, it is decompressed to a temporary location.
-From there, a script is started that clears the current app installation dir, and moves the new files into place.
-After starting the script, the currently running process will exit. 
-Alternatively, you can specify a custom installation script.
+Here's what happens during the update process:
+
+- The latest archive is either downloaded in full, as described above, or it is derived from the current archive by applying one or more downloaded patches.
+- Once the latest archive is available on disk, it is decompressed to a temporary directory.
+- A default install script is then started, which copies the new files and folders from the temporary directory to the current app installation directory. On Windows, this script is started in a new process, after which the currently running process will exit.
+- Alternatively, you can specify a custom install script to do whatever you want with the new files.
+
+The default install script accepts an optional `purge_dst_dir` argument, which will cause *ALL* files and folders to be deleted from the app installation directory, before moving the new files into place.
+This is a convenient way to remove any stale files and folders from the app installation directory.
+
+>**WARNING**: The `purge_dst_dir` option should *only* be used if the app is properly installed in its *own separate* directory.
+If this is not the case, for example if the app is running from the Windows `Desktop` directory, any *unrelated* files or folders in this directory will also be deleted! 
 
 ## Migrating from other update frameworks
 

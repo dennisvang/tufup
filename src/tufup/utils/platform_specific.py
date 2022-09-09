@@ -20,16 +20,48 @@ PLATFORM_SUPPORTED = ON_WINDOWS or ON_MAC
 def install_update(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
+        purge_dst_dir: bool = False,
+        exclude_from_purge: List[Union[pathlib.Path, str]] = None,
         **kwargs,
 ):
+    """
+    Installs update files using platform specific installation script. The
+    actual installation script copies the files and folders from `src_dir` to
+    `dst_dir`.
+
+    If `purge_dst_dir` is `True`, *ALL* files and folders are deleted from
+    `dst_dir` before copying.
+
+    **DANGER**:
+
+    ONLY use `purge_dst_dir=True` if your app is properly installed in its
+    own *separate* directory, such as %PROGRAMFILES%\MyApp.
+
+    DO NOT use `purge_dst_dir=True` if your app executable is running
+    directly from a folder that also contains unrelated files or folders,
+    such as the Desktop folder or the Downloads folder, because this
+    unrelated content would be then also be deleted.
+
+    Individual files and folders can be excluded from purge using e.g.
+
+        exclude_from_purge=['path\\to\\file1', r'"path to\file2"', ...]
+
+    If `purge_dst_dir` is `False`, the `exclude_from_purge` argument is
+    ignored.
+    """
     if ON_WINDOWS:
-        return _install_update_win(
-            src_dir=src_dir, dst_dir=dst_dir, **kwargs
-        )
-    if ON_MAC:
-        return _install_update_mac(src_dir=src_dir, dst_dir=dst_dir, **kwargs)
+        _install_update = _install_update_win
+    elif ON_MAC:
+        _install_update = _install_update_mac
     else:
         raise RuntimeError('This platform is not supported.')
+    return _install_update(
+        src_dir=src_dir,
+        dst_dir=dst_dir,
+        purge_dst_dir=purge_dst_dir,
+        exclude_from_purge=exclude_from_purge,
+        **kwargs,
+    )
 
 
 WIN_DEBUG_LINES = """
@@ -37,12 +69,13 @@ rem wait for user confirmation (allow user to read any error messages)
 timeout /t -1
 """
 
-WIN_DEFAULT_ROBOCOPY_OPTIONS = (
-    '/e',  # include subdirs
-    '/move',  # move files and dirs
-    '/v',  # verbose
-    '/purge',  # delete stale files and dirs in destination folder
+WIN_ROBOCOPY_OVERWRITE = (
+    '/e',  # include subdirectories, even if empty
+    '/move',  # deletes files and dirs from source dir after they've been copied
+    '/v',  # verbose (show what is going on)
 )
+WIN_ROBOCOPY_PURGE = '/purge'  # delete all files and dirs in destination folder
+WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
 
 # https://stackoverflow.com/a/20333575
 WIN_MOVE_FILES_BAT = """@echo off
@@ -81,9 +114,11 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
 def _install_update_win(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
+        purge_dst_dir: bool,
+        exclude_from_purge: List[Union[pathlib.Path, str]],
         as_admin: bool = False,
         debug: bool = False,
-        extra_robocopy_options: List[str] = None,
+        robocopy_options_override: List[str] = None,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
@@ -92,16 +127,27 @@ def _install_update_win(
     The script is created in a default temporary directory, and deletes
     itself when done.
 
-    Extra options for [robocopy][1] can be specified as a list of strings.
-    For example, to exlude files from being purged:
+    The `as_admin` options allows installation as admin (opens UAC dialog).
 
-        extra_robocopy_options=['/xf', 'path\\to\\file1', r'"path to\file2"']
+    The `debug` option will keep the console open so we can investigate
+    issues with robocopy.
+
+    Options for [robocopy][1] can be overridden completely by passing a list
+    of option strings to `robocopy_options_override`. This will cause the
+    purge arguments to be ignored as well.
 
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
     """
-    options = list(WIN_DEFAULT_ROBOCOPY_OPTIONS)
-    if extra_robocopy_options:
-        options.extend(extra_robocopy_options)
+    if robocopy_options_override is None:
+        options = list(WIN_ROBOCOPY_OVERWRITE)
+        if purge_dst_dir:
+            options.append(WIN_ROBOCOPY_PURGE)
+            if exclude_from_purge:
+                options.append(WIN_ROBOCOPY_EXCLUDE_FROM_PURGE)
+                options.extend(exclude_from_purge)
+    else:
+        # empty list [] simply clears all options
+        options = robocopy_options_override
     options_str = ' '.join(options)
     debug_lines = ''
     if debug:
@@ -130,15 +176,26 @@ def _install_update_win(
 def _install_update_mac(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
+        purge_dst_dir: bool,
+        exclude_from_purge: List[Union[pathlib.Path, str]],
         **kwargs,
 ):
     # todo: implement as_admin and debug kwargs for mac
-    logger.debug(f'kwargs not used: {kwargs}')
+    logger.debug(f'Kwargs not used: {kwargs}')
+    if purge_dst_dir:
+        exclude_from_purge = [  # enforce path objects
+            pathlib.Path(item) for item in exclude_from_purge
+        ] if exclude_from_purge else []
+        logger.debug(f'Purging content of {dst_dir}')
+        for path in pathlib.Path(dst_dir).iterdir():
+            if path not in exclude_from_purge:
+                remove_path(path=path)
     logger.debug(f'Moving content of {src_dir} to {dst_dir}.')
-    remove_path(pathlib.Path(dst_dir))
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    logger.debug(f'Removing src directory {src_dir}.')
-    remove_path(pathlib.Path(src_dir))
+    # Note: the src_dir is typically a temporary directory, but we'll clear
+    # it anyway just to be consistent with the windows implementation
+    for path in pathlib.Path(src_dir).iterdir():
+        remove_path(path=path)
     logger.debug(f'Restarting application, running {sys.executable}.')
     subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
