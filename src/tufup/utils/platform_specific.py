@@ -39,7 +39,8 @@ def install_update(
 
     DO NOT use `purge_dst_dir=True` if your app executable is running
     directly from a folder that also contains unrelated files or folders,
-    such as the Desktop folder or the Downloads folder.
+    such as the Desktop folder or the Downloads folder, because this
+    unrelated content would be then also be deleted.
 
     Individual files and folders can be excluded from purge using e.g.
 
