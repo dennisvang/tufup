@@ -23,13 +23,10 @@ def install_update(
         **kwargs,
 ):
     if ON_WINDOWS:
-        return _install_update_win(
-            src_dir=src_dir, dst_dir=dst_dir, **kwargs
-        )
+        return _install_update_win(src_dir=src_dir, dst_dir=dst_dir, **kwargs)
     if ON_MAC:
         return _install_update_mac(src_dir=src_dir, dst_dir=dst_dir, **kwargs)
-    else:
-        raise RuntimeError('This platform is not supported.')
+    raise RuntimeError('This platform is not supported.')
 
 
 WIN_DEBUG_LINES = """
