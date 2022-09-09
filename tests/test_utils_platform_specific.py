@@ -14,7 +14,13 @@ DUMMY_APP_CONTENT = f"""
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from tufup.utils.platform_specific import install_update
-install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2], {{extra_kwargs}})
+install_update(
+    src_dir=sys.argv[1], 
+    dst_dir=sys.argv[2],
+    purge_dst_dir={{purge}},
+    exclude_from_purge=["{{keep_file_str}}"], 
+    {{extra_kwargs_str}}
+)
 """
 
 ON_GITHUB = os.getenv('GITHUB_ACTIONS')
@@ -46,7 +52,7 @@ class UtilsTests(TempDirTestCase):
         condition=not PLATFORM_SUPPORTED,
         reason='install_update() is only actively supported on windows and mac',
     )
-    def test_install_update(self):
+    def test_install_update_purge(self):
         # create src dir with dummy app file, and dst dir with stale subdir
         test_dir = self.temp_dir_path / 'tufup_tests'
         src_dir = test_dir / 'src'
@@ -59,18 +65,16 @@ class UtilsTests(TempDirTestCase):
         src_file_path = src_dir / src_file_name
         keep_file_path = dst_dir / 'keep.file'
         keep_file_path.touch()
+        keep_file_str = str(keep_file_path).replace('\\', '\\\\')
         # write dummy app content to file
-        extra_kwargs = ''
+        extra_kwargs_str = ''
         if ON_WINDOWS:
-            keep_file_str = str(keep_file_path).replace('\\', '\\\\')
-            extra_kwargs = ', '.join(
-                [
-                    'as_admin=False',
-                    'debug=False',
-                    f'extra_robocopy_options=["/xf", "{keep_file_str}"]',
-                ]
-            )
-        dummy_app_content = DUMMY_APP_CONTENT.format(extra_kwargs=extra_kwargs)
+            extra_kwargs_str = 'as_admin=False, debug=False'
+        dummy_app_content = DUMMY_APP_CONTENT.format(
+            purge=True,
+            keep_file_str=keep_file_str,
+            extra_kwargs_str=extra_kwargs_str,
+        )
         print(dummy_app_content)
         src_file_path.write_text(dummy_app_content)
         # run the dummy app in a separate process, which, in turn, will run
@@ -91,5 +95,4 @@ class UtilsTests(TempDirTestCase):
         # stale dst content has been removed (robocopy /purge)
         self.assertFalse(dst_subdir.exists())
         # file to keep must still be present
-        if ON_WINDOWS:
-            self.assertTrue(keep_file_path.exists())
+        self.assertTrue(keep_file_path.exists())
