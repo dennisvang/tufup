@@ -175,15 +175,23 @@ def _install_update_win(
 def _install_update_mac(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
+        purge_dst_dir: bool,
+        exclude_from_purge: List[Union[pathlib.Path, str]],
         **kwargs,
 ):
     # todo: implement as_admin and debug kwargs for mac
-    logger.debug(f'kwargs not used: {kwargs}')
+    logger.debug(f'Kwargs not used: {kwargs}')
+    if purge_dst_dir:
+        exclude_from_purge = [  # enforce path objects
+            pathlib.Path(item) for item in exclude_from_purge
+        ] if exclude_from_purge else []
+        logger.debug(f'Purging content of {dst_dir}')
+        for path in pathlib.Path(dst_dir).iterdir():
+            if path not in exclude_from_purge:
+                remove_path(path=path)
     logger.debug(f'Moving content of {src_dir} to {dst_dir}.')
-    remove_path(pathlib.Path(dst_dir))
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    logger.debug(f'Removing src directory {src_dir}.')
-    remove_path(pathlib.Path(src_dir))
+    # Note: the src_dir is typically a temporary directory
     logger.debug(f'Restarting application, running {sys.executable}.')
     subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
