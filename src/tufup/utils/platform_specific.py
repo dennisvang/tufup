@@ -191,7 +191,10 @@ def _install_update_mac(
                 remove_path(path=path)
     logger.debug(f'Moving content of {src_dir} to {dst_dir}.')
     shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    # Note: the src_dir is typically a temporary directory
+    # Note: the src_dir is typically a temporary directory, but we'll clear
+    # it anyway just to be consistent with the windows implementation
+    for path in pathlib.Path(src_dir).iterdir():
+        remove_path(path=path)
     logger.debug(f'Restarting application, running {sys.executable}.')
     subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
