@@ -106,13 +106,25 @@ class Client(tuf.ngclient.Updater):
         This downloads the files found by `check_for_updates`, applies any
         patches, and extracts the resulting archive to the `extract_dir`. At
         that point, the update is ready to be installed (i.e. moved into
-        place). This is done by calling `install`.
+        place). This is done by calling `install` with the specified `**kwargs`.
 
-        The default `install` callable purges the `app_install_dir`,
-        moves the files from `extract_dir` to `app_install_dir`, and exits
-        the application (not necessarily in that order).
+        The default `install` callable moves the content of `extract_dir` to
+        `app_install_dir`, and exits the application (not necessarily in that
+        order).
 
-        kwargs are passed on to the 'install' callable
+        The **kwargs are passed on to the 'install' callable
+
+        The default `install` callable accepts two additional arguments:
+
+            `purge_dst_dir` (default False): if True, *ALL* content will be
+            deleted from the `app_install_dir`
+
+            `exclude_from_purge` (default None): list of paths to exclude
+            from purge
+
+            **DANGER**: Only set `purge_dst_dir=True` if your app is
+            installed in its own separate directory, otherwise this will
+            cause unrelated files and folders to be deleted.
         """
         if install is None:
             install = install_update
