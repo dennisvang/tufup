@@ -7,7 +7,7 @@ import unittest
 
 from tests import BASE_DIR, TempDirTestCase
 from tufup.utils.platform_specific import (
-    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin
+    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin, WIN_DEBUG_FILENAME
 )
 
 _reason_platform_not_supported = (
@@ -145,3 +145,17 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(self.dst_subdir.exists())
         # file to keep must still be present
         self.assertTrue(self.keep_file_path.exists())
+
+    @unittest.skipIf(
+        condition=not ON_WINDOWS, reason='install.log file is windows only'
+    )
+    def test_install_update_debug_log_file(self):
+        extra_kwargs_strings = [
+            'as_admin=False', 'debug=True', 'robocopy_options_override=[]'
+        ]
+        # run the dummy app in a separate process
+        self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
+        # a log file should exist
+        log_file_path = self.dst_dir / WIN_DEBUG_FILENAME
+        self.assertTrue(log_file_path.exists())
+        print(log_file_path.read_text())

@@ -64,11 +64,13 @@ def install_update(
     )
 
 
+WIN_DEBUG_FILENAME = 'install.log'
 WIN_DEBUG_LINES = """
 rem wait for user confirmation (allow user to read any error messages)
 timeout /t -1
 """
-
+# redirect stderr to stdout and pipe into file via tee (requires powershell)
+WIN_DEBUG_COMMAND = '2>&1 | powershell -C "$Input | tee {log_file_path}"'
 WIN_ROBOCOPY_OVERWRITE = (
     '/e',  # include subdirectories, even if empty
     '/move',  # deletes files and dirs from source dir after they've been copied
@@ -150,8 +152,12 @@ def _install_update_win(
         options = robocopy_options_override
     options_str = ' '.join(options)
     debug_lines = ''
+    debug_command = ''
     if debug:
-        debug_lines = WIN_DEBUG_LINES
+        #debug_lines = WIN_DEBUG_LINES
+        debug_command = WIN_DEBUG_COMMAND.format(
+            log_file_path=pathlib.Path(dst_dir) / WIN_DEBUG_FILENAME
+        )
     script_content = WIN_MOVE_FILES_BAT.format(
         src=src_dir, dst=dst_dir, options=options_str, debug_lines=debug_lines
     )
@@ -170,7 +176,8 @@ def _install_update_win(
         # we use Popen() instead of run(), because the latter waits for the
         # process to complete
         subprocess.Popen(
-            [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
+            str(script_path) + debug_command,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
     logger.debug('exiting')
     sys.exit(0)
