@@ -89,7 +89,7 @@ class UtilsTests(TempDirTestCase):
     def test_install_update_no_purge(self):
         extra_kwargs_strings = []
         if ON_WINDOWS:
-            extra_kwargs_strings.extend(['as_admin=False', 'debug=False'])
+            extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # ensure file has been moved from src to dst
@@ -112,7 +112,7 @@ class UtilsTests(TempDirTestCase):
             'purge_dst_dir=True', f'exclude_from_purge=["{self.keep_file_str}"]'
         ]
         if ON_WINDOWS:
-            extra_kwargs_strings.extend(['as_admin=False', 'debug=False'])
+            extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # ensure file has been moved from src to dst
@@ -130,7 +130,7 @@ class UtilsTests(TempDirTestCase):
     @unittest.skipIf(condition=not ON_WINDOWS, reason='robocopy is windows only')
     def test_install_update_robocopy_options_override(self):
         extra_kwargs_strings = [
-            'as_admin=False', 'debug=False', 'robocopy_options_override=[]'
+            'as_admin=False', 'log_file_name=None', 'robocopy_options_override=[]'
         ]
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
@@ -145,3 +145,21 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(self.dst_subdir.exists())
         # file to keep must still be present
         self.assertTrue(self.keep_file_path.exists())
+
+    @unittest.skipIf(
+        condition=not ON_WINDOWS, reason='install.log file is windows only'
+    )
+    def test_install_update_log_file(self):
+        log_file_name = 'install.log'
+        extra_kwargs_strings = [
+            'as_admin=False',
+            f'log_file_name="{log_file_name}"',
+            'robocopy_options_override=[]',
+        ]
+        # run the dummy app in a separate process
+        self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
+        # a log file should exist
+        log_file_path = self.dst_dir / log_file_name
+        self.assertTrue(log_file_path.exists())
+        log_file_content = log_file_path.read_text()
+        self.assertTrue(log_file_content)
