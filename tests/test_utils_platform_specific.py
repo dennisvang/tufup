@@ -7,7 +7,7 @@ import unittest
 
 from tests import BASE_DIR, TempDirTestCase
 from tufup.utils.platform_specific import (
-    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin, WIN_DEBUG_FILENAME
+    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin, WIN_LOG_FILENAME
 )
 
 _reason_platform_not_supported = (
@@ -156,6 +156,7 @@ class UtilsTests(TempDirTestCase):
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # a log file should exist
-        log_file_path = self.dst_dir / WIN_DEBUG_FILENAME
+        log_file_path = self.dst_dir / WIN_LOG_FILENAME
         self.assertTrue(log_file_path.exists())
-        print(log_file_path.read_text())
+        log_file_content = log_file_path.read_text()
+        self.assertTrue(log_file_content)

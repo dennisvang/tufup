@@ -64,13 +64,15 @@ def install_update(
     )
 
 
-WIN_DEBUG_FILENAME = 'install.log'
+WIN_LOG_FILENAME = 'install.log'
+WIN_LOG_LINES = """
+call :log > "{log_file_path}" 2>&1
+:log
+"""
 WIN_DEBUG_LINES = """
 rem wait for user confirmation (allow user to read any error messages)
 timeout /t -1
 """
-# redirect stderr to stdout and pipe into file via tee (requires powershell)
-WIN_DEBUG_COMMAND = '2>&1 | powershell -C "$Input | tee {log_file_path}"'
 WIN_ROBOCOPY_OVERWRITE = (
     '/e',  # include subdirectories, even if empty
     '/move',  # deletes files and dirs from source dir after they've been copied
@@ -81,12 +83,12 @@ WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
 
 # https://stackoverflow.com/a/20333575
 WIN_MOVE_FILES_BAT = """@echo off
+{log_lines}
 echo Moving app files...
 rem wait a few seconds for caller to relinquish locks etc. 
 timeout /t 2
 robocopy "{src}" "{dst}" {options}
 echo Done.
-{debug_lines}
 rem Delete self
 (goto) 2>nul & del "%~f0"
 """
@@ -131,8 +133,8 @@ def _install_update_win(
 
     The `as_admin` options allows installation as admin (opens UAC dialog).
 
-    The `debug` option will keep the console open so we can investigate
-    issues with robocopy.
+    The `debug` option will log the output of the install script to a file in
+    the dst_dir.
 
     Options for [robocopy][1] can be overridden completely by passing a list
     of option strings to `robocopy_options_override`. This will cause the
@@ -151,15 +153,13 @@ def _install_update_win(
         # empty list [] simply clears all options
         options = robocopy_options_override
     options_str = ' '.join(options)
-    debug_lines = ''
-    debug_command = ''
+    log_lines = ''
     if debug:
-        #debug_lines = WIN_DEBUG_LINES
-        debug_command = WIN_DEBUG_COMMAND.format(
-            log_file_path=pathlib.Path(dst_dir) / WIN_DEBUG_FILENAME
-        )
+        log_file_path = pathlib.Path(dst_dir) / WIN_LOG_FILENAME
+        log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
+        logger.info(f'logging install script output to {log_file_path}')
     script_content = WIN_MOVE_FILES_BAT.format(
-        src=src_dir, dst=dst_dir, options=options_str, debug_lines=debug_lines
+        src=src_dir, dst=dst_dir, options=options_str, log_lines=log_lines
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
@@ -173,11 +173,9 @@ def _install_update_win(
     if as_admin:
         run_bat_as_admin(file_path=script_path)
     else:
-        # we use Popen() instead of run(), because the latter waits for the
-        # process to complete
+        # we use Popen() instead of run(), because the latter blocks execution
         subprocess.Popen(
-            str(script_path) + debug_command,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
         )
     logger.debug('exiting')
     sys.exit(0)
