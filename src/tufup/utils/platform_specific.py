@@ -64,14 +64,9 @@ def install_update(
     )
 
 
-WIN_LOG_FILENAME = 'install.log'
 WIN_LOG_LINES = """
 call :log > "{log_file_path}" 2>&1
 :log
-"""
-WIN_DEBUG_LINES = """
-rem wait for user confirmation (allow user to read any error messages)
-timeout /t -1
 """
 WIN_ROBOCOPY_OVERWRITE = (
     '/e',  # include subdirectories, even if empty
@@ -121,7 +116,7 @@ def _install_update_win(
         purge_dst_dir: bool,
         exclude_from_purge: List[Union[pathlib.Path, str]],
         as_admin: bool = False,
-        debug: bool = False,
+        log_file_name: str = None,
         robocopy_options_override: List[str] = None,
 ):
     """
@@ -154,8 +149,8 @@ def _install_update_win(
         options = robocopy_options_override
     options_str = ' '.join(options)
     log_lines = ''
-    if debug:
-        log_file_path = pathlib.Path(dst_dir) / WIN_LOG_FILENAME
+    if log_file_name:
+        log_file_path = pathlib.Path(dst_dir) / log_file_name
         log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
         logger.info(f'logging install script output to {log_file_path}')
     script_content = WIN_MOVE_FILES_BAT.format(
