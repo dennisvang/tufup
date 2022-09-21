@@ -163,9 +163,12 @@ def _install_update_win(
     logger.debug(f'temporary batch script created: {temp_file.name}')
     script_path = pathlib.Path(temp_file.name).resolve()
     logger.debug(f'starting script in new console: {script_path}')
+    # start the script in a separate process, non-blocking
     if as_admin:
         run_bat_as_admin(file_path=script_path)
     else:
+        # we use Popen() instead of run(), because the latter waits for the
+        # process to complete
         subprocess.Popen(
             [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
         )
