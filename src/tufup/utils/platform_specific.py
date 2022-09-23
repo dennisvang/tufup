@@ -64,6 +64,9 @@ def install_update(
     )
 
 
+# Note that robocopy itself also has an option to create a log file,
+# viz. `/log:<filename>`, as well as a `/tee` option, but we want to log *all*
+# output from the batch file, not just output from the robocopy command.
 WIN_LOG_LINES = """
 call :log > "{log_file_path}" 2>&1
 :log
