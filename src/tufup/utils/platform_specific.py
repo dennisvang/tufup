@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import NamedTemporaryFile
-from typing import List, Union
+from typing import List, Optional, Union
 
 from tufup.utils import remove_path
 
@@ -21,7 +21,7 @@ def install_update(
         src_dir: Union[pathlib.Path, str],
         dst_dir: Union[pathlib.Path, str],
         purge_dst_dir: bool = False,
-        exclude_from_purge: List[Union[pathlib.Path, str]] = None,
+        exclude_from_purge: Optional[List[Union[pathlib.Path, str]]] = None,
         **kwargs,
 ):
     """
@@ -119,8 +119,8 @@ def _install_update_win(
         purge_dst_dir: bool,
         exclude_from_purge: List[Union[pathlib.Path, str]],
         as_admin: bool = False,
-        log_file_name: str = None,
-        robocopy_options_override: List[str] = None,
+        log_file_name: Optional[str] = None,
+        robocopy_options_override: Optional[List[str]] = None,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
