@@ -75,6 +75,7 @@ WIN_ROBOCOPY_OVERWRITE = (
     '/e',  # include subdirectories, even if empty
     '/move',  # deletes files and dirs from source dir after they've been copied
     '/v',  # verbose (show what is going on)
+    '/w:2',  # set retry-timeout (default is 30 seconds)
 )
 WIN_ROBOCOPY_PURGE = '/purge'  # delete all files and dirs in destination folder
 WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
@@ -83,8 +84,6 @@ WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
 WIN_MOVE_FILES_BAT = """@echo off
 {log_lines}
 echo Moving app files...
-rem wait a few seconds for caller to relinquish locks etc. 
-timeout /t 2
 robocopy "{src}" "{dst}" {options}
 echo Done.
 rem Delete self
