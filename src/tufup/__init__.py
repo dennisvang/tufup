@@ -6,16 +6,16 @@ from tufup.utils import input_bool
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 # https://semver.org/
-__version__ = '0.4.2'
+__version__ = "0.4.2"
 
 logger = logging.getLogger(__name__)
 
 
 def main(args=None):
-    print(f'tufup version: {__version__}')
+    print(f"tufup version: {__version__}")
     # default to --help
     if args is None:
-        args = sys.argv[1:] or ['--help']
+        args = sys.argv[1:] or ["--help"]
 
     # parse command line arguments
     options = cli.get_parser().parse_args(args=args)
@@ -28,9 +28,9 @@ def main(args=None):
     try:
         options.func(options)
     except Exception:  # noqa
-        logger.exception(f'Failed to process command: {args}')
+        logger.exception(f"Failed to process command: {args}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     main()

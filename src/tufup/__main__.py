@@ -7,4 +7,4 @@ from tufup import main
 try:
     main()  # return code 0
 except Exception as e:
-    sys.exit(f'error: {e}')  # return code 1
+    sys.exit(f"error: {e}")  # return code 1

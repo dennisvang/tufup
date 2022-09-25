@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 import re
 from typing import Optional, Union
@@ -8,22 +9,22 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
-SUFFIX_ARCHIVE = '.tar.gz'
-SUFFIX_PATCH = '.patch'
+SUFFIX_ARCHIVE = ".zip" if os.name == "nt" else ".tar.gz"
+SUFFIX_PATCH = ".patch"
 
 
 class TargetMeta(object):
-    filename_pattern = '{name}-{version}{suffix}'
+    filename_pattern = "{name}-{version}{suffix}"
     filename_regex = re.compile(
-        r'^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.tar\.gz|\.patch)$'
+        r"^(?P<name>[\w-]+)-(?P<version>.+)(?P<suffix>\.tar\.gz|\.patch)$"
     )
 
     def __init__(
-            self,
-            target_path: Union[None, str, pathlib.Path] = None,
-            name: Optional[str] = None,
-            version: Optional[str] = None,
-            is_archive: Optional[bool] = True,
+        self,
+        target_path: Union[None, str, pathlib.Path] = None,
+        name: Optional[str] = None,
+        version: Optional[str] = None,
+        is_archive: Optional[bool] = True,
     ):
         """
 
@@ -76,23 +77,23 @@ class TargetMeta(object):
     def name(self) -> Optional[str]:
         """The app name."""
         match_dict = self.parse_filename(self.filename)
-        return match_dict.get('name')
+        return match_dict.get("name")
 
     @property
     def version(self) -> Optional[Version]:
         match_dict = self.parse_filename(self.filename)
         try:
-            version = Version(match_dict.get('version', ''))
+            version = Version(match_dict.get("version", ""))
         except InvalidVersion:
             version = None
-            logger.debug(f'No valid version in filename: {self.filename}')
+            logger.debug(f"No valid version in filename: {self.filename}")
         return version
 
     @property
     def suffix(self) -> Optional[str]:
-        """Returns the filename suffix, either '.tar.gz', '.patch', or None."""
+        """Returns the filename suffix, either '.tar.gz' on posix or '.zip' on nt, '.patch', or None."""
         match_dict = self.parse_filename(self.filename)
-        return match_dict.get('suffix')
+        return match_dict.get("suffix")
 
     @property
     def is_archive(self) -> bool:
@@ -125,14 +126,16 @@ class TargetMeta(object):
 
 class Patcher(object):
     @classmethod
-    def create_patch(cls, src_path: pathlib.Path, dst_path: pathlib.Path) -> pathlib.Path:
+    def create_patch(
+        cls, src_path: pathlib.Path, dst_path: pathlib.Path
+    ) -> pathlib.Path:
         """
         Create a binary patch file based on source and destination files.
 
         Patch file path matches destination file path, except for suffix.
         """
-        # replace suffix twice, in case we have a .tar.gz
-        patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
+        # replace suffix twice, in case we have a .tar.gz on posix or .zip on nt
+        patch_path = dst_path.with_suffix("").with_suffix(SUFFIX_PATCH)
         bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
         return patch_path
 

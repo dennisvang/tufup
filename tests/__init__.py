@@ -8,10 +8,10 @@ import unittest
 logger = logging.getLogger(__name__)
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent
-TEST_REPO_DIR = BASE_DIR / 'data' / 'repository'
+TEST_REPO_DIR = BASE_DIR / "data" / "repository"
 
 # facilitate running tests from command line using `python -m unittest`
-sys.path.append(str(BASE_DIR.parent / 'src'))
+sys.path.append(str(BASE_DIR.parent / "src"))
 
 
 def _create_cwd_change_generator():
@@ -27,13 +27,13 @@ def _create_cwd_change_generator():
     original_cwd = os.getcwd()
     with TemporaryDirectory() as temp_dir:
         os.chdir(temp_dir)
-        logger.debug(f'cwd changed temporarily to {temp_dir}')
+        logger.debug(f"cwd changed temporarily to {temp_dir}")
         yield temp_dir
         # the first time next() is called, we stop here, so the temp dir will
         # remain in context until the second call to next(), which will raise
         # StopIteration
         os.chdir(original_cwd)
-        logger.debug(f'cwd changed back to {original_cwd}')
+        logger.debug(f"cwd changed back to {original_cwd}")
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -43,6 +43,7 @@ class TempDirTestCase(unittest.TestCase):
     The temporary directory becomes the current working directory (cwd),
     and it is accessible as a pathlib.Path, for convenience.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.change_cwd = _create_cwd_change_generator()

@@ -7,11 +7,13 @@ import unittest
 
 from tests import BASE_DIR, TempDirTestCase
 from tufup.utils.platform_specific import (
-    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin
+    ON_WINDOWS,
+    PLATFORM_SUPPORTED,
+    run_bat_as_admin,
 )
 
 _reason_platform_not_supported = (
-    'install_update() is only actively supported on windows and mac'
+    "install_update() is only actively supported on windows and mac"
 )
 
 DUMMY_APP_CONTENT = f"""
@@ -21,8 +23,8 @@ from tufup.utils.platform_specific import install_update
 install_update(src_dir=sys.argv[1], dst_dir=sys.argv[2], {{extra_kwargs_str}})
 """
 
-ON_GITHUB = os.getenv('GITHUB_ACTIONS')
-TEST_RUNAS = os.getenv('TEST_RUNAS')
+ON_GITHUB = os.getenv("GITHUB_ACTIONS")
+TEST_RUNAS = os.getenv("TEST_RUNAS")
 
 
 class UtilsTests(TempDirTestCase):
@@ -30,24 +32,24 @@ class UtilsTests(TempDirTestCase):
         super().setUp()
         # create src dir with dummy app file, and dst dir with stale subdir
         # and a file that must be excluded from purge
-        test_dir = self.temp_dir_path / 'tufup_tests'
-        self.src_dir = test_dir / 'src'
-        self.src_subdir = self.src_dir / 'new'
+        test_dir = self.temp_dir_path / "tufup_tests"
+        self.src_dir = test_dir / "src"
+        self.src_subdir = self.src_dir / "new"
         self.src_subdir.mkdir(parents=True)
-        self.dst_dir = test_dir / 'dst'
-        self.dst_subdir = self.dst_dir / 'stale'
+        self.dst_dir = test_dir / "dst"
+        self.dst_subdir = self.dst_dir / "stale"
         self.dst_subdir.mkdir(parents=True)
-        (self.dst_subdir / 'stale.file').touch()
-        self.keep_file_path = self.dst_dir / 'keep.file'
+        (self.dst_subdir / "stale.file").touch()
+        self.keep_file_path = self.dst_dir / "keep.file"
         self.keep_file_path.touch()
-        self.keep_file_str = str(self.keep_file_path).replace('\\', '\\\\')
-        self.src_file_name = 'dummy_app.py'
+        self.keep_file_str = str(self.keep_file_path).replace("\\", "\\\\")
+        self.src_file_name = "dummy_app.py"
         self.src_file_path = self.src_dir / self.src_file_name
 
     def run_dummy_app(self, extra_kwargs_strings):
         # write dummy app content to file
         dummy_app_content = DUMMY_APP_CONTENT.format(
-            extra_kwargs_str=', '.join(extra_kwargs_strings),
+            extra_kwargs_str=", ".join(extra_kwargs_strings),
         )
         print(dummy_app_content)
         self.src_file_path.write_text(dummy_app_content)
@@ -65,11 +67,11 @@ class UtilsTests(TempDirTestCase):
 
     @unittest.skipIf(
         condition=ON_GITHUB or not TEST_RUNAS or not ON_WINDOWS,
-        reason='windows only, requires user interaction',
+        reason="windows only, requires user interaction",
     )
     def test_run_bat_as_admin(self):
-        output_path = self.temp_dir_path / 'output.txt'
-        bat_path = self.temp_dir_path / 'tell_me_who_i_am.bat'
+        output_path = self.temp_dir_path / "output.txt"
+        bat_path = self.temp_dir_path / "tell_me_who_i_am.bat"
         bat_path.write_text(f'whoami > "{output_path}"\ntimeout /t -1')
         # NOTE: this will open a UAC prompt (User Access Control)
         self.assertTrue(run_bat_as_admin(file_path=bat_path))
@@ -78,8 +80,8 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(output_path.exists())
         output = output_path.read_text()
         current_user = getuser()
-        print(f'bat file runs as: {output}')
-        print(f'current user: {current_user}')
+        print(f"bat file runs as: {output}")
+        print(f"current user: {current_user}")
         self.assertTrue(len(output))
         self.assertNotIn(current_user, output)
 
@@ -89,7 +91,7 @@ class UtilsTests(TempDirTestCase):
     def test_install_update_no_purge(self):
         extra_kwargs_strings = []
         if ON_WINDOWS:
-            extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
+            extra_kwargs_strings.extend(["as_admin=False", "log_file_name=None"])
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # ensure file has been moved from src to dst
@@ -109,10 +111,11 @@ class UtilsTests(TempDirTestCase):
     )
     def test_install_update_purge(self):
         extra_kwargs_strings = [
-            'purge_dst_dir=True', f'exclude_from_purge=["{self.keep_file_str}"]'
+            "purge_dst_dir=True",
+            f'exclude_from_purge=["{self.keep_file_str}"]',
         ]
         if ON_WINDOWS:
-            extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
+            extra_kwargs_strings.extend(["as_admin=False", "log_file_name=None"])
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # ensure file has been moved from src to dst
@@ -127,10 +130,12 @@ class UtilsTests(TempDirTestCase):
         # file to keep must still be present
         self.assertTrue(self.keep_file_path.exists())
 
-    @unittest.skipIf(condition=not ON_WINDOWS, reason='robocopy is windows only')
+    @unittest.skipIf(condition=not ON_WINDOWS, reason="robocopy is windows only")
     def test_install_update_robocopy_options_override(self):
         extra_kwargs_strings = [
-            'as_admin=False', 'log_file_name=None', 'robocopy_options_override=[]'
+            "as_admin=False",
+            "log_file_name=None",
+            "robocopy_options_override=[]",
         ]
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
@@ -147,14 +152,14 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(self.keep_file_path.exists())
 
     @unittest.skipIf(
-        condition=not ON_WINDOWS, reason='install.log file is windows only'
+        condition=not ON_WINDOWS, reason="install.log file is windows only"
     )
     def test_install_update_log_file(self):
-        log_file_name = 'install.log'
+        log_file_name = "install.log"
         extra_kwargs_strings = [
-            'as_admin=False',
+            "as_admin=False",
             f'log_file_name="{log_file_name}"',
-            'robocopy_options_override=[]',
+            "robocopy_options_override=[]",
         ]
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
