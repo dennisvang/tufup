@@ -18,7 +18,7 @@ from tufup.repo import (
 
 NOTE: The repo content can be served for local testing as follows:
 
-    python -m http.server -d examples/repo/content
+    python -m http.server -d examples/repo/repository
 
 NOTE: This script creates subdirectories and files in the 
 tufup/examples/repo directory. 
