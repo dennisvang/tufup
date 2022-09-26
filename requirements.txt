@@ -1,8 +1,16 @@
-# to upgrade packages in existing env: pip install -r requirements.txt --upgrade
+# install requirements from setup.cfg by calling `pip install .` from project root
 
-bsdiff4==1.2.*
-packaging==21.*
-requests
-securesystemslib[crypto,pynacl]==0.22.*
-setuptools>=61.0.0
-tuf==2.*
+bsdiff4==1.2.2
+certifi==2022.9.24
+cffi==1.15.1
+charset-normalizer==2.1.1
+cryptography==38.0.1
+idna==3.4
+packaging==21.3
+pycparser==2.21
+PyNaCl==1.5.0
+pyparsing==3.0.9
+requests==2.28.1
+securesystemslib==0.24.0
+tuf==2.0.0
+urllib3==1.26.12
