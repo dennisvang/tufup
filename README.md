@@ -7,12 +7,40 @@
 
 A simple software updater for stand-alone Python *applications*.
 
-The `tufup` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework).
+## Application updates and TUF
+
+A basic update-cycle for a [self-updating application][15] may look like this: 
+
+1. the app's development team create a new release, and make it available on a server
+2. an older version of the app, out in the wild, contacts the server to check for updates
+3. the old app finds the new release, downloads it, and installs it
+4. goto 1.
+
+The principle is relatively simple, as long as you don't consider the security risks involved.
+
+Unfortunately, in the real word, [security cannot be neglected][16]: You don't want to install untrusted software on your system.
+
+So, how can we make sure our update-cycle is secure? This is where things get quite complicated.
+
+That's why the `tufup` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework). If used properly, TUF ensures a high level of security for your update system.
+
 It is advisable to read the [TUF documentation][11] before proceeding. 
 
-An application example can be found in the companion repository: [tufup-example][10]
 
-## About
+## Quickstart
+
+The easiest way to understand how `tufup` works is by example. A minimal example of an application that uses `tufup` can be found in the companion repository: 
+**[tufup-example][10]**
+
+The example repository shows how to integrate the `tufup` client into your app, and it shows you how to set up a `tufup` update-repository. 
+
+## Questions and Issues
+
+If you have questions about `tufup`, or need help getting started, please post a question on [Stack Overflow][13], add a `tufup` tag, and we will help you there.
+
+If you encounter bugs or other problems that are likely to affect other users, please create a [new issue][14] here.
+
+## Some background
 
 The `tufup` package was inspired by [PyUpdater][3], and uses a general approach to updating that is directly based on PyUpdater's implementation.
 
@@ -133,3 +161,7 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 [10]: https://github.com/dennisvang/tufup-example
 [11]: https://theupdateframework.io/metadata/
 [12]: https://github.com/dennisvang/tufup/blob/master/src/tufup/utils/platform_specific.py
+[13]: https://stackoverflow.com/questions/ask
+[14]: https://github.com/dennisvang/tufup/issues
+[15]: https://theupdateframework.io/overview/#software-updates-101
+[16]: https://theupdateframework.io/security/
