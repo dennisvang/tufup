@@ -1,11 +1,14 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: Bug or Feature
+about: Create a report to help us improve (not for questions)
 title: ''
 labels: ''
 assignees: dennisvang
 
 ---
+
+Please file issues only for bugs or feature requests.
+If you have a question, please post it on [Stack Overflow](https://stackoverflow.com/questions/ask) with the `tufup` tag.
 
 **Describe the bug**
 A clear and concise description of what the bug is.
