@@ -8,7 +8,7 @@ assignees: dennisvang
 ---
 
 Please file issues only for bugs or feature requests.
-If you have a question, please post it on [Stack Overflow](https://stackoverflow.com/questions/ask) with the `tufup` tag.
+If you have a question, please post it on https://stackoverflow.com with the 'tufup' tag.
 
 **Describe the bug**
 A clear and concise description of what the bug is.
