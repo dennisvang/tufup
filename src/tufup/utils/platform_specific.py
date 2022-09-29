@@ -137,12 +137,25 @@ def _install_update_win(
 
     The `as_admin` options allows installation as admin (opens UAC dialog).
 
-    The `debug` option will log the output of the install script to a file in
-    the dst_dir.
+    The `batch_template` option allows specification of custom batch-file
+    content. This may be in the form of a template string, as in the default
+    `WIN_BATCH_TEMPLATE`, or it may be a ready-made string without any
+    template variables. The following default template variables are
+    available for use in the custom template, although their use is optional:
+    {log_lines}, {src_dir}, {dst_dir}, {robocopy_options}, {delete_self}.
+    Custom template variables can be used as well, in which case you'll need
+    to specify `batch_template_extra_kwargs`.
 
-    Options for [robocopy][1] can be overridden completely by passing a list
-    of option strings to `robocopy_options_override`. This will cause the
-    purge arguments to be ignored as well.
+    The `batch_template_extra_kwargs` options allows specification of custom
+    template arguments. It accepts a dict, with keys matching the *custom*
+    template variable names specified in the `batch_template`.
+
+    The `log_file_name` option will log the output of the install script to a
+    file in the `dst_dir`.
+
+    The `robocopy_options_override` option allows options for [robocopy][1]
+    to be overridden completely. It accepts a list of option strings. This
+    will cause the purge arguments to be ignored as well.
 
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
     """
