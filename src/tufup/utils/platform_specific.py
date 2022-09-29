@@ -79,16 +79,21 @@ WIN_ROBOCOPY_OVERWRITE = (
 )
 WIN_ROBOCOPY_PURGE = '/purge'  # delete all files and dirs in destination folder
 WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
+# makes batch file delete itself when done (https://stackoverflow.com/a/20333575)
+WIN_BATCH_DELETE_SELF = '(goto) 2>nul & del "%~f0"'
 
-# https://stackoverflow.com/a/20333575
+# _install_update_win makes sure the following variables are available for
+# batch templates:
+# {log_lines}, {src_dir}, {dst_dir}, {robocopy_options}, {delete_self}
 WIN_BATCH_TEMPLATE = """@echo off
 {log_lines}
 echo Moving app files...
 robocopy "{src_dir}" "{dst_dir}" {robocopy_options}
 echo Done.
-rem Delete self
-(goto) 2>nul & del "%~f0"
+{delete_self}
 """
+WIN_BATCH_PREFIX = 'tufup'
+WIN_BATCH_SUFFIX = '.bat'
 
 
 def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
@@ -161,17 +166,22 @@ def _install_update_win(
         log_file_path = pathlib.Path(dst_dir) / log_file_name
         log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
         logger.info(f'logging install script output to {log_file_path}')
-    # write temporary batch file
+    # write temporary batch file (NOTE: The file is placed in the system
+    # default temporary dir, but the file is not removed automatically. So,
+    # either the batch file should self-delete when done, or it should be
+    # deleted by some other means, because windows does not clean the temp
+    # dir automatically.)
     script_content = batch_template.format(
         src_dir=src_dir,
         dst_dir=dst_dir,
         robocopy_options=options_str,
         log_lines=log_lines,
+        delete_self=WIN_BATCH_DELETE_SELF,
         **batch_template_extra_kwargs,
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
-            mode='w', prefix='tufup', suffix='.bat', delete=False
+            mode='w', prefix=WIN_BATCH_PREFIX, suffix=WIN_BATCH_SUFFIX, delete=False
     ) as temp_file:
         temp_file.write(script_content)
     logger.debug(f'temporary batch script created: {temp_file.name}')
