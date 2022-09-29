@@ -81,7 +81,7 @@ WIN_ROBOCOPY_PURGE = '/purge'  # delete all files and dirs in destination folder
 WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
 
 # https://stackoverflow.com/a/20333575
-WIN_MOVE_FILES_BAT = """@echo off
+WIN_BATCH_TEMPLATE = """@echo off
 {log_lines}
 echo Moving app files...
 robocopy "{src}" "{dst}" {options}
@@ -139,6 +139,7 @@ def _install_update_win(
 
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
     """
+    # collect robocopy options
     if robocopy_options_override is None:
         options = list(WIN_ROBOCOPY_OVERWRITE)
         if purge_dst_dir:
@@ -150,12 +151,14 @@ def _install_update_win(
         # empty list [] simply clears all options
         options = robocopy_options_override
     options_str = ' '.join(options)
+    # handle batch file output logging
     log_lines = ''
     if log_file_name:
         log_file_path = pathlib.Path(dst_dir) / log_file_name
         log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
         logger.info(f'logging install script output to {log_file_path}')
-    script_content = WIN_MOVE_FILES_BAT.format(
+    # write temporary batch file
+    script_content = WIN_BATCH_TEMPLATE.format(
         src=src_dir, dst=dst_dir, options=options_str, log_lines=log_lines
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
@@ -175,6 +178,7 @@ def _install_update_win(
             [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
         )
     logger.debug('exiting')
+    # exit current process
     sys.exit(0)
 
 
