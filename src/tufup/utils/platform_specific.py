@@ -84,7 +84,7 @@ WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
 WIN_BATCH_TEMPLATE = """@echo off
 {log_lines}
 echo Moving app files...
-robocopy "{src}" "{dst}" {options}
+robocopy "{src_dir}" "{dst_dir}" {robocopy_options}
 echo Done.
 rem Delete self
 (goto) 2>nul & del "%~f0"
@@ -118,6 +118,8 @@ def _install_update_win(
         purge_dst_dir: bool,
         exclude_from_purge: List[Union[pathlib.Path, str]],
         as_admin: bool = False,
+        batch_template: str = WIN_BATCH_TEMPLATE,
+        batch_template_extra_kwargs: Optional[dict] = None,
         log_file_name: Optional[str] = None,
         robocopy_options_override: Optional[List[str]] = None,
 ):
@@ -139,18 +141,20 @@ def _install_update_win(
 
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
     """
+    if batch_template_extra_kwargs is None:
+        batch_template_extra_kwargs = dict()
     # collect robocopy options
     if robocopy_options_override is None:
-        options = list(WIN_ROBOCOPY_OVERWRITE)
+        robocopy_options = list(WIN_ROBOCOPY_OVERWRITE)
         if purge_dst_dir:
-            options.append(WIN_ROBOCOPY_PURGE)
+            robocopy_options.append(WIN_ROBOCOPY_PURGE)
             if exclude_from_purge:
-                options.append(WIN_ROBOCOPY_EXCLUDE_FROM_PURGE)
-                options.extend(exclude_from_purge)
+                robocopy_options.append(WIN_ROBOCOPY_EXCLUDE_FROM_PURGE)
+                robocopy_options.extend(exclude_from_purge)
     else:
         # empty list [] simply clears all options
-        options = robocopy_options_override
-    options_str = ' '.join(options)
+        robocopy_options = robocopy_options_override
+    options_str = ' '.join(robocopy_options)
     # handle batch file output logging
     log_lines = ''
     if log_file_name:
@@ -158,8 +162,12 @@ def _install_update_win(
         log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
         logger.info(f'logging install script output to {log_file_path}')
     # write temporary batch file
-    script_content = WIN_BATCH_TEMPLATE.format(
-        src=src_dir, dst=dst_dir, options=options_str, log_lines=log_lines
+    script_content = batch_template.format(
+        src_dir=src_dir,
+        dst_dir=dst_dir,
+        robocopy_options=options_str,
+        log_lines=log_lines,
+        **batch_template_extra_kwargs,
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
