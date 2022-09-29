@@ -79,16 +79,21 @@ WIN_ROBOCOPY_OVERWRITE = (
 )
 WIN_ROBOCOPY_PURGE = '/purge'  # delete all files and dirs in destination folder
 WIN_ROBOCOPY_EXCLUDE_FROM_PURGE = '/xf'  # exclude specified paths from purge
+# makes batch file delete itself when done (https://stackoverflow.com/a/20333575)
+WIN_BATCH_DELETE_SELF = '(goto) 2>nul & del "%~f0"'
 
-# https://stackoverflow.com/a/20333575
-WIN_MOVE_FILES_BAT = """@echo off
+# _install_update_win makes sure the following variables are available for
+# batch templates:
+# {log_lines}, {src_dir}, {dst_dir}, {robocopy_options}, {delete_self}
+WIN_BATCH_TEMPLATE = """@echo off
 {log_lines}
 echo Moving app files...
-robocopy "{src}" "{dst}" {options}
+robocopy "{src_dir}" "{dst_dir}" {robocopy_options}
 echo Done.
-rem Delete self
-(goto) 2>nul & del "%~f0"
+{delete_self}
 """
+WIN_BATCH_PREFIX = 'tufup'
+WIN_BATCH_SUFFIX = '.bat'
 
 
 def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
@@ -118,6 +123,8 @@ def _install_update_win(
         purge_dst_dir: bool,
         exclude_from_purge: List[Union[pathlib.Path, str]],
         as_admin: bool = False,
+        batch_template: str = WIN_BATCH_TEMPLATE,
+        batch_template_extra_kwargs: Optional[dict] = None,
         log_file_name: Optional[str] = None,
         robocopy_options_override: Optional[List[str]] = None,
 ):
@@ -130,37 +137,65 @@ def _install_update_win(
 
     The `as_admin` options allows installation as admin (opens UAC dialog).
 
-    The `debug` option will log the output of the install script to a file in
-    the dst_dir.
+    The `batch_template` option allows specification of custom batch-file
+    content. This may be in the form of a template string, as in the default
+    `WIN_BATCH_TEMPLATE`, or it may be a ready-made string without any
+    template variables. The following default template variables are
+    available for use in the custom template, although their use is optional:
+    {log_lines}, {src_dir}, {dst_dir}, {robocopy_options}, {delete_self}.
+    Custom template variables can be used as well, in which case you'll need
+    to specify `batch_template_extra_kwargs`.
 
-    Options for [robocopy][1] can be overridden completely by passing a list
-    of option strings to `robocopy_options_override`. This will cause the
-    purge arguments to be ignored as well.
+    The `batch_template_extra_kwargs` options allows specification of
+    *custom* template variables (in addition to the default ones, which are
+    always available). It accepts a dict, with keys matching the *custom*
+    template variable names specified in the `batch_template`.
+
+    The `log_file_name` option will log the output of the install script to a
+    file in the `dst_dir`.
+
+    The `robocopy_options_override` option allows options for [robocopy][1]
+    to be overridden completely. It accepts a list of option strings. This
+    will cause the purge arguments to be ignored as well.
 
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
     """
+    if batch_template_extra_kwargs is None:
+        batch_template_extra_kwargs = dict()
+    # collect robocopy options
     if robocopy_options_override is None:
-        options = list(WIN_ROBOCOPY_OVERWRITE)
+        robocopy_options = list(WIN_ROBOCOPY_OVERWRITE)
         if purge_dst_dir:
-            options.append(WIN_ROBOCOPY_PURGE)
+            robocopy_options.append(WIN_ROBOCOPY_PURGE)
             if exclude_from_purge:
-                options.append(WIN_ROBOCOPY_EXCLUDE_FROM_PURGE)
-                options.extend(exclude_from_purge)
+                robocopy_options.append(WIN_ROBOCOPY_EXCLUDE_FROM_PURGE)
+                robocopy_options.extend(exclude_from_purge)
     else:
         # empty list [] simply clears all options
-        options = robocopy_options_override
-    options_str = ' '.join(options)
+        robocopy_options = robocopy_options_override
+    options_str = ' '.join(robocopy_options)
+    # handle batch file output logging
     log_lines = ''
     if log_file_name:
         log_file_path = pathlib.Path(dst_dir) / log_file_name
         log_lines = WIN_LOG_LINES.format(log_file_path=log_file_path)
         logger.info(f'logging install script output to {log_file_path}')
-    script_content = WIN_MOVE_FILES_BAT.format(
-        src=src_dir, dst=dst_dir, options=options_str, log_lines=log_lines
+    # write temporary batch file (NOTE: The file is placed in the system
+    # default temporary dir, but the file is not removed automatically. So,
+    # either the batch file should self-delete when done, or it should be
+    # deleted by some other means, because windows does not clean the temp
+    # dir automatically.)
+    script_content = batch_template.format(
+        src_dir=src_dir,
+        dst_dir=dst_dir,
+        robocopy_options=options_str,
+        log_lines=log_lines,
+        delete_self=WIN_BATCH_DELETE_SELF,
+        **batch_template_extra_kwargs,
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
-            mode='w', prefix='tufup', suffix='.bat', delete=False
+            mode='w', prefix=WIN_BATCH_PREFIX, suffix=WIN_BATCH_SUFFIX, delete=False
     ) as temp_file:
         temp_file.write(script_content)
     logger.debug(f'temporary batch script created: {temp_file.name}')
@@ -175,6 +210,7 @@ def _install_update_win(
             [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
         )
     logger.debug('exiting')
+    # exit current process
     sys.exit(0)
 
 
