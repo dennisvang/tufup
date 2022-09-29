@@ -1,13 +1,20 @@
+import pathlib
 from getpass import getuser
 import os
 import subprocess
 import sys
+import tempfile
+import textwrap
 from time import sleep
 import unittest
 
 from tests import BASE_DIR, TempDirTestCase
 from tufup.utils.platform_specific import (
-    ON_WINDOWS, PLATFORM_SUPPORTED, run_bat_as_admin
+    ON_WINDOWS,
+    PLATFORM_SUPPORTED,
+    run_bat_as_admin,
+    WIN_BATCH_PREFIX,
+    WIN_BATCH_SUFFIX,
 )
 
 _reason_platform_not_supported = (
@@ -103,6 +110,8 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(self.dst_subdir.exists())
         # file to keep must still be present
         self.assertTrue(self.keep_file_path.exists())
+        # the batch file itself should have been removed
+        self.assertFalse(batch_file_exists())
 
     @unittest.skipIf(
         condition=not PLATFORM_SUPPORTED, reason=_reason_platform_not_supported
@@ -163,3 +172,48 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(log_file_path.exists())
         log_file_content = log_file_path.read_text()
         self.assertTrue(log_file_content)
+
+    @unittest.skipIf(
+        condition=not ON_WINDOWS, reason='windows batch files are windows only'
+    )
+    def test_install_update_custom_batch_template(self):
+        custom_content = 'some custom text'
+        custom_file_path = self.temp_dir_path / 'test.txt'
+        # a custom batch template that ignores most of the default template
+        # variables and adds some custom variables
+        custom_batch_template = textwrap.dedent(
+            """
+            echo {custom_content}> "{custom_file_path}"
+            {delete_self}
+            """
+        )
+        extra_kwargs_strings = [
+            f'batch_template="""{custom_batch_template}"""',
+            f'batch_template_extra_kwargs=dict(custom_content="{custom_content}", custom_file_path=r"{custom_file_path}")',
+        ]
+        # run the dummy app in a separate process
+        self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
+        # batch file should have created a file with specified content
+        self.assertTrue(custom_file_path.exists())
+        custom_file_content = custom_file_path.read_text()
+        self.assertIn(custom_content, custom_file_content)
+        # the batch file itself should have been removed
+        self.assertFalse(batch_file_exists())
+
+
+def batch_file_exists():
+    """
+    Checks if any tufup batch files remain in the system temporary directory.
+
+    BEWARE: If a batch file does not remove itself successfully even once,
+    this function will keep returning True, until the batch file is removed
+    manually from the system temp dir (see print statement below). Windows
+    does not clear the temp dirs automatically.
+    """
+    system_temp_dir = pathlib.Path(tempfile.gettempdir())
+    print(f'system temp dir: {system_temp_dir}')
+    return any(
+        path.name.startswith(WIN_BATCH_PREFIX) and path.name.endswith(WIN_BATCH_SUFFIX)
+        for path in system_temp_dir.iterdir()
+        if path.is_file()
+    )
