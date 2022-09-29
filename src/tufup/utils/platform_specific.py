@@ -146,8 +146,9 @@ def _install_update_win(
     Custom template variables can be used as well, in which case you'll need
     to specify `batch_template_extra_kwargs`.
 
-    The `batch_template_extra_kwargs` options allows specification of custom
-    template arguments. It accepts a dict, with keys matching the *custom*
+    The `batch_template_extra_kwargs` options allows specification of
+    *custom* template variables (in addition to the default ones, which are
+    always available). It accepts a dict, with keys matching the *custom*
     template variable names specified in the `batch_template`.
 
     The `log_file_name` option will log the output of the install script to a
