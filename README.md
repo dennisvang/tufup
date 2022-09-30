@@ -44,6 +44,8 @@ If you encounter bugs or other problems that are likely to affect other users, p
 
 The `tufup` package was inspired by [PyUpdater][3], and uses a general approach to updating that is directly based on PyUpdater's implementation.
 
+> NOTE: `tufup` is completely *independent* of PyUpdater. In fact, `tufup` was created as a replacement for PyUpdater, given the fact that [PyUpdater has been archived and is no longer maintained][17]. 
+
 However, whereas PyUpdater implements a *custom* security mechanism to ensure authenticity (and integrity) of downloaded update files, `tufup` is built on top of the security mechanisms implemented in the [python-tuf][1] package, a.k.a. `tuf`.
 By entrusting the design of security measures to the security professionals, `tufup` can focus on high-level tools.
 
@@ -165,3 +167,4 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 [14]: https://github.com/dennisvang/tufup/issues
 [15]: https://theupdateframework.io/overview/#software-updates-101
 [16]: https://theupdateframework.io/security/
+[17]: https://github.com/Digital-Sapphire/PyUpdater#this-is-the-end
