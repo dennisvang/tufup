@@ -9,7 +9,7 @@ A simple software updater for stand-alone Python *applications*.
 
 ## Application updates and TUF
 
-A basic update-cycle for a [self-updating application][15] may look like this: 
+A basic update-cycle for a [self-updating application][15] could look like this: 
 
 1. the app's development team create a new release, and make it available on a server
 2. an older version of the app, out in the wild, contacts the server to check for updates
@@ -18,7 +18,7 @@ A basic update-cycle for a [self-updating application][15] may look like this:
 
 The principle is relatively simple, as long as you don't consider the security risks involved.
 
-Unfortunately, in the real word, [security cannot be neglected][16]: You don't want to install untrusted software on your system.
+Unfortunately, in the real world, [security cannot be neglected][16]: You don't want to install untrusted software on your system.
 
 So, how can we make sure our update-cycle is secure? This is where things get quite complicated.
 
