@@ -4,7 +4,7 @@ bsdiff4==1.2.2
 certifi==2022.9.24
 cffi==1.15.1
 charset-normalizer==2.1.1
-cryptography==38.0.1
+cryptography==38.0.3
 idna==3.4
 packaging==21.3
 pycparser==2.21
