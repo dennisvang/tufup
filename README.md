@@ -3,7 +3,6 @@
 ![Build](https://github.com/dennisvang/tufup/actions/workflows/python-package.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/tufup)](https://pypi.org/project/tufup/)
 [![Documentation Status](https://readthedocs.org/projects/tufup/badge/?version=latest)](https://tufup.readthedocs.io/en/latest/?badge=latest)
-[![Check Vulnerabilities](https://snyk.io/test/github/dennisvang/tufup/badge.svg)](https://snyk.io/test/github/dennisvang/tufup)
 
 A simple software updater for stand-alone Python *applications*.
 
