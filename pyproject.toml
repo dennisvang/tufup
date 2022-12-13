@@ -1,3 +1,47 @@
+# https://peps.python.org/pep-0621/
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tufup"
+dynamic = ["version"]
+description = "Automated updates for stand-alone Python applications, built upon python-tuf."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "dennisvang", email = "djvg@protonmail.com"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    # direct dependencies
+    "bsdiff4==1.2.*",
+    "packaging==21.*",
+    "securesystemslib[crypto,pynacl]==0.24.*",
+    "setuptools>=65.5.1",
+    "tuf==2.*",
+    # constraints on sub-dependencies
+    "certifi>=2022.12.7",
+    "cryptography>=38.0.3",
+]
+
+[project.urls]
+source = "https://github.com/dennisvang/tufup"
+documentation = "https://tufup.readthedocs.io/en/latest/"
+issues = "https://github.com/dennisvang/tufup/issues"
+
+[project.scripts]
+tufup = "tufup:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "tufup.__version__"}
+
+[tool.setuptools.packages.find]
+# this is still in beta (as of setuptools v65.6.3)
+# https://setuptools.pypa.io/en/stable/userguide/pyproject_config.html#setuptools-specific-configuration
+where = ["src"]
