@@ -1,3 +1,3 @@
-sphinx==4.4.0
+sphinx
 sphinx-rtd-theme
 sphinx-sitemap
