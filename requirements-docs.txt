@@ -1,3 +1,5 @@
 sphinx
 sphinx-rtd-theme
 sphinx-sitemap
+# python 3.11 has tomllib in standard library
+tomli; python_version < '3.11'

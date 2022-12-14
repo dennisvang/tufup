@@ -10,12 +10,16 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import configparser
 from datetime import date
 import tufup
 from urllib import parse
 import pathlib
 import sys
+
+try:
+    import tomllib as toml  # part of standard library for python >=3.11
+except ModuleNotFoundError:
+    import tomli as toml  # 3rd-party (this is what setuptools uses)
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
 SRC_DIR = ROOT_DIR / 'src'
@@ -23,10 +27,9 @@ sys.path.insert(0, str(SRC_DIR))
 
 
 # -- Project information -----------------------------------------------------
-config = configparser.ConfigParser()
-config.read(ROOT_DIR / 'setup.cfg')
-project = config['metadata']['name']
-author = config['metadata']['author']
+pyproject = toml.loads((ROOT_DIR / 'pyproject.toml').read_text())
+project = pyproject['project']['name']
+author = pyproject['project']['authors'][0]['name']
 copyright = f'{date.today().year}, {author}'
 
 # The full version, including alpha/beta/rc tags
@@ -88,10 +91,10 @@ autodoc_default_options = {
 }
 
 #  find documentation url
-project_urls = config['metadata']['project_urls'].split('\n')
+project_urls = list(pyproject['project']['urls'].values())
 html_baseurl = ''
-for line in project_urls:
-    if 'readthedocs' in line:
-        parsed_url = parse.urlparse(line.split('=')[1].strip())
+for url in project_urls:
+    if 'readthedocs' in url:
+        parsed_url = parse.urlparse(url)
         html_baseurl = f'{parsed_url.scheme}://{parsed_url.netloc}'
 html_extra_path = ['robots.txt']
