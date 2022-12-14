@@ -1,6 +1,3 @@
-# install dev dependencies
-build
-twine
-
-# install dependencies defined in setup.cfg (or pyproject.toml) in editable mode
+# install dependencies from pyproject.toml in editable mode
+# (for normal installations from source, just use `pip install .`)
 -e .
