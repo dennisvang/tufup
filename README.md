@@ -21,9 +21,11 @@ Unfortunately, in the real world, [security cannot be neglected][16]: You don't 
 
 So, how can we make sure our update-cycle is secure? This is where things get quite complicated.
 
-That's why the `tufup` package is built on top of [python-tuf][1], which is the reference implementation for [TUF][2] (The Update Framework). If used properly, TUF ensures a high level of security for your update system.
+Luckily, [python-tuf][1], the reference implementation for [TUF][2] (The Update Framework) takes care of this complexity. If used properly, TUF ensures a high level of security for your update system.
 
-It is advisable to read the [TUF documentation][11] before proceeding. 
+That's why the `tufup` package is built on top of `python-tuf`.
+
+It is highly advisable to read the [TUF documentation][11] before proceeding. 
 
 
 ## Quickstart
@@ -31,7 +33,9 @@ It is advisable to read the [TUF documentation][11] before proceeding.
 The easiest way to understand how `tufup` works is by example. A minimal example of an application that uses `tufup` can be found in the companion repository: 
 **[tufup-example][10]**
 
-The example repository shows how to integrate the `tufup` client into your app, and it shows you how to set up a `tufup` update-repository. 
+The example repository shows how to integrate the `tufup` client into your app, and it shows you how to set up a `tufup` update-repository.
+
+>NOTE: Although the tufup-example repository uses PyInstaller to bundle an application, `tufup` can be used with ***any*** type of application bundle, even plain python scripts.  
 
 ## Questions and Issues
 
@@ -52,6 +56,10 @@ Although `tuf` supports highly complex security infrastructures, see e.g. [PEP45
 For details and best practices, refer to the [tuf docs][2].
 
 Based on the intended use, the `tufup` package supports only the top-level roles offered by `tuf`. At this time we do not support delegations.
+
+>NOTE: Whereas PyUpdater is tightly integrated with PyInstaller, `tufup` is completely *independent* of the type of packaging solution.
+> At its core, `tufup` simply moves bundles of files from A to B, securely, regardless of how these bundles were created. 
+> A bundle may consist of a simple python script, a PyInstaller bundle, a PEX package, or any other collection of files and folders. 
 
 ## Overview
 
@@ -78,8 +86,8 @@ See the [tuf docs][4] for more information.
 
 ## Archives and patches
 
-Tufup works with *archives* (e.g. gzipped PyInstaller bundles) and *patches* (binary differences between subsequent archives).
-Each archive, except the first one, must have a corresponding patch file.
+*Internally*, `tufup` works with *archives* (gzipped bundles of files and folders) and *patches* (binary differences between subsequent archives).
+Each archive, except the first one, has a corresponding patch file.
 
 Archive filenames and patch filenames follow the pattern
 
@@ -87,23 +95,26 @@ Archive filenames and patch filenames follow the pattern
 
 where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
 
-Patches are typically smaller than archives, so the tufup client will always attempt to update using one or more patches.
+Patches are typically smaller than archives, so the tufup *client* will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
+
+If this sounds confusing, don't worry: it is all handled internally.
 
 ## How updates are created (repo-side)
 
 When a new release of your application is ready, the following steps need to be taken to enable clients to update to that new release:
 
-1. Create an application archive for the new release (e.g. a zipped PyInstaller bundle).
+1. Create an application archive for the new release.
 2. Create a patch from the current archive to the new archive.
 3. Add hashes for the newly created archive file and patch file to the `tuf` metadata.
 4. Sign the modified `tuf` metadata files.
 5. Upload the new target files, i.e. archive and patch, and the updated metadata files, to the update server.
 
+The `tufup.repo` module and the `tufup` CLI provide convenient ways to streamline steps 1 to 4, based on the `tuf` [basic repo example][7].
+Step 5 is not covered by `tufup`, as it depends on the implementation.
+
 The signed metadata and hashes ensure both authenticity and integrity of the update files (see [tuf docs][2]).
 In order to sign the metadata, we need access to the private key files for the applicable `tuf` roles.
-
-The `tufup.repo` module provides a convenient way to streamline the above procedure, based on the `tuf` [basic repo example][7].
 
 ## How updates are applied (client-side)
 
