@@ -133,6 +133,31 @@ This is a convenient way to remove any stale files and folders from the app inst
 >**WARNING**: The `purge_dst_dir` option should *only* be used if the app is properly installed in its *own separate* directory.
 If this is not the case, for example if the app is running from the Windows `Desktop` directory, any *unrelated* files or folders in this directory will also be deleted! 
 
+## App versions and release channels
+
+When adding an application bundle to your `tufup` repository, you need to specify an app version string.
+This version string is used in the archive filename, and must be [PEP440][18] compliant (internally we use [`packaging.version.Version`][20]).
+
+The `tufup` client inspects these version strings to determine if updates are available.
+
+By default, when the `tufup` client looks for updates, it only includes final releases.
+Pre-releases are filtered out, unless you explicitly specify a "pre-release" channel.
+Refer to the [`Client.check_for_updates()`][21] method for details:
+
+> If `pre` is specified, pre-releases are included, down to the specified level. 
+> Pre-release identifiers follow the PEP440 specification, i.e. `'a'`, `'b'`, or `'rc'`, for alpha, beta, and release candidate, respectively.
+
+For example, suppose your latest final-release is `1.3.0`, and your latest pre-release is `2.0.0a3`. 
+An app in the field still has old version `1.0.0`. 
+If this app checks either the default channel, the release-candidate (`'rc'`) channel, or the beta (`'b'`) channel, it finds version `1.3.0` available.
+If the app checks the alpha channel (`'a'`), it finds `2.0.0a3`.
+
+Just to be clear: `tufup` assumes a typical linear release history without branching, so
+
+```none
+0.0 < 0.1a < 0.1b < 0.1rc < 0.1rc0 < 0.1rc1 < 0.1 < ...
+```
+
 ## Migrating from other update frameworks
 
 Here's one way to migrate from another update framework, such as `pyupdater`, to `tufup`:
@@ -178,3 +203,7 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 [15]: https://theupdateframework.io/overview/#software-updates-101
 [16]: https://theupdateframework.io/security/
 [17]: https://github.com/Digital-Sapphire/PyUpdater#this-is-the-end
+[18]: https://peps.python.org/pep-0440/
+[19]: https://peps.python.org/pep-0440/#public-version-identifiers
+[20]: https://packaging.pypa.io/en/stable/version.html#packaging.version.Version
+[21]: https://github.com/dennisvang/tufup/blob/master/src/tufup/client.py
