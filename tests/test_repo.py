@@ -696,7 +696,7 @@ class RepositoryTests(TempDirTestCase):
         # test
         bundle_file.write_text('much has changed in version 2')
         repo.add_bundle(
-            new_version='2.0', new_bundle_dir=bundle_dir, make_patch=False
+            new_version='2.0', new_bundle_dir=bundle_dir, skip_patch=True
         )
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
         target_keys = list(repo.roles.targets.signed.targets.keys())

@@ -125,9 +125,7 @@ class CommandTests(TempDirTestCase):
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.add_bundle.assert_called_with(
-            new_version=version,
-            new_bundle_dir=bundle_dir,
-            make_patch= not skip_patch,
+            new_version=version, new_bundle_dir=bundle_dir, skip_patch=skip_patch,
         )
         self.mock_repo.publish_changes.assert_called_with(
             private_key_dirs=key_dirs

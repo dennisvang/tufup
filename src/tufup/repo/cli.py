@@ -284,7 +284,7 @@ def _cmd_targets(options: argparse.Namespace):
         repository.add_bundle(
             new_version=options.app_version,
             new_bundle_dir=options.bundle_dir,
-            make_patch=not options.skip_patch,
+            skip_patch=options.skip_patch,
         )
     else:
         _print_info('Removing latest bundle...')
