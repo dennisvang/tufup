@@ -16,6 +16,7 @@ class ParserTests(unittest.TestCase):
             'init --debug',
             'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets -d add 1.0 c:\\my_bundle_dir c:\\private_keys',
+            'targets -d add -s 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets remove-latest c:\\private_keys',
             'keys my-key-name -c -e',
             'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
@@ -114,13 +115,19 @@ class CommandTests(TempDirTestCase):
         version = '1.0'
         bundle_dir = 'dummy'
         key_dirs = ['c:\\my_private_keys']
+        skip_patch = True
         options = argparse.Namespace(
-            app_version=version, bundle_dir=bundle_dir, key_dirs=key_dirs
+            app_version=version,
+            bundle_dir=bundle_dir,
+            key_dirs=key_dirs,
+            skip_patch=skip_patch,
         )
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.add_bundle.assert_called_with(
-            new_version=version, new_bundle_dir=bundle_dir
+            new_version=version,
+            new_bundle_dir=bundle_dir,
+            make_patch= not skip_patch,
         )
         self.mock_repo.publish_changes.assert_called_with(
             private_key_dirs=key_dirs

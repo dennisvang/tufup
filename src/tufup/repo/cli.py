@@ -19,6 +19,7 @@ HELP = dict(
     ),
     targets_add_app_version='Application version (PEP440 compliant)',
     targets_add_bundle_dir='Directory containing application bundle.',
+    targets_add_skip_patch='Skip patch creation.',
     targets_remove_latest='Remove latest app bundle from the repository.',
     keys_subcommands='Optional commands to add or replace keys.',
     keys_new_key_name='Name of new private key (public key gets .pub suffix).',
@@ -79,6 +80,13 @@ def get_parser() -> argparse.ArgumentParser:
     )
     subparser_targets_add.add_argument(
         'bundle_dir', help=HELP['targets_add_bundle_dir']
+    )
+    subparser_targets_add.add_argument(
+        '-s',
+        '--skip-patch',
+        action='store_true',
+        required=False,
+        help=HELP['targets_add_skip_patch'],
     )
     subparser_targets_remove = targets_subparsers.add_parser(
         'remove-latest', help=HELP['targets_remove_latest']
@@ -274,7 +282,9 @@ def _cmd_targets(options: argparse.Namespace):
     if hasattr(options, 'app_version') and hasattr(options, 'bundle_dir'):
         _print_info('Adding bundle...')
         repository.add_bundle(
-            new_version=options.app_version, new_bundle_dir=options.bundle_dir
+            new_version=options.app_version,
+            new_bundle_dir=options.bundle_dir,
+            make_patch=not options.skip_patch,
         )
     else:
         _print_info('Removing latest bundle...')
