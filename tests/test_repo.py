@@ -27,7 +27,7 @@ from tests import TempDirTestCase, TEST_REPO_DIR
 from tufup.common import TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
-    Base, in_, Keys, make_gztar_archive, Repository, Roles, SUFFIX_PUB
+    Base, in_, Keys, make_gztar_archive, Repository, Roles, SUFFIX_PUB, SUFFIX_PATCH
 )
 
 
@@ -679,6 +679,29 @@ class RepositoryTests(TempDirTestCase):
         # test
         repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
+
+    def test_add_bundle_no_patch(self):
+        # prepare
+        bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
+        bundle_dir.mkdir(parents=True)
+        bundle_file = bundle_dir / 'dummy.exe'
+        bundle_file.write_text('this is version 1')
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+        )
+        repo.initialize()  # todo: make test independent...
+        repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
+        # test
+        bundle_file.write_text('much has changed in version 2')
+        repo.add_bundle(
+            new_version='2.0', new_bundle_dir=bundle_dir, make_patch=False
+        )
+        self.assertTrue((repo.metadata_dir / 'targets.json').exists())
+        target_keys = list(repo.roles.targets.signed.targets.keys())
+        self.assertEqual(2, len(target_keys))
+        self.assertFalse(any(key.endswith(SUFFIX_PATCH) for key in target_keys))
 
     def test_remove_latest_bundle(self):
         # prepare
