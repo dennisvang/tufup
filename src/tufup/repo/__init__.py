@@ -703,15 +703,18 @@ class Repository(object):
             self,
             new_bundle_dir: Union[pathlib.Path, str],
             new_version: Optional[str] = None,
+            skip_patch: bool = False,
     ):
         """
         Adds a new application bundle to the local repository.
 
         An archive file is created from the app bundle, and this file is
-        added to the tuf repository. If a previous archive version is
-        found, a patch file is also created and added to the repository.
+        added to the tuf repository. If a previous archive version is found,
+        a patch file is also created and added to the repository, unless
+        `skip_patch` is True.
 
-        Note the changes are not published yet: call publish_changes() for that
+        Note the changes are not published yet: call `publish_changes()` for
+        that.
         """
         # enforce path object
         new_bundle_dir = pathlib.Path(new_bundle_dir)
@@ -734,7 +737,7 @@ class Repository(object):
             # register new archive
             self.roles.add_or_update_target(local_path=new_archive.path)
             # create patch, if possible, and register that too
-            if latest_archive:
+            if latest_archive and not skip_patch:
                 patch_path = Patcher.create_patch(
                     src_path=self.targets_dir / latest_archive.path,
                     dst_path=self.targets_dir / new_archive.path,
