@@ -90,7 +90,8 @@ class ClientTests(TempDirTestCase):
         self.assertTrue(client._trusted_set.root)
         # other metadata is not available yet
         for role_name in ['targets', 'snapshot', 'timestamp']:
-            self.assertIsNone(getattr(client._trusted_set, role_name))
+            # see python-tuf #2250
+            self.assertNotIn(role_name, client._trusted_set)
 
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
