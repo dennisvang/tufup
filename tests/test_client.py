@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
-from tuf.api.metadata import TargetFile
+from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
 from tufup.client import AuthRequestsFetcher, Client

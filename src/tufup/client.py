@@ -10,7 +10,6 @@ from urllib import parse
 import requests
 from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
-from tuf.api.metadata import TargetFile
 import tuf.ngclient
 
 from tufup.common import TargetMeta
@@ -51,7 +50,7 @@ class Client(tuf.ngclient.Updater):
         self.current_archive = TargetMeta(name=app_name, version=current_version)
         self.current_archive_local_path = target_dir / self.current_archive.path
         self.new_archive_local_path: Optional[pathlib.Path] = None
-        self.new_archive_info: Optional[TargetFile] = None
+        self.new_archive_info: Optional[tuf.ngclient.TargetFile] = None
         self.new_targets: Optional[dict] = None
         self.downloaded_target_files = {}
 
@@ -75,7 +74,7 @@ class Client(tuf.ngclient.Updater):
             logger.warning('targets metadata not found')
         return _trusted_target_metas
 
-    def get_targetinfo(self, target_path: Union[str, TargetMeta]) -> Optional[TargetFile]:
+    def get_targetinfo(self, target_path: Union[str, TargetMeta]) -> Optional[tuf.ngclient.TargetFile]:
         """Extend Updater.get_targetinfo to handle TargetMeta input args."""
         if isinstance(target_path, TargetMeta):
             target_path = target_path.target_path_str
