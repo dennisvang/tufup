@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
-from tuf.api.metadata import TargetFile
+from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
 from tufup.client import AuthRequestsFetcher, Client
@@ -90,7 +90,8 @@ class ClientTests(TempDirTestCase):
         self.assertTrue(client._trusted_set.root)
         # other metadata is not available yet
         for role_name in ['targets', 'snapshot', 'timestamp']:
-            self.assertIsNone(getattr(client._trusted_set, role_name))
+            # see python-tuf #2250
+            self.assertNotIn(role_name, client._trusted_set)
 
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
@@ -249,6 +250,7 @@ class AuthRequestsFetcherTests(unittest.TestCase):
             scheme_and_server: HTTPBasicAuth(username=user, password=passwd)
         }
         fetcher = AuthRequestsFetcher(session_auth=session_auth)
+        fetcher.socket_timeout = 30  # in case httpbin.org is slow to respond
         # we don't have direct access to the response, so we'll just check
         # that RequestsFetcher.fetch() doesn't raise an error, such as a
         # status "401 Unauthorized" or "403 Forbidden"
