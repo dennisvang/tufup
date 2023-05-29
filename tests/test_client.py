@@ -250,6 +250,7 @@ class AuthRequestsFetcherTests(unittest.TestCase):
             scheme_and_server: HTTPBasicAuth(username=user, password=passwd)
         }
         fetcher = AuthRequestsFetcher(session_auth=session_auth)
+        fetcher.socket_timeout = 30  # in case httpbin.org is slow to respond
         # we don't have direct access to the response, so we'll just check
         # that RequestsFetcher.fetch() doesn't raise an error, such as a
         # status "401 Unauthorized" or "403 Forbidden"

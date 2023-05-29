@@ -12,8 +12,6 @@ from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 from tuf.api.metadata import TargetFile
 import tuf.ngclient
-# RequestsFetcher is "private", but we'll just have to live with that, for now.
-from tuf.ngclient._internal.requests_fetcher import RequestsFetcher  # noqa
 
 from tufup.common import TargetMeta
 from tufup.utils.platform_specific import install_update
@@ -284,7 +282,8 @@ class Client(tuf.ngclient.Updater):
         # todo: clean up deprecated local archive
 
 
-class AuthRequestsFetcher(RequestsFetcher):
+class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
+    # RequestsFetcher is public as of python-tuf v2.1.0 (see python-tuf #2277)
     def __init__(
             self,
             session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
