@@ -19,11 +19,11 @@ from securesystemslib.interface import (
     import_ed25519_publickey_from_file,
     import_ed25519_privatekey_from_file,
 )
-from securesystemslib.signer import SSlibSigner
+# SSlibKey see: https://github.com/secure-systems-lab/securesystemslib/pull/456
+from securesystemslib.signer import SSlibKey, SSlibSigner
 from tuf.api.metadata import (
     SPECIFICATION_VERSION,
     TOP_LEVEL_ROLE_NAMES,
-    Key,
     Metadata,
     MetaFile,
     Role,
@@ -238,7 +238,7 @@ class Keys(Base):
     def public(self):
         # return a dict that maps key ids to *public* key objects
         return {
-            ssl_key['keyid']: Key.from_securesystemslib_key(key_dict=ssl_key)
+            ssl_key['keyid']: SSlibKey.from_securesystemslib_key(key_dict=ssl_key)
             for attr_name, ssl_keys in vars(self).items()
             if attr_name in TOP_LEVEL_ROLE_NAMES
             for ssl_key in ssl_keys
@@ -391,7 +391,7 @@ class Roles(Base):
         # based on python-tuf basic_repo.py
         ssl_key = import_ed25519_publickey_from_file(filepath=str(public_key_path))
         self.root.signed.add_key(
-            role=role_name, key=Key.from_securesystemslib_key(ssl_key)
+            role=role_name, key=SSlibKey.from_securesystemslib_key(ssl_key)
         )
 
     def set_signature_threshold(self, role_name: str, threshold: int):
