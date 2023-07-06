@@ -21,7 +21,7 @@ requires-python = ">=3.8"
 dependencies = [
     # direct dependencies
     "bsdiff4==1.2.*",
-    "packaging==21.*",
+    "packaging>=21.3",
     "securesystemslib[crypto,pynacl]>=0.26.0",
     "setuptools>=65.5.1",
     "tuf==3.0.*",
