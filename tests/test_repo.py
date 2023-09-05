@@ -519,31 +519,40 @@ class RepositoryTests(TempDirTestCase):
 
     def test_from_config(self):
         temp_dir = self.temp_dir_path.resolve()
-        # prepare
-        config_data = dict(
-            app_name='test',
-            app_version_attr='my_app.__version__',
-            repo_dir=temp_dir / 'repo',
-            keys_dir=temp_dir / 'keystore',
-            key_map=dict(),
-            encrypted_keys=[],
-            expiration_days=dict(),
-            thresholds=dict(),
-        )
-        Repository.get_config_file_path().write_text(
-            json.dumps(config_data, default=str)
-        )
-        mock_load_keys_and_roles = Mock()
-        # test
-        with patch.object(
-                Repository, '_load_keys_and_roles', mock_load_keys_and_roles,
-        ):
-            repo = Repository.from_config()
-        self.assertEqual(
-            config_data,
-            {item: getattr(repo, item) for item in config_data.keys()},
-        )
-        self.assertTrue(mock_load_keys_and_roles.called)
+        repo_dir_abs = temp_dir / 'repo'
+        keys_dir_abs = temp_dir / 'keystore'
+        cases = [
+            ('absolute paths', repo_dir_abs, keys_dir_abs),
+            ('relative paths', repo_dir_abs.relative_to(temp_dir), keys_dir_abs.relative_to(temp_dir)),
+        ]
+        for message, repo_dir, keys_dir in cases:
+            with self.subTest(msg=message):
+                # prepare
+                config_data = dict(
+                    app_name='test',
+                    app_version_attr='my_app.__version__',
+                    repo_dir=repo_dir,
+                    keys_dir=keys_dir,
+                    key_map=dict(),
+                    encrypted_keys=[],
+                    expiration_days=dict(),
+                    thresholds=dict(),
+                )
+                Repository.get_config_file_path().write_text(
+                    json.dumps(config_data, default=str)
+                )
+                # test
+                with patch.object(Repository, '_load_keys_and_roles') as mmock_load:
+                    repo = Repository.from_config()
+                # internally the repo should always work with absolute paths
+                # (relative paths are resolved in the class initializer)
+                config_data['repo_dir'] = repo_dir_abs
+                config_data['keys_dir'] = keys_dir_abs
+                self.assertEqual(
+                    config_data,
+                    {key: getattr(repo, key) for key in config_data.keys()},
+                )
+                self.assertTrue(mmock_load.called)
 
     def test_initialize(self):
         # prepare
