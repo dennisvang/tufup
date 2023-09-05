@@ -475,6 +475,26 @@ class RepositoryTests(TempDirTestCase):
     def test_defaults(self):
         self.assertTrue(Repository(app_name='test'))
 
+    def test_init_paths(self):
+        repo_dir_name = 'repo'
+        keys_dir_name = 'keystore'
+        # absolute paths (could also use resolve on relative path...)
+        repo_dir_abs = self.temp_dir_path / repo_dir_name
+        keys_dir_abs = self.temp_dir_path / keys_dir_name
+        cases = [
+            ('string', repo_dir_name, keys_dir_name),
+            ('relative', pathlib.Path(repo_dir_name), pathlib.Path(keys_dir_name)),
+            ('absolute', repo_dir_abs, keys_dir_abs),
+        ]
+        for message, repo_dir, keys_dir in cases:
+            with self.subTest(msg=message):
+                repo = Repository(
+                    app_name='test', repo_dir=repo_dir, keys_dir=keys_dir
+                )
+                # internally we should always have the absolute paths
+                self.assertEqual(repo_dir_abs, repo.repo_dir)
+                self.assertEqual(keys_dir_abs, repo.keys_dir)
+
     def test_config_dict(self):
         app_name = 'test'
         repo = Repository(app_name=app_name)
