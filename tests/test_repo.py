@@ -492,8 +492,13 @@ class RepositoryTests(TempDirTestCase):
                     app_name='test', repo_dir=repo_dir, keys_dir=keys_dir
                 )
                 # internally we should always have the absolute paths
-                self.assertEqual(repo_dir_abs, repo.repo_dir)
-                self.assertEqual(keys_dir_abs, repo.keys_dir)
+                self.assertTrue(repo.repo_dir.is_absolute())
+                self.assertTrue(repo.keys_dir.is_absolute())
+                # compare dirs
+                # resolve is necessary for github actions, see:
+                # https://github.com/actions/runner-images/issues/712#issuecomment-1163036706
+                self.assertEqual(repo_dir_abs.resolve(), repo.repo_dir.resolve())
+                self.assertEqual(keys_dir_abs.resolve(), repo.keys_dir.resolve())
 
     def test_config_dict(self):
         app_name = 'test'
