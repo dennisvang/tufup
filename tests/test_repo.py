@@ -527,7 +527,15 @@ class RepositoryTests(TempDirTestCase):
         # test
         repo.save_config()
         self.assertTrue(repo.get_config_file_path().exists())
-        print(repo.get_config_file_path().read_text())
+        config_file_text = repo.get_config_file_path().read_text()
+        print(config_file_text)  # for convenience
+        # paths saved to config file must be relative (note that we should
+        # still be able to *read* absolute paths from the config file)
+        config_dict = json.loads(config_file_text)
+        for key in ['repo_dir', 'keys_dir']:
+            with self.subTest(msg=key):
+                # note Path.is_relative_to() is introduced in python 3.9
+                self.assertFalse(pathlib.Path(config_dict[key]).is_absolute())
 
     def test_load_config(self):
         # file does not exist
