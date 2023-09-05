@@ -529,8 +529,8 @@ class RepositoryTests(TempDirTestCase):
         self.assertTrue(repo.get_config_file_path().exists())
         config_file_text = repo.get_config_file_path().read_text()
         print(config_file_text)  # for convenience
-        # paths saved to config file must be relative (note that we should
-        # still be able to *read* absolute paths from the config file)
+        # paths saved to config file are relative to current working
+        # directory (cwd) if possible (otherwise absolute paths are saved)
         config_dict = json.loads(config_file_text)
         for key in ['repo_dir', 'keys_dir']:
             with self.subTest(msg=key):

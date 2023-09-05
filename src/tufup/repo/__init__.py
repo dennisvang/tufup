@@ -567,15 +567,30 @@ class Repository(object):
 
     @classmethod
     def get_config_file_path(cls) -> pathlib.Path:
+        # config must be stored in current working directory
         return pathlib.Path.cwd() / cls.config_filename
 
     def save_config(self):
         """Save current configuration."""
-        # todo: write directories relative to config file dir?
-        file_path = self.get_config_file_path()
-        file_path.write_text(
+        config_file_path = self.get_config_file_path()
+        # make paths relative to current working directory (cwd),
+        # if possible, otherwise keep absolute paths (note, to avoid
+        # confusion, using paths other than cwd is discouraged)
+        temp_config_dict = self.config_dict  # note self.config_dict is a property
+        for key in ['repo_dir', 'keys_dir']:
+            try:
+                temp_config_dict[key] = temp_config_dict[key].relative_to(
+                    pathlib.Path.cwd()
+                )
+            except ValueError:
+                logger.warning(
+                    f'Saving *absolute* path in config, because the path is'
+                    f' not relative to cwd: {temp_config_dict[key]}'
+                )
+        # write file
+        config_file_path.write_text(
             data=json.dumps(
-                self.config_dict, default=str, sort_keys=True, indent=4
+                temp_config_dict, default=str, sort_keys=True, indent=4
             ),
             encoding='utf-8',
         )
