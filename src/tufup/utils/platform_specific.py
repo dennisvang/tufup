@@ -240,3 +240,20 @@ def _install_update_mac(
     logger.debug(f'Restarting application, running {sys.executable}.')
     subprocess.Popen(sys.executable, shell=True)  # nosec
     sys.exit(0)
+
+
+def _patched_resolve(path: pathlib.Path):
+    """
+    this is a rather crude workaround for cpython issue #82852,
+    where Path.resolve() yields a relative path, on windows, if the target
+    does not exist yet
+
+    https://github.com/python/cpython/issues/82852
+
+    todo: remove this as soon as support for python 3.9 is dropped
+    """
+    if ON_WINDOWS and sys.version_info[:2] < (3, 10):
+        logger.warning('using patched path for cpython #82852')
+        if not path.is_absolute():
+            path = pathlib.Path.cwd() / path
+    return path.resolve()

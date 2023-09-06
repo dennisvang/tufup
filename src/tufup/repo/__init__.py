@@ -36,6 +36,7 @@ from tuf.api.metadata import (
 from tuf.api.serialization.json import JSONSerializer
 
 from tufup.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
+from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
 
@@ -515,9 +516,9 @@ class Repository(object):
             thresholds: Optional[RolesDict] = None,
     ):
         if repo_dir is None:
-            repo_dir = pathlib.Path.cwd() / DEFAULT_REPO_DIR_NAME
+            repo_dir = DEFAULT_REPO_DIR_NAME
         if keys_dir is None:
-            keys_dir = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+            keys_dir = DEFAULT_KEYS_DIR_NAME
         if key_map is None:
             key_map = deepcopy(DEFAULT_KEY_MAP)
         if encrypted_keys is None:
@@ -529,8 +530,8 @@ class Repository(object):
         self.app_name = app_name
         self.app_version_attr = app_version_attr
         # force path object and resolve, in case of relative paths
-        self.repo_dir = pathlib.Path(repo_dir).resolve()
-        self.keys_dir = pathlib.Path(keys_dir).resolve()
+        self.repo_dir = _patched_resolve(pathlib.Path(repo_dir))
+        self.keys_dir = _patched_resolve(pathlib.Path(keys_dir))
         self.key_map = key_map
         self.encrypted_keys = encrypted_keys
         self.expiration_days = expiration_days
