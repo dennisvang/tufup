@@ -580,12 +580,17 @@ class Repository(object):
         for key in ['repo_dir', 'keys_dir']:
             try:
                 temp_config_dict[key] = temp_config_dict[key].relative_to(
-                    pathlib.Path.cwd()
+                    # resolve() is necessary on windows, to handle "short"
+                    # path components (a.k.a. "8.3 filename" or "8.3 alias"),
+                    # which are truncated with a tilde,
+                    # e.g. c:\Users\RUNNER~1\...
+                    pathlib.Path.cwd().resolve()
                 )
             except ValueError:
                 logger.warning(
-                    f'Saving *absolute* path in config, because the path is'
-                    f' not relative to cwd: {temp_config_dict[key]}'
+                    f'Saving *absolute* path to config, because the path'
+                    f' ({temp_config_dict[key]}) is not relative to cwd'
+                    f' ({pathlib.Path.cwd()})'
                 )
         # write file
         config_file_path.write_text(
