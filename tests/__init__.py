@@ -22,6 +22,9 @@ def _create_cwd_change_generator():
     TemporaryDirectory can also be used without context management, as it is
     cleaned up automatically. Nevertheless, it is neater to use an explicit
     context manager here.
+
+    Also see example in docs:
+    https://docs.python.org/3/library/contextlib.html#contextlib.contextmanager
     """
     # based on the pytest cleandir trick
     original_cwd = os.getcwd()
