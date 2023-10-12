@@ -39,7 +39,7 @@ The example repository shows how to integrate the `tufup` client into your app, 
 
 ## Questions and Issues
 
-If you have questions about `tufup`, or need help getting started, please post a question on [Stack Overflow][13], add a `tufup` tag, and we will help you there.
+If you have questions about `tufup`, or need help getting started, please start a [new Q&A discussion][22], or post a question on [Stack Overflow][13].
 
 If you encounter bugs or other problems that are likely to affect other users, please create a [new issue][14] here.
 
@@ -207,3 +207,4 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 [19]: https://peps.python.org/pep-0440/#public-version-identifiers
 [20]: https://packaging.pypa.io/en/stable/version.html#packaging.version.Version
 [21]: https://github.com/dennisvang/tufup/blob/master/src/tufup/client.py
+[22]: https://github.com/dennisvang/tufup/discussions/new?category=q-a
