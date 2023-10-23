@@ -26,8 +26,10 @@ class TargetMeta(object):
             is_archive: Optional[bool] = True,
     ):
         """
-
         Initialize either with target_path, or with name, version, archive.
+
+        BEWARE: whitespace is not allowed in the filename,
+        nor in the `name` or `version` arguments
         """
         super().__init__()
         if target_path is None:
@@ -36,6 +38,10 @@ class TargetMeta(object):
             )
         self.target_path_str = str(target_path)  # keep the original for reference
         self.path = pathlib.Path(target_path)
+        if ' ' in self.filename:
+            logger.critical(
+                f'invalid filename "{self.filename}": whitespace not allowed'
+            )
 
     def __str__(self):
         return str(self.target_path_str)
@@ -85,7 +91,7 @@ class TargetMeta(object):
             version = Version(match_dict.get('version', ''))
         except InvalidVersion:
             version = None
-            logger.debug(f'No valid version in filename: {self.filename}')
+            logger.critical(f'No valid version in filename: {self.filename}')
         return version
 
     @property

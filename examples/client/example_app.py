@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 #   python -m http.server -d examples/repo/content
 
 # App info
-APP_NAME = 'example_app'
+APP_NAME = 'example_app'  # BEWARE: app name cannot contain whitespace
 CURRENT_VERSION = '1.0'
 
 # For this example, all files are stored in the tufup/examples/client
