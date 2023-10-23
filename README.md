@@ -93,7 +93,9 @@ Archive filenames and patch filenames follow the pattern
 
 `<name>-<version><suffix>` 
 
-where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
+where `name` is a short string that may *only* contain *alphanumeric characters*, *underscores*, and *hyphens*, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
+
+***BEWARE***: *whitespace* is NOT allowed in the filename.
 
 Patches are typically smaller than archives, so the tufup *client* will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
