@@ -4,9 +4,7 @@ import logging
 import packaging.version
 from tuf.api.metadata import TOP_LEVEL_ROLE_NAMES
 
-from tufup.utils import (
-    log_print, input_bool, input_numeric, input_text, input_list
-)
+from tufup.utils import log_print, input_bool, input_numeric, input_text, input_list
 from tufup.repo import Repository
 
 logger = logging.getLogger(__name__)
@@ -43,9 +41,7 @@ def _get_repo():
     try:
         return Repository.from_config()
     except TypeError:
-        _print_info(
-            'Failed to load config. Did you initialize the repository?'
-        )
+        _print_info('Failed to load config. Did you initialize the repository?')
 
 
 def _add_key_dirs_argument(parser: argparse.ArgumentParser):
@@ -59,9 +55,7 @@ def get_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers()
     # add debug option
     debug_parser = argparse.ArgumentParser(add_help=False)
-    debug_parser.add_argument(
-        '-d', '--debug', action='store_true', required=False
-    )
+    debug_parser.add_argument('-d', '--debug', action='store_true', required=False)
     # init
     subparser_init = subparsers.add_parser('init', parents=[debug_parser])
     subparser_init.set_defaults(func=_cmd_init)
@@ -96,9 +90,7 @@ def get_parser() -> argparse.ArgumentParser:
     # keys
     subparser_keys = subparsers.add_parser('keys', parents=[debug_parser])
     subparser_keys.set_defaults(func=_cmd_keys)
-    subparser_keys.add_argument(
-        'new_key_name', help=HELP['keys_new_key_name']
-    )
+    subparser_keys.add_argument('new_key_name', help=HELP['keys_new_key_name'])
     subparser_keys.add_argument(
         '-c', '--create', action='store_true', help=HELP['keys_create']
     )
@@ -106,17 +98,13 @@ def get_parser() -> argparse.ArgumentParser:
         '-e', '--encrypted', action='store_true', help=HELP['keys_encrypted']
     )
     # we use nested subparsers to deal with mutually dependent arguments
-    keys_subparsers = subparser_keys.add_subparsers(
-        help=HELP['keys_subcommands']
-    )
+    keys_subparsers = subparser_keys.add_subparsers(help=HELP['keys_subcommands'])
     subparser_keys_add = keys_subparsers.add_parser('add')
     subparser_keys_add.add_argument(
         'role_name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['keys_role_name']
     )
     subparser_keys_replace = keys_subparsers.add_parser('replace')
-    subparser_keys_replace.add_argument(
-        'old_key_name', help=HELP['keys_old_key_name']
-    )
+    subparser_keys_replace.add_argument('old_key_name', help=HELP['keys_old_key_name'])
     for sp in [subparser_keys_add, subparser_keys_replace]:
         _add_key_dirs_argument(parser=sp)
     # sign
@@ -140,6 +128,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 class _StoreVersionAction(argparse.Action):
     """Validates version string before storing."""
+
     def __call__(self, parser, namespace, values, option_string=None, **kwargs):
         # The first value should comply with PEP440
         value = values[0]
@@ -149,7 +138,7 @@ class _StoreVersionAction(argparse.Action):
             raise argparse.ArgumentError(
                 self,
                 f'Version string "{value}" is not PEP440 compliant.\n '
-                f'See examples: https://www.python.org/dev/peps/pep-0440/\n'
+                f'See examples: https://www.python.org/dev/peps/pep-0440/\n',
             )
         # Store the value, same as "store" action
         setattr(namespace, self.dest, values)
@@ -188,8 +177,8 @@ def _get_config_from_user(**kwargs) -> dict:
             if key_name not in unique_key_names:
                 unique_key_names.append(key_name)
                 if input_bool(
-                        prompt=f'Encrypt key "{key_name}"?',
-                        default=key_name in encrypted_keys,
+                    prompt=f'Encrypt key "{key_name}"?',
+                    default=key_name in encrypted_keys,
                 ):
                     new_encrypted_keys.append(key_name)
         # expiration_days
@@ -240,12 +229,8 @@ def _cmd_init(options: argparse.Namespace):
 def _cmd_keys(options: argparse.Namespace):
     logger.debug(f'command keys: {vars(options)}')
     repository = _get_repo()
-    public_key_path = repository.keys.public_key_path(
-        key_name=options.new_key_name
-    )
-    private_key_path = repository.keys.private_key_path(
-        key_name=options.new_key_name
-    )
+    public_key_path = repository.keys.public_key_path(key_name=options.new_key_name)
+    private_key_path = repository.keys.private_key_path(key_name=options.new_key_name)
     if options.create:
         _print_info(f'Creating key pair for {options.new_key_name}...')
         repository.keys.create_key_pair(
@@ -304,9 +289,7 @@ def _cmd_sign(options: argparse.Namespace):
             days = int(options.expiration_days)
         # change expiration date in signed metadata
         _print_info(f'Setting expiration date {days} days from now...')
-        repository.refresh_expiration_date(
-            role_name=options.role_name, days=days
-        )
+        repository.refresh_expiration_date(role_name=options.role_name, days=days)
         # also update version and expiration date for dependent roles, and sign
         # modified roles
         _print_info('Publishing changes...')

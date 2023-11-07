@@ -46,6 +46,7 @@ class TempDirTestCase(unittest.TestCase):
     The temporary directory becomes the current working directory (cwd),
     and it is accessible as a pathlib.Path, for convenience.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.change_cwd = _create_cwd_change_generator()

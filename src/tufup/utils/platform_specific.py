@@ -18,11 +18,11 @@ PLATFORM_SUPPORTED = ON_WINDOWS or ON_MAC
 
 
 def install_update(
-        src_dir: Union[pathlib.Path, str],
-        dst_dir: Union[pathlib.Path, str],
-        purge_dst_dir: bool = False,
-        exclude_from_purge: Optional[List[Union[pathlib.Path, str]]] = None,
-        **kwargs,
+    src_dir: Union[pathlib.Path, str],
+    dst_dir: Union[pathlib.Path, str],
+    purge_dst_dir: bool = False,
+    exclude_from_purge: Optional[List[Union[pathlib.Path, str]]] = None,
+    **kwargs,
 ):
     """
     Installs update files using platform specific installation script. The
@@ -105,6 +105,7 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
     calling process exits.
     """
     from ctypes import windll
+
     # https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew
     result = windll.shell32.ShellExecuteW(
         None,  # handle to parent window
@@ -118,15 +119,15 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
 
 
 def _install_update_win(
-        src_dir: Union[pathlib.Path, str],
-        dst_dir: Union[pathlib.Path, str],
-        purge_dst_dir: bool,
-        exclude_from_purge: List[Union[pathlib.Path, str]],
-        as_admin: bool = False,
-        batch_template: str = WIN_BATCH_TEMPLATE,
-        batch_template_extra_kwargs: Optional[dict] = None,
-        log_file_name: Optional[str] = None,
-        robocopy_options_override: Optional[List[str]] = None,
+    src_dir: Union[pathlib.Path, str],
+    dst_dir: Union[pathlib.Path, str],
+    purge_dst_dir: bool,
+    exclude_from_purge: List[Union[pathlib.Path, str]],
+    as_admin: bool = False,
+    batch_template: str = WIN_BATCH_TEMPLATE,
+    batch_template_extra_kwargs: Optional[dict] = None,
+    log_file_name: Optional[str] = None,
+    robocopy_options_override: Optional[List[str]] = None,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
@@ -195,7 +196,7 @@ def _install_update_win(
     )
     logger.debug(f'writing windows batch script:\n{script_content}')
     with NamedTemporaryFile(
-            mode='w', prefix=WIN_BATCH_PREFIX, suffix=WIN_BATCH_SUFFIX, delete=False
+        mode='w', prefix=WIN_BATCH_PREFIX, suffix=WIN_BATCH_SUFFIX, delete=False
     ) as temp_file:
         temp_file.write(script_content)
     logger.debug(f'temporary batch script created: {temp_file.name}')
@@ -206,27 +207,29 @@ def _install_update_win(
         run_bat_as_admin(file_path=script_path)
     else:
         # we use Popen() instead of run(), because the latter blocks execution
-        subprocess.Popen(
-            [script_path], creationflags=subprocess.CREATE_NEW_CONSOLE
-        )
+        subprocess.Popen([script_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
     logger.debug('exiting')
     # exit current process
     sys.exit(0)
 
 
 def _install_update_mac(
-        src_dir: Union[pathlib.Path, str],
-        dst_dir: Union[pathlib.Path, str],
-        purge_dst_dir: bool,
-        exclude_from_purge: List[Union[pathlib.Path, str]],
-        **kwargs,
+    src_dir: Union[pathlib.Path, str],
+    dst_dir: Union[pathlib.Path, str],
+    purge_dst_dir: bool,
+    exclude_from_purge: List[Union[pathlib.Path, str]],
+    **kwargs,
 ):
     # todo: implement as_admin and debug kwargs for mac
     logger.debug(f'Kwargs not used: {kwargs}')
     if purge_dst_dir:
-        exclude_from_purge = [  # enforce path objects
-            pathlib.Path(item) for item in exclude_from_purge
-        ] if exclude_from_purge else []
+        exclude_from_purge = (
+            [  # enforce path objects
+                pathlib.Path(item) for item in exclude_from_purge
+            ]
+            if exclude_from_purge
+            else []
+        )
         logger.debug(f'Purging content of {dst_dir}')
         for path in pathlib.Path(dst_dir).iterdir():
             if path not in exclude_from_purge:

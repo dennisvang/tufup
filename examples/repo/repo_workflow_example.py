@@ -125,9 +125,7 @@ for new_version in new_versions:
     # Create archive and patch and register the new update (here we sign
     # everything at once, for convenience)
     repo.add_bundle(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
-    repo.publish_changes(
-        private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR]
-    )
+    repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])
 
 # Time goes by
 ...
@@ -153,6 +151,4 @@ repo.replace_key(
     new_public_key_path=new_public_key_path,
     new_private_key_encrypted=False,
 )
-repo.publish_changes(
-    private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR]
-)
+repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])

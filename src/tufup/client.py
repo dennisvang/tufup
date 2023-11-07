@@ -22,18 +22,18 @@ DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
 
 class Client(tuf.ngclient.Updater):
     def __init__(
-            self,
-            app_name: str,
-            app_install_dir: pathlib.Path,
-            current_version: str,
-            metadata_dir: pathlib.Path,
-            metadata_base_url: str,
-            target_dir: pathlib.Path,
-            target_base_url: str,
-            extract_dir: Optional[pathlib.Path] = None,
-            refresh_required: bool = False,
-            session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
-            **kwargs,
+        self,
+        app_name: str,
+        app_install_dir: pathlib.Path,
+        current_version: str,
+        metadata_dir: pathlib.Path,
+        metadata_base_url: str,
+        target_dir: pathlib.Path,
+        target_base_url: str,
+        extract_dir: Optional[pathlib.Path] = None,
+        refresh_required: bool = False,
+        session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
+        **kwargs,
     ):
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
         super().__init__(
@@ -74,7 +74,9 @@ class Client(tuf.ngclient.Updater):
             logger.warning('targets metadata not found')
         return _trusted_target_metas
 
-    def get_targetinfo(self, target_path: Union[str, TargetMeta]) -> Optional[tuf.ngclient.TargetFile]:
+    def get_targetinfo(
+        self, target_path: Union[str, TargetMeta]
+    ) -> Optional[tuf.ngclient.TargetFile]:
         """Extend Updater.get_targetinfo to handle TargetMeta input args."""
         if isinstance(target_path, TargetMeta):
             target_path = target_path.target_path_str
@@ -89,11 +91,11 @@ class Client(tuf.ngclient.Updater):
             return len(self.new_targets) > 0
 
     def download_and_apply_update(
-            self,
-            skip_confirmation: bool = False,
-            install: Optional[Callable] = None,
-            progress_hook: Optional[Callable] = None,
-            **kwargs,
+        self,
+        skip_confirmation: bool = False,
+        install: Optional[Callable] = None,
+        progress_hook: Optional[Callable] = None,
+        **kwargs,
     ):
         """
         Download and apply available updates.
@@ -126,14 +128,14 @@ class Client(tuf.ngclient.Updater):
         if install is None:
             install = install_update
         if self.updates_available and self._download_updates(
-                progress_hook=progress_hook
+            progress_hook=progress_hook
         ):
             self._apply_updates(
                 install=install, skip_confirmation=skip_confirmation, **kwargs
             )
 
     def check_for_updates(
-            self, pre: Optional[str] = None, patch: bool = True
+        self, pre: Optional[str] = None, patch: bool = True
     ) -> Optional[TargetMeta]:
         """
         Check if any updates are available, based on current app version.
@@ -169,25 +171,24 @@ class Client(tuf.ngclient.Updater):
         logger.debug(f'{len(all_new_targets)} new *targets* found')
         # determine latest archive, filtered by the specified pre-release level
         new_archives = dict(
-            item for item in all_new_targets.items()
+            item
+            for item in all_new_targets.items()
             if item[0].is_archive
             and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
         )
         new_archive_meta = None
         if new_archives:
             logger.debug(f'{len(new_archives)} new *archives* found')
-            new_archive_meta, self.new_archive_info = sorted(
-                new_archives.items()
-            )[-1]
+            new_archive_meta, self.new_archive_info = sorted(new_archives.items())[-1]
             self.new_archive_local_path = pathlib.Path(
                 self.target_dir, new_archive_meta.path.name
             )
             # patches must include all pre-releases and final releases up to,
             # and including, the latest archive as determined above
             new_patches = dict(
-                item for item in all_new_targets.items()
-                if item[0].is_patch
-                and item[0].version <= new_archive_meta.version
+                item
+                for item in all_new_targets.items()
+                if item[0].is_patch and item[0].version <= new_archive_meta.version
             )
             # determine size of patch update and archive update
             total_patch_size = sum(
@@ -227,10 +228,10 @@ class Client(tuf.ngclient.Updater):
         return len(self.downloaded_target_files) == len(self.new_targets)
 
     def _apply_updates(
-            self,
-            install: Callable,
-            skip_confirmation: bool,
-            **kwargs,
+        self,
+        install: Callable,
+        skip_confirmation: bool,
+        **kwargs,
     ):
         """
         kwargs are passed on to the 'install' callable
@@ -284,8 +285,8 @@ class Client(tuf.ngclient.Updater):
 class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
     # RequestsFetcher is public as of python-tuf v2.1.0 (see python-tuf #2277)
     def __init__(
-            self,
-            session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
+        self,
+        session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
     ) -> None:
         """
         This extends the default tuf RequestsFetcher, so we can specify
@@ -326,15 +327,14 @@ class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
 
         The hook must accept two kwargs: bytes_downloaded and bytes_expected
         """
+
         def progress(
-                bytes_new: int,
-                _cache: List[int] = [],  # noqa: mutable default intentional
+            bytes_new: int,
+            _cache: List[int] = [],  # noqa: mutable default intentional
         ):
             # mutable default is used to keep track of downloaded chunk sizes
             _cache.append(bytes_new)
-            return hook(
-                bytes_downloaded=sum(_cache), bytes_expected=bytes_expected
-            )
+            return hook(bytes_downloaded=sum(_cache), bytes_expected=bytes_expected)
 
         self._progress = progress
 
@@ -351,7 +351,7 @@ class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
         session.auth = self.session_auth.get(key)
         return session
 
-    def _chunks(self, response: "requests.Response") -> Iterator[bytes]:
+    def _chunks(self, response: 'requests.Response') -> Iterator[bytes]:
         """Call progress hook for every chunk."""
         for data in super()._chunks(response=response):
             self._progress(bytes_new=len(data))

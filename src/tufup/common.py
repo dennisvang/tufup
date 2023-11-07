@@ -19,11 +19,11 @@ class TargetMeta(object):
     )
 
     def __init__(
-            self,
-            target_path: Union[None, str, pathlib.Path] = None,
-            name: Optional[str] = None,
-            version: Optional[str] = None,
-            is_archive: Optional[bool] = True,
+        self,
+        target_path: Union[None, str, pathlib.Path] = None,
+        name: Optional[str] = None,
+        version: Optional[str] = None,
+        is_archive: Optional[bool] = True,
     ):
         """
         Initialize either with target_path, or with name, version, archive.
@@ -131,7 +131,9 @@ class TargetMeta(object):
 
 class Patcher(object):
     @classmethod
-    def create_patch(cls, src_path: pathlib.Path, dst_path: pathlib.Path) -> pathlib.Path:
+    def create_patch(
+        cls, src_path: pathlib.Path, dst_path: pathlib.Path
+    ) -> pathlib.Path:
         """
         Create a binary patch file based on source and destination files.
 
