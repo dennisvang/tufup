@@ -41,11 +41,7 @@ release = tufup.__version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-"sphinx.ext.autodoc",
-"sphinx.ext.todo",
-"sphinx_sitemap"
-]
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx_sitemap']
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -77,8 +73,8 @@ html_theme_options = {
     'collapse_navigation': True,
     'sticky_navigation': True,
     'navigation_depth': 2,
-	'includehidden': True,
-    'titles_only': False
+    'includehidden': True,
+    'titles_only': False,
 }
 
 # config for autodoc. See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_default_options

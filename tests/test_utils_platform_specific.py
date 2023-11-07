@@ -118,7 +118,8 @@ class UtilsTests(TempDirTestCase):
     )
     def test_install_update_purge(self):
         extra_kwargs_strings = [
-            'purge_dst_dir=True', f'exclude_from_purge=["{self.keep_file_str}"]'
+            'purge_dst_dir=True',
+            f'exclude_from_purge=["{self.keep_file_str}"]',
         ]
         if ON_WINDOWS:
             extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
@@ -139,7 +140,9 @@ class UtilsTests(TempDirTestCase):
     @unittest.skipIf(condition=not ON_WINDOWS, reason='robocopy is windows only')
     def test_install_update_robocopy_options_override(self):
         extra_kwargs_strings = [
-            'as_admin=False', 'log_file_name=None', 'robocopy_options_override=[]'
+            'as_admin=False',
+            'log_file_name=None',
+            'robocopy_options_override=[]',
         ]
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)

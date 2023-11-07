@@ -49,11 +49,11 @@ class ClientTests(TempDirTestCase):
             metadata_base_url='http://localhost:8000/metadata/',
             target_dir=self.target_dir,
             target_base_url='http://localhost:8000/targets/',
-            session_auth={'http://localhost:8000': ('username', 'password')}
+            session_auth={'http://localhost:8000': ('username', 'password')},
         )
 
     def mock_download_metadata(
-            self, rolename: str, length: int, version: Optional[int] = None
+        self, rolename: str, length: int, version: Optional[int] = None
     ) -> bytes:
         if rolename == 'root':
             # indicate current root is newest version
@@ -122,7 +122,7 @@ class ClientTests(TempDirTestCase):
         mock_apply = Mock(return_value=True)
         mock_install = Mock()
         with patch.multiple(
-                Client, _download_updates=mock_download, _apply_updates=mock_apply
+            Client, _download_updates=mock_download, _apply_updates=mock_apply
         ):
             client = self.get_refreshed_client()
             client.new_targets = {'dummy': None}
@@ -144,13 +144,12 @@ class ClientTests(TempDirTestCase):
                     self.assertTrue(client.check_for_updates(pre=pre))
                     self.assertEqual(expected, len(client.new_targets))
                     if pre == 'a':
-                        self.assertTrue(all(
-                            item.is_archive for item in
-                            client.new_targets.keys())
+                        self.assertTrue(
+                            all(item.is_archive for item in client.new_targets.keys())
                         )
                     else:
-                        self.assertTrue(all(
-                            item.is_patch for item in client.new_targets.keys())
+                        self.assertTrue(
+                            all(item.is_patch for item in client.new_targets.keys())
                         )
 
     def test_check_for_updates_already_up_to_date(self):
@@ -174,9 +173,9 @@ class ClientTests(TempDirTestCase):
         client.new_targets = {Mock(): Mock()}
         for cached_path, downloaded_path in [('cached', None), (None, 'downloaded')]:
             with patch.multiple(
-                    client,
-                    find_cached_target=Mock(return_value=cached_path),
-                    download_target=Mock(return_value=downloaded_path),
+                client,
+                find_cached_target=Mock(return_value=cached_path),
+                download_target=Mock(return_value=downloaded_path),
             ):
                 self.assertTrue(client._download_updates(progress_hook=None))
                 local_path = next(iter(client.downloaded_target_files.values()))
@@ -191,12 +190,12 @@ class ClientTests(TempDirTestCase):
         client.downloaded_target_files = {
             target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
             for target_meta in client.trusted_target_metas
-            if target_meta.is_patch
-            and str(target_meta.version) in ['2.0', '3.0rc0']
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
         }
         # specify new archive (normally done in _check_updates)
         archives = [
-            tp for tp in client.trusted_target_metas
+            tp
+            for tp in client.trusted_target_metas
             if tp.is_archive and str(tp.version) == '3.0rc0'
         ]
         client.new_archive_info = client.get_targetinfo(archives[-1])
@@ -263,9 +262,7 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         mock_hook = Mock()
         bytes_expected = 10
         fetcher = AuthRequestsFetcher()
-        fetcher.attach_progress_hook(
-            hook=mock_hook, bytes_expected=bytes_expected
-        )
+        fetcher.attach_progress_hook(hook=mock_hook, bytes_expected=bytes_expected)
         bytes_new = 1
         bytes_downloaded = 0
         while bytes_downloaded < bytes_expected:
@@ -307,9 +304,7 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         # test custom progress hook
         mock_hook = Mock()
         bytes_expected = chunk_size * chunk_count
-        fetcher.attach_progress_hook(
-            hook=mock_hook, bytes_expected=bytes_expected
-        )
+        fetcher.attach_progress_hook(hook=mock_hook, bytes_expected=bytes_expected)
         for __ in fetcher._chunks(response=mock_response):
             pass
         self.assertEqual(chunk_count, mock_hook.call_count)

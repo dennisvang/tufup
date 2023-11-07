@@ -69,16 +69,14 @@ class CommandTests(TempDirTestCase):
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             with patch('tufup.repo.cli.input_bool', Mock(return_value=True)):
                 with patch(
-                        'tufup.repo.cli._get_config_from_user',
-                        self.mock_repo_class.load_config,
+                    'tufup.repo.cli._get_config_from_user',
+                    self.mock_repo_class.load_config,
                 ):
                     tufup.repo.cli._cmd_init(options=argparse.Namespace())
         self.mock_repo.initialize.assert_called()
 
     def test__cmd_keys_create(self):
-        options = argparse.Namespace(
-            new_key_name='test', encrypted=True, create=True
-        )
+        options = argparse.Namespace(new_key_name='test', encrypted=True, create=True)
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_keys(options=options)
         self.mock_repo.keys.create_key_pair.assert_called()
@@ -125,11 +123,11 @@ class CommandTests(TempDirTestCase):
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.add_bundle.assert_called_with(
-            new_version=version, new_bundle_dir=bundle_dir, skip_patch=skip_patch,
+            new_version=version,
+            new_bundle_dir=bundle_dir,
+            skip_patch=skip_patch,
         )
-        self.mock_repo.publish_changes.assert_called_with(
-            private_key_dirs=key_dirs
-        )
+        self.mock_repo.publish_changes.assert_called_with(private_key_dirs=key_dirs)
 
     def test__cmd_targets_remove_latest(self):
         key_dirs = ['c:\\my_private_keys']
@@ -163,9 +161,7 @@ class CommandTests(TempDirTestCase):
         self.mock_repo.refresh_expiration_date.assert_called_with(
             role_name=role_name, days=self.config['expiration_days'][role_name]
         )
-        self.mock_repo.publish_changes.assert_called_with(
-            private_key_dirs=key_dirs
-        )
+        self.mock_repo.publish_changes.assert_called_with(private_key_dirs=key_dirs)
 
     def test__get_config_from_user_no_kwargs(self):
         default = ''
@@ -220,7 +216,5 @@ class CommandTests(TempDirTestCase):
         )
         default = ''
         with patch('builtins.input', Mock(return_value=default)):
-            config_kwargs = tufup.repo.cli._get_config_from_user(
-                **original_kwargs
-            )
+            config_kwargs = tufup.repo.cli._get_config_from_user(**original_kwargs)
         self.assertEqual(config_kwargs, original_kwargs)

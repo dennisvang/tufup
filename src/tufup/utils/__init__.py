@@ -73,7 +73,7 @@ def input_bool(prompt: str, default: bool) -> bool:
 
 
 def input_list(
-        prompt: str, default: List[str], item_default: Optional[str] = None
+    prompt: str, default: List[str], item_default: Optional[str] = None
 ) -> List[str]:
     new_list = []
     log_print(message=prompt, level=logging.DEBUG, logger=utils_logger)
@@ -102,7 +102,7 @@ def input_numeric(prompt: str, default: int) -> int:
 
 
 def input_text(
-        prompt: str, default: Optional[str], optional: bool = False
+    prompt: str, default: Optional[str], optional: bool = False
 ) -> Optional[str]:
     answer = None
     prompt += f' (default: {default})'
