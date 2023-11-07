@@ -236,7 +236,7 @@ def _cmd_keys(options: argparse.Namespace):
         repository.keys.create_key_pair(
             private_key_path=private_key_path, encrypted=options.encrypted
         )
-        _print_info(f'Key pair created.')
+        _print_info('Key pair created.')
     replace = hasattr(options, 'old_key_name')
     add = hasattr(options, 'role_name')
     if replace:

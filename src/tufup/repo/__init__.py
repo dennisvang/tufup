@@ -8,7 +8,7 @@ import pathlib
 try:
     # workaround for PyInstaller issue 6911 (setuptools issue 3089)
     import setuptools.config.expand  # noqa
-except AssertionError as e:
+except AssertionError:
     pass  # assuming we are on the client side...
 import shutil
 from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
@@ -214,7 +214,7 @@ class Keys(Base):
     ) -> pathlib.Path:
         if encrypted:
             # encrypt private key
-            logger.debug(f'set encryption password for private key')
+            logger.debug('set encryption password for private key')
             generate_keypair = generate_and_write_ed25519_keypair_with_prompt
         else:
             # do not encrypt private key (for automated signing)
@@ -223,7 +223,7 @@ class Keys(Base):
         proceed = True
         if public_key_path.exists():
             logger.warning(f'Public key already exists: {public_key_path}')
-            proceed = input(f'Overwrite key pair? [n]/y') == 'y'
+            proceed = input('Overwrite key pair? [n]/y') == 'y'
         if proceed:
             file_path_str = generate_keypair(filepath=str(private_key_path))
             logger.info(f'key-pair created: {file_path_str}, {public_key_path}')
