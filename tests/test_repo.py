@@ -485,9 +485,7 @@ class RepositoryTests(TempDirTestCase):
         ]
         for message, repo_dir, keys_dir in cases:
             with self.subTest(msg=message):
-                repo = Repository(
-                    app_name='test', repo_dir=repo_dir, keys_dir=keys_dir
-                )
+                repo = Repository(app_name='test', repo_dir=repo_dir, keys_dir=keys_dir)
                 # internally we should always have the absolute paths
                 self.assertTrue(repo.repo_dir.is_absolute())
                 self.assertTrue(repo.keys_dir.is_absolute())
@@ -553,7 +551,11 @@ class RepositoryTests(TempDirTestCase):
         keys_dir_abs = temp_dir / 'keystore'
         cases = [
             ('absolute paths', repo_dir_abs, keys_dir_abs),
-            ('relative paths', repo_dir_abs.relative_to(temp_dir), keys_dir_abs.relative_to(temp_dir)),
+            (
+                'relative paths',
+                repo_dir_abs.relative_to(temp_dir),
+                keys_dir_abs.relative_to(temp_dir),
+            ),
         ]
         for message, repo_dir, keys_dir in cases:
             with self.subTest(msg=message):

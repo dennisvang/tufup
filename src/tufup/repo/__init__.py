@@ -585,9 +585,7 @@ class Repository(object):
                 )
         # write file
         config_file_path.write_text(
-            data=json.dumps(
-                temp_config_dict, default=str, sort_keys=True, indent=4
-            ),
+            data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
             encoding='utf-8',
         )
 
