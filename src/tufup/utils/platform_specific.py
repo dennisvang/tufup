@@ -128,6 +128,7 @@ def _install_update_win(
     batch_template_extra_kwargs: Optional[dict] = None,
     log_file_name: Optional[str] = None,
     robocopy_options_override: Optional[List[str]] = None,
+    process_creation_flags = None,
 ):
     """
     Create a batch script that moves files from src to dst, then run the
@@ -159,7 +160,14 @@ def _install_update_win(
     to be overridden completely. It accepts a list of option strings. This
     will cause the purge arguments to be ignored as well.
 
+    The `process_creation_flags` option allows users to override creation flags for
+    the subprocess call that runs the batch script. For example, one could specify
+    `subprocess.CREATE_NO_WINDOW` to prevent a window from opening. See [2] and [3]
+    for details.
+
     [1]: https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy
+    [2]: https://docs.python.org/3/library/subprocess.html#windows-constants
+    [3]: https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     """
     if batch_template_extra_kwargs is None:
         batch_template_extra_kwargs = dict()
@@ -206,8 +214,14 @@ def _install_update_win(
     if as_admin:
         run_bat_as_admin(file_path=script_path)
     else:
+        # by default we create a new console with window, but user can override this
+        # using the process_creation_flags argument
+        if process_creation_flags is None:
+            process_creation_flags = subprocess.CREATE_NEW_CONSOLE
+        else:
+            logger.debug('using custom process creation flags')
         # we use Popen() instead of run(), because the latter blocks execution
-        subprocess.Popen([script_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        subprocess.Popen([script_path], creationflags=process_creation_flags)
     logger.debug('exiting')
     # exit current process
     sys.exit(0)
