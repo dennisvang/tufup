@@ -38,6 +38,7 @@ from tuf.api.metadata import (
 from tuf.api.serialization.json import JSONSerializer
 
 from tufup.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
+from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
 
@@ -505,9 +506,9 @@ class Repository(object):
         thresholds: Optional[RolesDict] = None,
     ):
         if repo_dir is None:
-            repo_dir = pathlib.Path.cwd() / DEFAULT_REPO_DIR_NAME
+            repo_dir = DEFAULT_REPO_DIR_NAME
         if keys_dir is None:
-            keys_dir = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
+            keys_dir = DEFAULT_KEYS_DIR_NAME
         if key_map is None:
             key_map = deepcopy(DEFAULT_KEY_MAP)
         if encrypted_keys is None:
@@ -519,8 +520,8 @@ class Repository(object):
         self.app_name = app_name
         self.app_version_attr = app_version_attr
         # force path object and resolve, in case of relative paths
-        self.repo_dir = pathlib.Path(repo_dir).resolve()
-        self.keys_dir = pathlib.Path(keys_dir).resolve()
+        self.repo_dir = _patched_resolve(pathlib.Path(repo_dir))
+        self.keys_dir = _patched_resolve(pathlib.Path(keys_dir))
         self.key_map = key_map
         self.encrypted_keys = encrypted_keys
         self.expiration_days = expiration_days
@@ -557,14 +558,34 @@ class Repository(object):
 
     @classmethod
     def get_config_file_path(cls) -> pathlib.Path:
+        # config must be stored in current working directory
         return pathlib.Path.cwd() / cls.config_filename
 
     def save_config(self):
         """Save current configuration."""
-        # todo: write directories relative to config file dir?
-        file_path = self.get_config_file_path()
-        file_path.write_text(
-            data=json.dumps(self.config_dict, default=str, sort_keys=True, indent=4),
+        config_file_path = self.get_config_file_path()
+        # make paths relative to current working directory (cwd),
+        # if possible, otherwise keep absolute paths (note, to avoid
+        # confusion, using paths other than cwd is discouraged)
+        temp_config_dict = self.config_dict  # note self.config_dict is a property
+        for key in ['repo_dir', 'keys_dir']:
+            try:
+                temp_config_dict[key] = temp_config_dict[key].relative_to(
+                    # resolve() is necessary on windows, to handle "short"
+                    # path components (a.k.a. "8.3 filename" or "8.3 alias"),
+                    # which are truncated with a tilde,
+                    # e.g. c:\Users\RUNNER~1\...
+                    pathlib.Path.cwd().resolve()
+                )
+            except ValueError:
+                logger.warning(
+                    f'Saving *absolute* path to config, because the path'
+                    f' ({temp_config_dict[key]}) is not relative to cwd'
+                    f' ({pathlib.Path.cwd()})'
+                )
+        # write file
+        config_file_path.write_text(
+            data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
             encoding='utf-8',
         )
 

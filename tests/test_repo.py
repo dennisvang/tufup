@@ -472,6 +472,29 @@ class RepositoryTests(TempDirTestCase):
     def test_defaults(self):
         self.assertTrue(Repository(app_name='test'))
 
+    def test_init_paths(self):
+        repo_dir_name = 'repo'
+        keys_dir_name = 'keystore'
+        # absolute paths (could also use resolve on relative path...)
+        repo_dir_abs = self.temp_dir_path / repo_dir_name
+        keys_dir_abs = self.temp_dir_path / keys_dir_name
+        cases = [
+            ('string', repo_dir_name, keys_dir_name),
+            ('relative', pathlib.Path(repo_dir_name), pathlib.Path(keys_dir_name)),
+            ('absolute', repo_dir_abs, keys_dir_abs),
+        ]
+        for message, repo_dir, keys_dir in cases:
+            with self.subTest(msg=message):
+                repo = Repository(app_name='test', repo_dir=repo_dir, keys_dir=keys_dir)
+                # internally we should always have the absolute paths
+                self.assertTrue(repo.repo_dir.is_absolute())
+                self.assertTrue(repo.keys_dir.is_absolute())
+                # compare dirs
+                # resolve is necessary for github actions, see:
+                # https://github.com/actions/runner-images/issues/712#issuecomment-1163036706
+                self.assertEqual(repo_dir_abs.resolve(), repo.repo_dir.resolve())
+                self.assertEqual(keys_dir_abs.resolve(), repo.keys_dir.resolve())
+
     def test_config_dict(self):
         app_name = 'test'
         repo = Repository(app_name=app_name)
@@ -504,7 +527,15 @@ class RepositoryTests(TempDirTestCase):
         # test
         repo.save_config()
         self.assertTrue(repo.get_config_file_path().exists())
-        print(repo.get_config_file_path().read_text())
+        config_file_text = repo.get_config_file_path().read_text()
+        print(config_file_text)  # for convenience
+        # paths saved to config file are relative to current working
+        # directory (cwd) if possible (otherwise absolute paths are saved)
+        config_dict = json.loads(config_file_text)
+        for key in ['repo_dir', 'keys_dir']:
+            with self.subTest(msg=key):
+                # note Path.is_relative_to() is introduced in python 3.9
+                self.assertFalse(pathlib.Path(config_dict[key]).is_absolute())
 
     def test_load_config(self):
         # file does not exist
@@ -516,33 +547,44 @@ class RepositoryTests(TempDirTestCase):
 
     def test_from_config(self):
         temp_dir = self.temp_dir_path.resolve()
-        # prepare
-        config_data = dict(
-            app_name='test',
-            app_version_attr='my_app.__version__',
-            repo_dir=temp_dir / 'repo',
-            keys_dir=temp_dir / 'keystore',
-            key_map=dict(),
-            encrypted_keys=[],
-            expiration_days=dict(),
-            thresholds=dict(),
-        )
-        Repository.get_config_file_path().write_text(
-            json.dumps(config_data, default=str)
-        )
-        mock_load_keys_and_roles = Mock()
-        # test
-        with patch.object(
-            Repository,
-            '_load_keys_and_roles',
-            mock_load_keys_and_roles,
-        ):
-            repo = Repository.from_config()
-        self.assertEqual(
-            config_data,
-            {item: getattr(repo, item) for item in config_data.keys()},
-        )
-        self.assertTrue(mock_load_keys_and_roles.called)
+        repo_dir_abs = temp_dir / 'repo'
+        keys_dir_abs = temp_dir / 'keystore'
+        cases = [
+            ('absolute paths', repo_dir_abs, keys_dir_abs),
+            (
+                'relative paths',
+                repo_dir_abs.relative_to(temp_dir),
+                keys_dir_abs.relative_to(temp_dir),
+            ),
+        ]
+        for message, repo_dir, keys_dir in cases:
+            with self.subTest(msg=message):
+                # prepare
+                config_data = dict(
+                    app_name='test',
+                    app_version_attr='my_app.__version__',
+                    repo_dir=repo_dir,
+                    keys_dir=keys_dir,
+                    key_map=dict(),
+                    encrypted_keys=[],
+                    expiration_days=dict(),
+                    thresholds=dict(),
+                )
+                Repository.get_config_file_path().write_text(
+                    json.dumps(config_data, default=str)
+                )
+                # test
+                with patch.object(Repository, '_load_keys_and_roles') as mmock_load:
+                    repo = Repository.from_config()
+                # internally the repo should always work with absolute paths
+                # (relative paths are resolved in the class initializer)
+                config_data['repo_dir'] = repo_dir_abs
+                config_data['keys_dir'] = keys_dir_abs
+                self.assertEqual(
+                    config_data,
+                    {key: getattr(repo, key) for key in config_data.keys()},
+                )
+                self.assertTrue(mmock_load.called)
 
     def test_initialize(self):
         # prepare
