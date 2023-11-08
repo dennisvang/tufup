@@ -1,8 +1,10 @@
 import bsdiff4
+import json
 import logging
 import pathlib
 import shutil
 import sys
+import tarfile
 import tempfile
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
@@ -19,7 +21,8 @@ from tufup.utils.platform_specific import install_update
 logger = logging.getLogger(__name__)
 
 # dir name must be unequivocally linked to tufup, as dir contents are removed
-EXTRACT_DIR_NAME = 'tufup_temporary_extract_dir'
+EXTRACT_DIR_PURGE_MANIFEST_NAME = 'purge.manifest'
+EXTRACT_DIR_NAME = 'tufup_extract_dir'
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / EXTRACT_DIR_NAME
 
 
@@ -262,30 +265,9 @@ class Client(tuf.ngclient.Updater):
             self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
             # write the patched new archive
             self.new_archive_local_path.write_bytes(archive_bytes)
-        # extract archive to (temporary) directory
-        if self.extract_dir is None:
-            self.extract_dir = DEFAULT_EXTRACT_DIR
-            self.extract_dir.mkdir(exist_ok=True)
-            logger.debug(f'default extract dir created: {self.extract_dir}')
-        # remove any files/folders present in the extract_dir (recursively),
-        # if requested, but ony if the extract_dir is properly "namespaced" (this is
-        # intended to prevent accidental deletion of unrelated files from a
-        # user-specified extract_dir)
-        if self.purge_extract_dir:
-            if self.extract_dir.name == EXTRACT_DIR_NAME:
-                for path_item in self.extract_dir.iterdir():
-                    remove_path(path=path_item)
-            else:
-                logger.warning(
-                    f'cannot clean extract_dir {self.extract_dir}: '
-                    f'name does not match "{EXTRACT_DIR_NAME}"'
-                )
-        # extract the archive into the extract_dir
-        shutil.unpack_archive(
-            filename=self.new_archive_local_path, extract_dir=self.extract_dir
-        )
-        logger.debug(f'files extracted to {self.extract_dir}')
-        # install
+        # extract archive to "temporary" directory
+        self._extract_archive()
+        # install, i.e. move extracted files from "temporary" dir to final "install" dir
         confirmation_message = f'Install update in {self.app_install_dir}? [y]/n'
         if skip_confirmation or input(confirmation_message) in ['y', '']:
             # start a script that moves the extracted files to the app install
@@ -297,7 +279,44 @@ class Client(tuf.ngclient.Updater):
             )
         else:
             logger.warning('Installation aborted.')
-        # todo: clean up deprecated local archive
+
+    def _extract_archive(self):
+        # ensure extract_dir exists
+        if self.extract_dir is None:
+            self.extract_dir = DEFAULT_EXTRACT_DIR
+            logger.debug(f'using default extract_dir: {self.extract_dir}')
+        self.extract_dir.mkdir(exist_ok=True)
+        # purge all files/folders present in the extract_dir, but only if they are
+        # listed in the previous archive's purge manifest (this should prevent
+        # accidental removal of files unrelated to tufup)
+        purge_manifest_path = self.extract_dir / EXTRACT_DIR_PURGE_MANIFEST_NAME
+        if self.purge_extract_dir:
+            if purge_manifest_path.exists():
+                purge_manifest = json.loads(purge_manifest_path.read_text())
+                for path_item in self.extract_dir.iterdir():
+                    if path_item.name in purge_manifest:
+                        remove_path(path=path_item)
+                    else:
+                        logger.warning(
+                            f'{path_item} not in {EXTRACT_DIR_PURGE_MANIFEST_NAME}'
+                        )
+                logger.info(f'extract_dir purged: {self.extract_dir}')
+            else:
+                logger.warning(
+                    f'cannot purge: {EXTRACT_DIR_PURGE_MANIFEST_NAME} not found'
+                )
+        # extract the new archive into the "temporary" extract_dir
+        shutil.unpack_archive(
+            filename=self.new_archive_local_path, extract_dir=self.extract_dir
+        )
+        logger.debug(f'files extracted to {self.extract_dir}')
+        # create/overwrite purge manifest in extract_dir
+        with tarfile.open(self.new_archive_local_path) as tar:
+            new_purge_manifest = [
+                pathlib.Path(t.name).name for t in tar if t.name != '.'
+            ]
+        purge_manifest_path.write_text(json.dumps(new_purge_manifest))
+        logger.debug(f'purge manifest created/updated: {purge_manifest_path}')
 
 
 class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):

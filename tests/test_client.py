@@ -11,7 +11,7 @@ import tuf.api.exceptions
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.client import AuthRequestsFetcher, Client
+from tufup.client import AuthRequestsFetcher, Client, EXTRACT_DIR_PURGE_MANIFEST_NAME
 from tufup.common import TargetMeta
 
 ROOT_FILENAME = 'root.json'
@@ -74,6 +74,25 @@ class ClientTests(TempDirTestCase):
         shutil.copy(
             src=TEST_REPO_DIR / 'targets' / client.current_archive.path.name,
             dst=client.current_archive_local_path,
+        )
+        return client
+
+    def populate_refreshed_client(self, client):
+        # directly use target files from test repo as downloaded files
+        client.downloaded_target_files = {
+            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
+            for target_meta in client.trusted_target_metas
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
+        }
+        # specify new archive (normally done in _check_updates)
+        archives = [
+            tp
+            for tp in client.trusted_target_metas
+            if tp.is_archive and str(tp.version) == '3.0rc0'
+        ]
+        client.new_archive_info = client.get_targetinfo(archives[-1])
+        client.new_archive_local_path = pathlib.Path(
+            client.target_dir, client.new_archive_info.path
         )
         return client
 
@@ -185,23 +204,7 @@ class ClientTests(TempDirTestCase):
                     self.assertEqual(downloaded_path, str(local_path))
 
     def test__apply_updates(self):
-        client = self.get_refreshed_client()
-        # directly use target files from test repo as downloaded files
-        client.downloaded_target_files = {
-            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
-            for target_meta in client.trusted_target_metas
-            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
-        }
-        # specify new archive (normally done in _check_updates)
-        archives = [
-            tp
-            for tp in client.trusted_target_metas
-            if tp.is_archive and str(tp.version) == '3.0rc0'
-        ]
-        client.new_archive_info = client.get_targetinfo(archives[-1])
-        client.new_archive_local_path = pathlib.Path(
-            client.target_dir, client.new_archive_info.path
-        )
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
         # test confirmation
         mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
@@ -212,6 +215,31 @@ class ClientTests(TempDirTestCase):
         mock_install = Mock()
         client._apply_updates(install=mock_install, skip_confirmation=True)
         mock_install.assert_called()
+
+    def test__extract_archive_with_purge(self):
+        temp_extract_dir = self.temp_dir_path / 'tufup-extract-dir'
+        temp_extract_dir.mkdir()
+        self.client_kwargs['extract_dir'] = temp_extract_dir
+        self.client_kwargs['purge_extract_dir'] = True
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
+        # ensure new archive exists in targets dir(dummy)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / client.new_archive_local_path.name,
+            dst=client.new_archive_local_path,
+        )
+        # test extract without purge manifest
+        client._extract_archive()
+        self.assertTrue(any(client.extract_dir.iterdir()))
+        # purge manifest should now exist
+        purge_manifest_path = client.extract_dir / EXTRACT_DIR_PURGE_MANIFEST_NAME
+        purge_manifest_content = purge_manifest_path.read_text()
+        print(purge_manifest_content)
+        self.assertTrue(purge_manifest_content)
+        # test extract with purge manifest
+        with self.assertLogs(level='DEBUG') as logs:
+            client._extract_archive()
+        print(logs.output)
+        self.assertTrue(any('removed file' in msg.lower() for msg in logs.output))
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):
