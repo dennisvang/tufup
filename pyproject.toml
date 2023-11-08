@@ -45,3 +45,6 @@ version = {attr = "tufup.__version__"}
 # this is still in beta (as of setuptools v65.6.3)
 # https://setuptools.pypa.io/en/stable/userguide/pyproject_config.html#setuptools-specific-configuration
 where = ["src"]
+
+[tool.ruff.format]
+quote-style = "single"

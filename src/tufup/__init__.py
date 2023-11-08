@@ -2,7 +2,6 @@ import logging
 import sys
 
 from tufup.repo import cli
-from tufup.utils import input_bool
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 # https://semver.org/

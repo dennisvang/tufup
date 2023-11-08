@@ -1,3 +1,4 @@
 # install dev dependencies
 build
+ruff
 twine

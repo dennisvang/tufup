@@ -20,14 +20,21 @@ from tuf.api.metadata import (
     Snapshot,
     Timestamp,
     TargetFile,
-    TOP_LEVEL_ROLE_NAMES
+    TOP_LEVEL_ROLE_NAMES,
 )
 
 from tests import TempDirTestCase, TEST_REPO_DIR
 from tufup.common import TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
-    Base, in_, Keys, make_gztar_archive, Repository, Roles, SUFFIX_PUB, SUFFIX_PATCH
+    Base,
+    in_,
+    Keys,
+    make_gztar_archive,
+    Repository,
+    Roles,
+    SUFFIX_PUB,
+    SUFFIX_PATCH,
 )
 
 
@@ -38,7 +45,9 @@ DUMMY_SSL_KEY = {
     'scheme': 'ed25519',
     'keyid': '22f7c6046e29cfb0205a1c07941a5a57da39a6859b844f8c347f622a57ff82c8',
     'keyid_hash_algorithms': ['sha256', 'sha512'],
-    'keyval': {'public': '93032b5804ba40a725145171193782bdfa30038584715546aea3228ea8018e46'},
+    'keyval': {
+        'public': '93032b5804ba40a725145171193782bdfa30038584715546aea3228ea8018e46'
+    },
 }
 DUMMY_ROOT = Root(
     version=1,
@@ -46,8 +55,7 @@ DUMMY_ROOT = Root(
     expires=datetime.now() + timedelta(days=1),
     keys=dict(),
     roles={
-        role_name: Role(keyids=[], threshold=1)
-        for role_name in TOP_LEVEL_ROLE_NAMES
+        role_name: Role(keyids=[], threshold=1) for role_name in TOP_LEVEL_ROLE_NAMES
     },
     consistent_snapshot=False,
 )
@@ -146,11 +154,9 @@ class KeysTests(TempDirTestCase):
         keys = Keys(dir_path=self.temp_dir_path)
         # create some key files
         for role_name in TOP_LEVEL_ROLE_NAMES:
-            private_key_filename = Keys.filename_pattern.format(
-                key_name=role_name)
+            private_key_filename = Keys.filename_pattern.format(key_name=role_name)
             file_path = self.temp_dir_path / private_key_filename
-            generate_and_write_unencrypted_ed25519_keypair(
-                filepath=str(file_path))
+            generate_and_write_unencrypted_ed25519_keypair(filepath=str(file_path))
         # test
         for role_name in TOP_LEVEL_ROLE_NAMES:
             self.assertFalse(getattr(keys, role_name))
@@ -188,15 +194,13 @@ class KeysTests(TempDirTestCase):
         # prepare
         keys = Keys(dir_path=self.temp_dir_path, key_map=DUMMY_KEY_MAP)
         expected_key_names = [
-            key_name
-            for key_names in DUMMY_KEY_MAP.values()
-            for key_name in key_names
+            key_name for key_names in DUMMY_KEY_MAP.values() for key_name in key_names
         ]
         # test
         keys.create()
         # we should now have five key-pairs (one for each, but two for root)
         filenames = [item.name for item in keys.dir_path.iterdir()]
-        self.assertEqual(2*len(expected_key_names), len(filenames))
+        self.assertEqual(2 * len(expected_key_names), len(filenames))
         for key_name in expected_key_names:
             self.assertIn(key_name, filenames)
             self.assertIn(key_name + SUFFIX_PUB, filenames)
@@ -215,14 +219,10 @@ class KeysTests(TempDirTestCase):
         key_name = 'dummy'
         private_key_filename = Keys.filename_pattern.format(key_name=key_name)
         private_key_path = self.temp_dir_path / private_key_filename
-        generate_and_write_unencrypted_ed25519_keypair(
-            filepath=str(private_key_path)
-        )
+        generate_and_write_unencrypted_ed25519_keypair(filepath=str(private_key_path))
         original_private_key = private_key_path.read_bytes()
         with patch('builtins.input', Mock(return_value='n')):
-            Keys.create_key_pair(
-                private_key_path=private_key_path, encrypted=False
-            )
+            Keys.create_key_pair(private_key_path=private_key_path, encrypted=False)
         self.assertEqual(original_private_key, private_key_path.read_bytes())
 
     def test_public(self):
@@ -260,7 +260,7 @@ class KeysTests(TempDirTestCase):
             ('offline', [Root.type, Targets.type]),
         ]
         key_dirs = []
-        for dir_name, role_names  in key_names:
+        for dir_name, role_names in key_names:
             dir_path = self.temp_dir_path / dir_name
             dir_path.mkdir()
             key_dirs.append(dir_path)
@@ -308,10 +308,7 @@ class RolesTests(TempDirTestCase):
         # test
         roles.initialize(keys=mock_keys)
         self.assertTrue(
-            all(
-                isinstance(getattr(roles, n), Metadata)
-                for n in TOP_LEVEL_ROLE_NAMES
-            )
+            all(isinstance(getattr(roles, n), Metadata) for n in TOP_LEVEL_ROLE_NAMES)
         )
         # files do not exist yet, because the roles still need to be populated
         self.assertFalse(any(roles.dir_path.iterdir()))
@@ -343,7 +340,9 @@ class RolesTests(TempDirTestCase):
         local_target_path.write_bytes(b'some bytes')
         # test
         for segments, expected_url_path in [
-            (None, filename), ([], filename), (['a', 'b'], 'a/b/' + filename)
+            (None, filename),
+            ([], filename),
+            (['a', 'b'], 'a/b/' + filename),
         ]:
             roles.add_or_update_target(
                 local_path=local_target_path, url_path_segments=segments
@@ -415,9 +414,7 @@ class RolesTests(TempDirTestCase):
                         password=password, filepath=str(private_key_path)
                     )
                 # test
-                roles.sign_role(
-                    role_name=role_name, private_key_path=private_key_path
-                )
+                roles.sign_role(role_name=role_name, private_key_path=private_key_path)
         self.assertEqual(signature_count, len(roles.root.signatures))
 
     def test_file_path(self):
@@ -599,9 +596,7 @@ class RepositoryTests(TempDirTestCase):
         repo.initialize()
         self.assertTrue(any(repo.keys_dir.iterdir()))
         self.assertTrue(any(repo.metadata_dir.iterdir()))
-        self.assertTrue(
-            all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
-        )
+        self.assertTrue(all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES))
         self.assertEqual(
             date.today() + timedelta(days=DUMMY_EXPIRATION_DAYS['root']),
             repo.roles.root.signed.expires.date(),
@@ -657,15 +652,11 @@ class RepositoryTests(TempDirTestCase):
             len(repo.roles.root.signed.roles[role_name].keyids),
         )
         # old key removed?
-        self.assertNotIn(
-            old_key_id, repo.roles.root.signed.roles[role_name].keyids
-        )
+        self.assertNotIn(old_key_id, repo.roles.root.signed.roles[role_name].keyids)
         self.assertNotIn(old_key_name, repo.key_map[role_name])
         self.assertIn(old_key_name, repo.revoked_key_names)
         # new key added?
-        self.assertIn(
-            new_key_id, repo.roles.root.signed.roles[role_name].keyids
-        )
+        self.assertIn(new_key_id, repo.roles.root.signed.roles[role_name].keyids)
         self.assertIn(new_key_name, repo.key_map[role_name])
         self.assertIn(new_key_name, repo.encrypted_keys)
         # no duplicates in encrypted_keys?
@@ -700,9 +691,7 @@ class RepositoryTests(TempDirTestCase):
         )
         # new key added?
         self.assertEqual(2, len(repo.roles.root.signed.roles[role_name].keyids))
-        self.assertIn(
-            new_key_id, repo.roles.root.signed.roles[role_name].keyids
-        )
+        self.assertIn(new_key_id, repo.roles.root.signed.roles[role_name].keyids)
         self.assertIn(new_key_name, repo.key_map[role_name])
         self.assertIn(new_key_name, repo.encrypted_keys)
 
@@ -737,9 +726,7 @@ class RepositoryTests(TempDirTestCase):
         repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
         # test
         bundle_file.write_text('much has changed in version 2')
-        repo.add_bundle(
-            new_version='2.0', new_bundle_dir=bundle_dir, skip_patch=True
-        )
+        repo.add_bundle(new_version='2.0', new_bundle_dir=bundle_dir, skip_patch=True)
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
         target_keys = list(repo.roles.targets.signed.targets.keys())
         self.assertEqual(2, len(target_keys))
@@ -812,9 +799,7 @@ class RepositoryTests(TempDirTestCase):
         for path in repo.keys_dir.iterdir():
             path.unlink()
         with self.assertRaises(Exception):
-            repo.threshold_sign(
-                role_name=role_name, private_key_dirs=[repo.keys_dir]
-            )
+            repo.threshold_sign(role_name=role_name, private_key_dirs=[repo.keys_dir])
 
     def test__load_keys_and_roles(self):
         # prepare
@@ -827,9 +812,7 @@ class RepositoryTests(TempDirTestCase):
         # test
         with patch('builtins.input', Mock(return_value='y')):
             repo._load_keys_and_roles(create_keys=True)
-        self.assertTrue(
-            all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES)
-        )
+        self.assertTrue(all(getattr(repo.roles, name) for name in TOP_LEVEL_ROLE_NAMES))
         self.assertTrue(
             all((keys_dir / name).exists() for name in TOP_LEVEL_ROLE_NAMES)
         )
@@ -867,9 +850,7 @@ class RepositoryTests(TempDirTestCase):
         for role_name in ['root', 'targets', 'snapshot', 'timestamp']:
             with self.subTest(msg=role_name):
                 role = getattr(repo.roles, role_name)
-                self.assertEqual(
-                    repo.thresholds[role_name], len(role.signatures)
-                )
+                self.assertEqual(repo.thresholds[role_name], len(role.signatures))
 
     def test_publish_changes(self):
         days = 999
@@ -886,9 +867,7 @@ class RepositoryTests(TempDirTestCase):
                 # note that initialize() already calls publish_changes...
                 repo.initialize()  # todo: make test independent...
                 # make a change to metadata (in memory)
-                repo.roles.set_expiration_date(
-                    role_name=test_role_name, days=days
-                )
+                repo.roles.set_expiration_date(role_name=test_role_name, days=days)
                 # make a change to config
                 config_change = 'dummy'
                 repo.encrypted_keys.append(config_change)
@@ -910,6 +889,4 @@ class RepositoryTests(TempDirTestCase):
                 )
                 # verify change in config
                 config_from_disk = repo.load_config()
-                self.assertIn(
-                    config_change, config_from_disk['encrypted_keys']
-                )
+                self.assertIn(config_change, config_from_disk['encrypted_keys'])

@@ -39,7 +39,7 @@ The example repository shows how to integrate the `tufup` client into your app, 
 
 ## Questions and Issues
 
-If you have questions about `tufup`, or need help getting started, please post a question on [Stack Overflow][13], add a `tufup` tag, and we will help you there.
+If you have questions about `tufup`, or need help getting started, please start a [new Q&A discussion][22], or post a question on [Stack Overflow][13].
 
 If you encounter bugs or other problems that are likely to affect other users, please create a [new issue][14] here.
 
@@ -93,7 +93,9 @@ Archive filenames and patch filenames follow the pattern
 
 `<name>-<version><suffix>` 
 
-where `name` is a short string that may contain alphanumeric characters, underscores, and hyphens, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
+where `name` is a short string that may *only* contain *alphanumeric characters*, *underscores*, and *hyphens*, `version` is a version string according to the [PEP440][6] specification, and `suffix` is either `'.tar.gz'` or `'.patch'`.
+
+***BEWARE***: *whitespace* is NOT allowed in the filename.
 
 Patches are typically smaller than archives, so the tufup *client* will always attempt to update using one or more patches.
 However, if the total amount of patch data is greater than the desired full archive file, a full update will be performed.
@@ -207,3 +209,4 @@ A custom, platform *de*pendent, installation procedure can be specified via the 
 [19]: https://peps.python.org/pep-0440/#public-version-identifiers
 [20]: https://packaging.pypa.io/en/stable/version.html#packaging.version.Version
 [21]: https://github.com/dennisvang/tufup/blob/master/src/tufup/client.py
+[22]: https://github.com/dennisvang/tufup/discussions/new?category=q-a

@@ -20,9 +20,7 @@ class RemovePathTests(TempDirTestCase):
             self.assertEqual(1, len(list(subdir_path.iterdir())))
             # test
             with self.subTest(msg=arg_type):
-                self.assertTrue(
-                    tufup.utils.remove_path(path=arg_type(dir_path))
-                )
+                self.assertTrue(tufup.utils.remove_path(path=arg_type(dir_path)))
                 self.assertFalse(dir_path.exists())
 
 
@@ -47,19 +45,19 @@ class InputTests(unittest.TestCase):
         text_inputs = iter(['', new_item])
         # we use iterators to simulate sequences of user inputs
         with patch.object(
-                tufup.utils, 'input_bool', lambda *_, **__: next(bool_inputs)
+            tufup.utils, 'input_bool', lambda *_, **__: next(bool_inputs)
         ):
             with patch.object(
-                    tufup.utils,
-                    'input_text',
-                    lambda *_, **__: next(text_inputs) or item_default,
+                tufup.utils,
+                'input_text',
+                lambda *_, **__: next(text_inputs) or item_default,
             ):
                 expected = default + [item_default, new_item]
                 self.assertEqual(
                     expected,
                     tufup.utils.input_list(
                         prompt='', default=default, item_default=item_default
-                    )
+                    ),
                 )
 
     def test_input_numeric(self):
@@ -82,18 +80,12 @@ class InputTests(unittest.TestCase):
         user_inputs = iter(['', answer])
         with patch('builtins.input', lambda *_: next(user_inputs, '')):
             # this should iterate until we get a non-empty answer
-            self.assertEqual(
-                answer, tufup.utils.input_text(prompt='', default='')
-            )
+            self.assertEqual(answer, tufup.utils.input_text(prompt='', default=''))
             # iterator exhausted, so next user input is ''
-            self.assertEqual(
-                answer, tufup.utils.input_text(prompt='', default=answer)
-            )
+            self.assertEqual(answer, tufup.utils.input_text(prompt='', default=answer))
 
     def test_input_text_optional(self):
         with patch('builtins.input', Mock(return_value='')):
             self.assertIsNone(
-                tufup.utils.input_text(
-                    prompt='', default=None, optional=True
-                )
+                tufup.utils.input_text(prompt='', default=None, optional=True)
             )

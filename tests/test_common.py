@@ -1,3 +1,4 @@
+import logging
 import pathlib
 
 import bsdiff4
@@ -8,6 +9,15 @@ from tufup.common import Patcher, TargetMeta
 
 
 class TestTargetMeta(TempDirTestCase):
+    def test_init_whitespace(self):
+        for kwargs in [
+            dict(target_path='w h i t e s p a c e-1.2.3.tar.gz'),
+            dict(name='w h i t e s p a c e'),
+        ]:
+            with self.subTest(msg=kwargs):
+                with self.assertLogs(level=logging.CRITICAL):
+                    TargetMeta(**kwargs)
+
     def test_eq_ne(self):
         target_meta = TargetMeta()
         self.assertEqual(target_meta, TargetMeta())
