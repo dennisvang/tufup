@@ -13,11 +13,14 @@ from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
 from tufup.common import TargetMeta
+from tufup.utils import remove_path
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
+# dir name must be unequivocally linked to tufup, as dir contents are removed
+EXTRACT_DIR_NAME = 'tufup_temporary_extract_dir'
+DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / EXTRACT_DIR_NAME
 
 
 class Client(tuf.ngclient.Updater):
@@ -33,6 +36,7 @@ class Client(tuf.ngclient.Updater):
         extract_dir: Optional[pathlib.Path] = None,
         refresh_required: bool = False,
         session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
+        purge_extract_dir: bool = False,
         **kwargs,
     ):
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
@@ -46,6 +50,7 @@ class Client(tuf.ngclient.Updater):
         )
         self.app_install_dir = app_install_dir
         self.extract_dir = extract_dir
+        self.purge_extract_dir = purge_extract_dir
         self.refresh_required = refresh_required
         self.current_archive = TargetMeta(name=app_name, version=current_version)
         self.current_archive_local_path = target_dir / self.current_archive.path
@@ -257,12 +262,25 @@ class Client(tuf.ngclient.Updater):
             self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
             # write the patched new archive
             self.new_archive_local_path.write_bytes(archive_bytes)
-        # extract archive to temporary directory
+        # extract archive to (temporary) directory
         if self.extract_dir is None:
             self.extract_dir = DEFAULT_EXTRACT_DIR
             self.extract_dir.mkdir(exist_ok=True)
             logger.debug(f'default extract dir created: {self.extract_dir}')
-        # extract
+        # remove any files/folders present in the extract_dir (recursively),
+        # if requested, but ony if the extract_dir is properly "namespaced" (this is
+        # intended to prevent accidental deletion of unrelated files from a
+        # user-specified extract_dir)
+        if self.purge_extract_dir:
+            if self.extract_dir.name == EXTRACT_DIR_NAME:
+                for path_item in self.extract_dir.iterdir():
+                    remove_path(path=path_item)
+            else:
+                logger.warning(
+                    f'cannot clean extract_dir {self.extract_dir}: '
+                    f'name does not match "{EXTRACT_DIR_NAME}"'
+                )
+        # extract the archive into the extract_dir
         shutil.unpack_archive(
             filename=self.new_archive_local_path, extract_dir=self.extract_dir
         )
