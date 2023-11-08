@@ -218,6 +218,8 @@ def _install_update_win(
         # using the process_creation_flags argument
         if process_creation_flags is None:
             process_creation_flags = subprocess.CREATE_NEW_CONSOLE
+        else:
+            logger.debug('using custom process creation flags')
         # we use Popen() instead of run(), because the latter blocks execution
         subprocess.Popen([script_path], creationflags=process_creation_flags)
     logger.debug('exiting')

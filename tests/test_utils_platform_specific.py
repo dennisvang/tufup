@@ -22,6 +22,7 @@ _reason_platform_not_supported = (
 )
 
 DUMMY_APP_CONTENT = f"""
+import subprocess
 import sys
 sys.path.append('{(BASE_DIR.parent / 'src').as_posix()}')
 from tufup.utils.platform_specific import install_update
@@ -175,6 +176,22 @@ class UtilsTests(TempDirTestCase):
         self.assertTrue(log_file_path.exists())
         log_file_content = log_file_path.read_text()
         self.assertTrue(log_file_content)
+
+    @unittest.skipIf(
+        condition=not ON_WINDOWS, reason='process_creation_flags is for windows only'
+    )
+    def test_install_update_process_creation_flags(self):
+        # the log file is only used to verify that the batch file has run successfully
+        log_file_name = 'install.log'
+        extra_kwargs_strings = [
+            'process_creation_flags=subprocess.CREATE_NO_WINDOW',
+            f'log_file_name="{log_file_name}"',
+        ]
+        # run the dummy app in a separate process
+        self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
+        # a log file should exist
+        log_file_path = self.dst_dir / log_file_name
+        self.assertTrue(log_file_path.read_text())
 
     @unittest.skipIf(
         condition=not ON_WINDOWS, reason='windows batch files are windows only'
