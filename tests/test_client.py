@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import pathlib
@@ -53,7 +54,7 @@ class ClientTests(TempDirTestCase):
         )
 
     def mock_download_metadata(
-        self, rolename: str, length: int, version: Optional[int] = None
+            self, rolename: str, length: int, version: Optional[int] = None
     ) -> bytes:
         if rolename == 'root':
             # indicate current root is newest version
@@ -141,7 +142,7 @@ class ClientTests(TempDirTestCase):
         mock_apply = Mock(return_value=True)
         mock_install = Mock()
         with patch.multiple(
-            Client, _download_updates=mock_download, _apply_updates=mock_apply
+                Client, _download_updates=mock_download, _apply_updates=mock_apply
         ):
             client = self.get_refreshed_client()
             client.new_targets = {'dummy': None}
@@ -192,9 +193,9 @@ class ClientTests(TempDirTestCase):
         client.new_targets = {Mock(): Mock()}
         for cached_path, downloaded_path in [('cached', None), (None, 'downloaded')]:
             with patch.multiple(
-                client,
-                find_cached_target=Mock(return_value=cached_path),
-                download_target=Mock(return_value=downloaded_path),
+                    client,
+                    find_cached_target=Mock(return_value=cached_path),
+                    download_target=Mock(return_value=downloaded_path),
             ):
                 self.assertTrue(client._download_updates(progress_hook=None))
                 local_path = next(iter(client.downloaded_target_files.values()))
@@ -232,14 +233,21 @@ class ClientTests(TempDirTestCase):
         self.assertTrue(any(client.extract_dir.iterdir()))
         # purge manifest should now exist
         purge_manifest_path = client.extract_dir / EXTRACT_DIR_PURGE_MANIFEST_NAME
-        purge_manifest_content = purge_manifest_path.read_text()
+        purge_manifest_content = json.loads(purge_manifest_path.read_text())
         print(purge_manifest_content)
-        self.assertTrue(purge_manifest_content)
+        self.assertEqual(
+            {'1.root.json', 'dummy.exe', EXTRACT_DIR_PURGE_MANIFEST_NAME},
+            set(purge_manifest_content),
+        )
         # test extract with purge manifest
         with self.assertLogs(level='DEBUG') as logs:
             client._extract_archive()
-        print(logs.output)
-        self.assertTrue(any('removed file' in msg.lower() for msg in logs.output))
+        for item in logs.output:
+            print(item)
+        self.assertEqual(
+            len(purge_manifest_content),
+            sum('removed file' in msg.lower() for msg in logs.output),
+        )
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):

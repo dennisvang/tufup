@@ -312,11 +312,11 @@ class Client(tuf.ngclient.Updater):
         logger.debug(f'files extracted to {self.extract_dir}')
         # create/overwrite purge manifest in extract_dir
         with tarfile.open(self.new_archive_local_path) as tar:
-            new_purge_manifest = [
+            new_purge_manifest = [EXTRACT_DIR_PURGE_MANIFEST_NAME] + [
                 pathlib.Path(t.name).name for t in tar if t.name != '.'
             ]
         purge_manifest_path.write_text(json.dumps(new_purge_manifest))
-        logger.debug(f'purge manifest created/updated: {purge_manifest_path}')
+        logger.debug(f'purge manifest created: {purge_manifest_path}')
 
 
 class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
