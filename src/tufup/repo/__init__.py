@@ -97,7 +97,7 @@ def make_gztar_archive(
         if input(f'Found existing archive: {archive_path}.\nOverwrite? [n]/y') != 'y':
             print('Using existing archive.')
             return TargetMeta(archive_path)
-    # make archive
+    # make archive (see https://stackoverflow.com/a/70081512 about "." directory)
     base_name = str(dst_dir / archive_filename.replace(SUFFIX_ARCHIVE, ''))
     archive_path_str = shutil.make_archive(
         base_name=base_name,  # archive file path, no suffix

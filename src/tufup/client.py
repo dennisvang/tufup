@@ -21,7 +21,6 @@ from tufup.utils.platform_specific import install_update
 logger = logging.getLogger(__name__)
 
 # dir name must be unequivocally linked to tufup, as dir contents are removed
-EXTRACT_DIR_PURGE_MANIFEST_NAME = 'purge.manifest'
 EXTRACT_DIR_NAME = 'tufup_extract_dir'
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / EXTRACT_DIR_NAME
 
@@ -286,37 +285,16 @@ class Client(tuf.ngclient.Updater):
             self.extract_dir = DEFAULT_EXTRACT_DIR
             logger.debug(f'using default extract_dir: {self.extract_dir}')
         self.extract_dir.mkdir(exist_ok=True)
-        # purge all files/folders present in the extract_dir, but only if they are
-        # listed in the previous archive's purge manifest (this should prevent
-        # accidental removal of files unrelated to tufup)
-        purge_manifest_path = self.extract_dir / EXTRACT_DIR_PURGE_MANIFEST_NAME
-        if self.purge_extract_dir:
-            if purge_manifest_path.exists():
-                purge_manifest = json.loads(purge_manifest_path.read_text())
-                for path_item in self.extract_dir.iterdir():
-                    if path_item.name in purge_manifest:
-                        remove_path(path=path_item)
-                    else:
-                        logger.warning(
-                            f'{path_item} not in {EXTRACT_DIR_PURGE_MANIFEST_NAME}'
-                        )
-                logger.info(f'extract_dir purged: {self.extract_dir}')
-            else:
-                logger.warning(
-                    f'cannot purge: {EXTRACT_DIR_PURGE_MANIFEST_NAME} not found'
-                )
-        # extract the new archive into the "temporary" extract_dir
+        # purge extract_dir
+        purge_manifest = PurgeManifest(dir_to_purge=self.extract_dir)
+        purge_manifest.purge()
+        # extract the new archive into the extract_dir
         shutil.unpack_archive(
             filename=self.new_archive_local_path, extract_dir=self.extract_dir
         )
         logger.debug(f'files extracted to {self.extract_dir}')
-        # create/overwrite purge manifest in extract_dir
-        with tarfile.open(self.new_archive_local_path) as tar:
-            new_purge_manifest = [EXTRACT_DIR_PURGE_MANIFEST_NAME] + [
-                pathlib.Path(t.name).name for t in tar if t.name != '.'
-            ]
-        purge_manifest_path.write_text(json.dumps(new_purge_manifest))
-        logger.debug(f'purge manifest created: {purge_manifest_path}')
+        # create new purge manifest in extract_dir
+        purge_manifest.create_from_archive(archive=self.new_archive_local_path)
 
 
 class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
@@ -393,3 +371,70 @@ class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
         for data in super()._chunks(response=response):
             self._progress(bytes_new=len(data))
             yield data
+
+
+class PurgeManifest(object):
+    _filename = 'purge.manifest'
+
+    def __init__(self, dir_to_purge: Union[pathlib.Path, str]):
+        """
+        a purge manifest is used to remove files and subdirectories from the
+        specified directory (`dir_to_purge`) in a safe manner, i.e. minimizing the
+        risk of accidental removal of pre-existing files/dirs that are unrelated to
+        the present application
+
+        this is achieved by removing only those items listed in a purge.manifest file
+        in the specified directory
+
+        if there is no purge.manifest file, nothing is removed
+
+        the purge.manifest file should be created (or updated) whenever files are
+        added to the `dir_to_purge`
+
+        the purge manifest can be used to clear the extract_dir or the
+        app_install_dir, for example
+        """
+        self.dir_to_purge = pathlib.Path(dir_to_purge)
+
+    @property
+    def file_path(self) -> pathlib.Path:
+        return self.dir_to_purge / self._filename
+
+    def read_from_file(self) -> Optional[List[str]]:
+        if not self.file_path.exists():
+            logger.warning(f'cannot read manifest: {self.file_path} not found')
+            return
+        return json.loads(self.file_path.read_text())
+
+    def write_to_file(self, manifest: List[str]):
+        self.file_path.write_text(json.dumps(manifest))
+        logger.debug(f'purge manifest created: {self.file_path}')
+
+    def purge(self) -> None:
+        """
+        remove all files/folders listed in the purge manifest from the specified
+        directory (`dir_to_purge`)
+        """
+        manifest = self.read_from_file()
+        if manifest:
+            for path in self.dir_to_purge.iterdir():
+                relative_path = path.relative_to(self.dir_to_purge)
+                if str(relative_path) in manifest:
+                    remove_path(path=path)
+                else:
+                    logger.warning(f'{path} remains: not in {self._filename}')
+            logger.info(f'directory purged: {self.dir_to_purge}')
+
+    def create_from_archive(self, archive: Union[pathlib.Path, str]) -> None:
+        """create/overwrite purge manifest in extract_dir"""
+        # note that `shutil.make_archive` puts everything in a dir called "." (for
+        # cwd) and prefixes items with "./" (if this ever poses a problem, we could
+        # switch to using `tarfile.TarFile.add()` with the `arcname` argument) see
+        # e.g https://stackoverflow.com/a/70081512
+        with tarfile.open(archive) as tar:
+            manifest = [self._filename] + [
+                tarinfo.name[2:] if tarinfo.name.startswith('./') else tarinfo.name
+                for tarinfo in tar
+                if tarinfo.name != '.'
+            ]
+        self.write_to_file(manifest=manifest)
