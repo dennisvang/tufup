@@ -420,7 +420,7 @@ class PurgeManifestTests(TempDirTestCase):
         manifest = json.loads(purge_manifest.file_path.read_text())
         self.assertEqual(
             {
-                str(item.relative_to(dir_to_purge))
+                item.relative_to(dir_to_purge).as_posix()
                 for item in [
                     purge_manifest.file_path,
                     hidden_subdir,
