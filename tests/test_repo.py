@@ -915,7 +915,7 @@ class ArchivingTests(TempDirTestCase):
                 root_dir=str(src_dir),  # paths in archive will be relative to root_dir
                 format='gztar',
             )
-            self.assertEqual(archive_path.resolve().as_posix(), archive_path_str)
+            self.assertEqual(archive_path.resolve(), pathlib.Path(archive_path_str))
             return archive_path
 
         def make_archive_using_tarfile(src_dir, dst_dir, filename):
