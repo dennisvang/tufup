@@ -901,6 +901,11 @@ class ArchivingTests(TempDirTestCase):
         """
         compares archives created using the high-level shutil.make_archive with those
         created using the low-level tarfile approach, to test their equivalence
+
+        the reason is that shutil puts all content inside a "." directory in the
+        archive, see e.g. [1]
+
+        [1]: https://stackoverflow.com/a/70081512
         """
         def make_archive_using_shutil(src_dir, dst_dir, filename):
             """ this is a simplified version of repo.make_gztar_archive """
