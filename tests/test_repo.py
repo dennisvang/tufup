@@ -3,6 +3,8 @@ from datetime import date, datetime, timedelta
 import json
 import logging
 import pathlib
+import shutil
+import tarfile
 from tempfile import TemporaryDirectory
 from time import sleep
 from unittest.mock import Mock, patch
@@ -892,3 +894,68 @@ class RepositoryTests(TempDirTestCase):
                 # verify change in config
                 config_from_disk = repo.load_config()
                 self.assertIn(config_change, config_from_disk['encrypted_keys'])
+
+
+class ArchivingTests(TempDirTestCase):
+    def test_equivalence_shutil_vs_tarfile(self):
+        """
+        compares archives created using the high-level shutil.make_archive with those
+        created using the low-level tarfile approach, to test their equivalence
+        """
+        def make_archive_using_shutil(src_dir, dst_dir, filename):
+            """ this is a simplified version of repo.make_gztar_archive """
+            archive_path = dst_dir / filename
+            archive_path_str = shutil.make_archive(
+                base_name=str(archive_path).replace('.tar.gz', ''),  # no suffix
+                root_dir=str(src_dir),  # paths in archive will be relative to root_dir
+                format='gztar',
+            )
+            assert str(archive_path.resolve()) == archive_path_str
+            return archive_path
+
+        def make_archive_using_tarfile(src_dir, dst_dir, filename):
+            archive_path = dst_dir / filename
+            with tarfile.open(archive_path, mode='w:gz') as tar:
+                for item in src_dir.iterdir():
+                    tar.add(item, arcname=item.relative_to(src_dir))
+            return archive_path
+
+        def list_archive_content(archive_path):
+            # alternatively we could run `tar -f <file path> --list` using subprocess
+            # but on windows we would need to do that via powershell
+            with tarfile.open(archive_path) as tar:
+                content = [item.name for item in tar]
+            return content
+
+        # create dummy content
+        dst_dir = self.temp_dir_path
+        src_dir = self.temp_dir_path / 'source'
+        src_dir.mkdir()
+        dummy_file_name = 'dummy.file'
+        dummy_file = src_dir / dummy_file_name
+        dummy_file.touch()
+        # create archive using shutil
+        shutil_archive = make_archive_using_shutil(
+            src_dir=src_dir, dst_dir=dst_dir, filename='shutil_archive.tar.gz'
+        )
+        tarfile_archive = make_archive_using_tarfile(
+            src_dir=src_dir, dst_dir=dst_dir, filename='tarfile_archive.tar.gz'
+        )
+        # make sure the archives were created in the correct location
+        for archive in [shutil_archive, tarfile_archive]:
+            self.assertIn(archive, list(self.temp_dir_path.iterdir()))
+        # list archive content using tarfile (this shows the difference: shutil
+        # places everything in a subdirectory called ".")
+        for archive, expected in [
+            (shutil_archive, ['.', './' + dummy_file_name]),
+            (tarfile_archive, [dummy_file_name]),
+        ]:
+            self.assertEqual(expected, list_archive_content(archive))
+        # verify that the "." dir from shutil does not pose a problem upon extraction
+        output_dir = self.temp_dir_path / 'output'
+        output_dir.mkdir()
+        with tarfile.open(shutil_archive) as tar:
+            tar.extractall(path=output_dir)
+        output_dir_items = list(output_dir.iterdir())
+        self.assertEqual(1, len(output_dir_items))
+        self.assertEqual(dummy_file_name, output_dir_items[0].name)
