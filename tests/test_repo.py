@@ -907,15 +907,18 @@ class ArchivingTests(TempDirTestCase):
 
         [1]: https://stackoverflow.com/a/70081512
         """
+
         def make_archive_using_shutil(src_dir, dst_dir, filename):
-            """ this is a simplified version of repo.make_gztar_archive """
+            """this is a simplified version of repo.make_gztar_archive"""
             archive_path = dst_dir / filename
             archive_path_str = shutil.make_archive(
                 base_name=str(archive_path).replace('.tar.gz', ''),  # no suffix
                 root_dir=str(src_dir),  # paths in archive will be relative to root_dir
                 format='gztar',
             )
-            self.assertEqual(archive_path.resolve(), pathlib.Path(archive_path_str))
+            self.assertEqual(
+                archive_path.resolve(), pathlib.Path(archive_path_str).resolve()
+            )
             return archive_path
 
         def make_archive_using_tarfile(src_dir, dst_dir, filename):
