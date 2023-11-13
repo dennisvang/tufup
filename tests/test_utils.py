@@ -46,7 +46,7 @@ class RemovePathTests(TempDirTestCase):
         dir_path.chmod(READ_ONLY)
         # test (windows doesn't really do readonly dirs)
         self.assertEqual(ON_WINDOWS, os.access(dir_path, os.W_OK))
-        self.assertEqual(ON_WINDOWS, tufup.utils.remove_path(dir_path))
+        self.assertFalse(tufup.utils.remove_path(dir_path))
         self.assertTrue(tufup.utils.remove_path(dir_path, override_readonly=True))
 
 
