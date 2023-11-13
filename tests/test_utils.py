@@ -1,9 +1,13 @@
+import os
 import pathlib
 import unittest
 from unittest.mock import Mock, patch
 
 import tufup.utils
+from tufup.utils.platform_specific import ON_WINDOWS
 from tests import TempDirTestCase
+
+READ_ONLY = 0o444
 
 
 class RemovePathTests(TempDirTestCase):
@@ -22,6 +26,27 @@ class RemovePathTests(TempDirTestCase):
             with self.subTest(msg=arg_type):
                 self.assertTrue(tufup.utils.remove_path(path=arg_type(dir_path)))
                 self.assertFalse(dir_path.exists())
+
+    def test_remove_path_readonly_file(self):
+        # prepare
+        dir_path = self.temp_dir_path / 'dir'
+        file_path = dir_path / 'dummy.file'
+        dir_path.mkdir()
+        file_path.touch(mode=READ_ONLY)
+        # test
+        self.assertFalse(tufup.utils.remove_path(dir_path))
+        self.assertTrue(tufup.utils.remove_path(dir_path, override_readonly=True))
+
+    def test_remove_path_readonly_dir(self):
+        # prepare
+        dir_path = self.temp_dir_path / 'dir'
+        file_path = dir_path / 'dummy.file'
+        dir_path.mkdir(mode=READ_ONLY)
+        file_path.touch()
+        # test (windows doesn't really do readonly dirs)
+        self.assertEqual(ON_WINDOWS, os.access(dir_path, os.W_OK))
+        self.assertEqual(ON_WINDOWS, tufup.utils.remove_path(dir_path))
+        self.assertTrue(tufup.utils.remove_path(dir_path, override_readonly=True))
 
 
 class InputTests(unittest.TestCase):

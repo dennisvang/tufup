@@ -371,11 +371,17 @@ class PurgeManifestTests(TempDirTestCase):
         dir_to_purge = self.temp_dir_path
         subdir = dir_to_purge / 'subdir'
         subdir.mkdir()
-        items_to_purge = [dir_to_purge / 'some.dummy', subdir / 'other.dummy', subdir]
+        readonly_file = dir_to_purge / 'readonly.dummy'
+        items_to_purge = [
+            readonly_file, dir_to_purge / 'some.dummy', subdir / 'other.dummy', subdir
+        ]
         items_to_keep = [dir_to_purge / 'file.to.keep']
         for item in items_to_purge + items_to_keep:
             if not item.exists():
                 item.touch()
+        # make sure readonly file is readonly
+        readonly_file.chmod(0o444)  # could also use touch(mode=0o444)
+        self.assertFalse(os.access(readonly_file, os.W_OK))
         # write manifest file manually (when writing the manifest from a .tar.gz
         # archive, each dir and each item in that dir is listed, recursively,
         # so we also need to include both subdir and the items inside subdir here)
