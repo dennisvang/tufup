@@ -8,7 +8,7 @@ A simple software updater for stand-alone Python *applications*.
 
 ## Application updates and TUF
 
-A basic update-cycle for a [self-updating application][15] could look like this: 
+Here's what a basic update-cycle for a [self-updating application][15] could look like: 
 
 1. the app's development team create a new release, and make it available on a server
 2. an older version of the app, out in the wild, contacts the server to check for updates
