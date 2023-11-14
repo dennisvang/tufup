@@ -373,7 +373,10 @@ class PurgeManifestTests(TempDirTestCase):
         subdir.mkdir()
         readonly_file = dir_to_purge / 'readonly.dummy'
         items_to_purge = [
-            readonly_file, dir_to_purge / 'some.dummy', subdir / 'other.dummy', subdir
+            readonly_file,
+            dir_to_purge / 'some.dummy',
+            subdir / 'other.dummy',
+            subdir,
         ]
         items_to_keep = [dir_to_purge / 'file.to.keep']
         for item in items_to_purge + items_to_keep:

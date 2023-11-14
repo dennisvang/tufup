@@ -57,7 +57,6 @@ class RemovePathTests(TempDirTestCase):
         if ON_WINDOWS:
             self.assertTrue(tufup.utils.remove_path(file_path, remove_readonly=True))
 
-
     def test_remove_readonly_dir(self):
         """
         on linux: a readonly directory prevents deletion of the directory itself
