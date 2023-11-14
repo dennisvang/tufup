@@ -11,7 +11,7 @@ utils_logger = logging.getLogger(__name__)
 _INPUT_SEPARATOR = ' '
 
 
-def remove_path(path: Union[pathlib.Path, str], override_readonly=False) -> bool:
+def remove_path(path: Union[pathlib.Path, str], remove_readonly=False) -> bool:
     """
     Recursively remove directory or file at specified path.
 
@@ -20,27 +20,28 @@ def remove_path(path: Union[pathlib.Path, str], override_readonly=False) -> bool
         for path in my_dir_path.iterdir():
             remove_path(path)
     """
-    def remove_readonly(func, path_, _):
+    def _remove_readonly(failed_function, failed_path, _):
         """
         clear the readonly bit and reattempt the removal
 
         copied from https://docs.python.org/3/library/shutil.html#rmtree-example
         """
-        os.chmod(path_, stat.S_IWRITE)
-        func(path_)
+        os.chmod(failed_path, stat.S_IWRITE)
+        failed_function(failed_path)
 
     # enforce pathlib.Path
     path = pathlib.Path(path)
     try:
-        on_error = remove_readonly if override_readonly else None
         if path.is_dir():
-            shutil.rmtree(path=path, onerror=on_error)
+            shutil.rmtree(
+                path=path, onerror=_remove_readonly if remove_readonly else None
+            )
             utils_logger.debug(f'Removed directory {path}')
         elif path.is_file():
             try:
                 path.unlink()
             except Exception as e:
-                if override_readonly:
+                if remove_readonly:
                     path.chmod(stat.S_IWRITE)
                     path.unlink()
                 else:

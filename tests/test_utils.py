@@ -7,8 +7,6 @@ import tufup.utils
 from tufup.utils.platform_specific import ON_WINDOWS
 from tests import TempDirTestCase
 
-READ_ONLY = 0o444
-
 
 class RemovePathTests(TempDirTestCase):
     def test_remove_path(self):
@@ -32,10 +30,10 @@ class RemovePathTests(TempDirTestCase):
         dir_path = self.temp_dir_path / 'dir'
         file_path = dir_path / 'dummy.file'
         dir_path.mkdir()
-        file_path.touch(mode=READ_ONLY)
+        file_path.touch(mode=0o444)
         # test
-        self.assertFalse(tufup.utils.remove_path(dir_path))
-        self.assertTrue(tufup.utils.remove_path(dir_path, override_readonly=True))
+        self.assertEqual(not ON_WINDOWS, tufup.utils.remove_path(dir_path))
+        self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
 
     def test_remove_path_readonly_dir(self):
         # prepare
@@ -43,11 +41,10 @@ class RemovePathTests(TempDirTestCase):
         file_path = dir_path / 'dummy.file'
         dir_path.mkdir()
         file_path.touch()
-        dir_path.chmod(READ_ONLY)
+        dir_path.chmod(0o555)
         # test (windows doesn't really do readonly dirs)
-        self.assertEqual(ON_WINDOWS, os.access(dir_path, os.W_OK))
         self.assertFalse(tufup.utils.remove_path(dir_path))
-        self.assertTrue(tufup.utils.remove_path(dir_path, override_readonly=True))
+        self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
 
 
 class InputTests(unittest.TestCase):
