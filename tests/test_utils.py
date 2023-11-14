@@ -25,24 +25,43 @@ class RemovePathTests(TempDirTestCase):
                 self.assertTrue(tufup.utils.remove_path(path=arg_type(dir_path)))
                 self.assertFalse(dir_path.exists())
 
-    def test_remove_path_readonly_file(self):
-        # prepare
+    def test_remove_dir_for_readonly_file(self):
+        """
+        on linux: a readonly file does not prevent deletion of the file, nor does it
+        prevent deletion of the parent directory
+
+        on windows: a readonly file prevents both file deletion and deletion of the
+        parent directory
+        """
+        # prepare readonly file
         dir_path = self.temp_dir_path / 'dir'
-        file_path = dir_path / 'dummy.file'
+        file_path = dir_path / 'readonly.file'
         dir_path.mkdir()
         file_path.touch(mode=0o444)
         # test
         self.assertEqual(not ON_WINDOWS, tufup.utils.remove_path(dir_path))
-        self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
+        if ON_WINDOWS:
+            self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
 
-    def test_remove_path_readonly_dir(self):
-        # prepare
-        dir_path = self.temp_dir_path / 'dir'
+
+    def test_remove_dir_for_readonly_dir(self):
+        """
+        on linux: a readonly directory prevents both file deletion and deletion of
+        the directory itself
+
+        on windows: a "readonly" directory does *not* prevent file deletion, but it
+        does prevent deletion of the directory, even though some sources suggest "the
+        Read-only attribute for a folder is typically ignored by Windows" [1]
+
+        [1]: https://support.microsoft.com/en-gb/topic/you-cannot-view-or-change-the-read-only-or-the-system-attributes-of-folders-in-windows-server-2003-in-windows-xp-in-windows-vista-or-in-windows-7-55bd5ec5-d19e-6173-0df1-8f5b49247165
+        """
+        # prepare readonly directory
+        dir_path = self.temp_dir_path / 'readonly_dir'
         file_path = dir_path / 'dummy.file'
         dir_path.mkdir()
         file_path.touch()
-        dir_path.chmod(0o555)
-        # test (windows doesn't really do readonly dirs)
+        dir_path.chmod(0o555)  # dir must have execution permission
+        # test
         self.assertFalse(tufup.utils.remove_path(dir_path))
         self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
 

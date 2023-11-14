@@ -20,32 +20,20 @@ def remove_path(path: Union[pathlib.Path, str], remove_readonly=False) -> bool:
         for path in my_dir_path.iterdir():
             remove_path(path)
     """
-    def _remove_readonly(failed_function, failed_path, _):
-        """
-        clear the readonly bit and reattempt the removal
-
-        copied from https://docs.python.org/3/library/shutil.html#rmtree-example
-        """
-        os.chmod(failed_path, stat.S_IWRITE)
-        failed_function(failed_path)
 
     # enforce pathlib.Path
     path = pathlib.Path(path)
     try:
+        if remove_readonly:
+            # override any read-only permissions
+            path.chmod(0o777)
         if path.is_dir():
             shutil.rmtree(
-                path=path, onerror=_remove_readonly if remove_readonly else None
+                path=path
             )
             utils_logger.debug(f'Removed directory {path}')
         elif path.is_file():
-            try:
-                path.unlink()
-            except Exception as e:
-                if remove_readonly:
-                    path.chmod(stat.S_IWRITE)
-                    path.unlink()
-                else:
-                    raise e
+            path.unlink()
             utils_logger.debug(f'Removed file {path}')
     except Exception as e:
         utils_logger.error(f'Failed to remove {path}: {e}')
