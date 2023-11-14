@@ -420,7 +420,7 @@ class PurgeManifest(object):
             for path in self.dir_to_purge.iterdir():
                 relative_path = path.relative_to(self.dir_to_purge)
                 if str(relative_path) in manifest:
-                    remove_path(path=path, override_readonly=True)
+                    remove_path(path=path, remove_readonly=True)
                 else:
                     logger.warning(f'{path} remains: not in {self._filename}')
             logger.info(f'directory purged: {self.dir_to_purge}')
