@@ -20,17 +20,16 @@ def remove_path(path: Union[pathlib.Path, str], remove_readonly=False) -> bool:
         for path in my_dir_path.iterdir():
             remove_path(path)
     """
-
     # enforce pathlib.Path
     path = pathlib.Path(path)
     try:
         if remove_readonly:
-            # override any read-only permissions
+            # override any read-only permissions (note this will fail when dealing
+            # with a file in a readonly directory on linux, but the alternative would
+            # be to (temporarily) change permissions on the parent directory)
             path.chmod(0o777)
         if path.is_dir():
-            shutil.rmtree(
-                path=path
-            )
+            shutil.rmtree(path=path)
             utils_logger.debug(f'Removed directory {path}')
         elif path.is_file():
             path.unlink()
