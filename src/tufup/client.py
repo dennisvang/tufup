@@ -287,7 +287,8 @@ class Client(tuf.ngclient.Updater):
         self.extract_dir.mkdir(exist_ok=True)
         # purge extract_dir
         purge_manifest = PurgeManifest(dir_to_purge=self.extract_dir)
-        purge_manifest.purge()
+        if self.purge_extract_dir:
+            purge_manifest.purge()
         # extract the new archive into the extract_dir
         shutil.unpack_archive(
             filename=self.new_archive_local_path, extract_dir=self.extract_dir

@@ -14,7 +14,8 @@ import tuf.api.exceptions
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.client import AuthRequestsFetcher, Client, PurgeManifest
+import tufup.client  # for patch
+from tufup.client import AuthRequestsFetcher, Client, EXTRACT_DIR_NAME, PurgeManifest
 from tufup.common import TargetMeta
 from tufup.utils.platform_specific import ON_WINDOWS
 
@@ -221,7 +222,7 @@ class ClientTests(TempDirTestCase):
         mock_install.assert_called()
 
     def test__extract_archive_with_purge(self):
-        temp_extract_dir = self.temp_dir_path / 'tufup-extract-dir'
+        temp_extract_dir = self.temp_dir_path / EXTRACT_DIR_NAME
         temp_extract_dir.mkdir()
         self.client_kwargs['extract_dir'] = temp_extract_dir
         self.client_kwargs['purge_extract_dir'] = True
@@ -234,6 +235,26 @@ class ClientTests(TempDirTestCase):
         # test extract
         client._extract_archive()
         self.assertTrue(any(client.extract_dir.iterdir()))
+        # a purge manifest file should now exist
+        purge_manifest = PurgeManifest(dir_to_purge=client.extract_dir)
+        self.assertTrue(purge_manifest.file_path.exists())
+
+    def test__extract_archive_without_purge(self):
+        temp_extract_dir = self.temp_dir_path / EXTRACT_DIR_NAME
+        temp_extract_dir.mkdir()
+        self.client_kwargs['extract_dir'] = temp_extract_dir
+        self.client_kwargs['purge_extract_dir'] = False
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
+        # ensure new archive exists in targets dir(dummy)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / client.new_archive_local_path.name,
+            dst=client.new_archive_local_path,
+        )
+        # test extract
+        with patch.object(tufup.client.PurgeManifest, 'purge') as mock_purge:
+            client._extract_archive()
+        # purge must not be called
+        self.assertFalse(mock_purge.called)
         # a purge manifest file should now exist
         purge_manifest = PurgeManifest(dir_to_purge=client.extract_dir)
         self.assertTrue(purge_manifest.file_path.exists())
