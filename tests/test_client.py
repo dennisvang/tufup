@@ -1,7 +1,10 @@
+import json
 import logging
 import os
 import pathlib
 import shutil
+import subprocess
+import tarfile
 from typing import Optional
 import unittest
 from unittest.mock import Mock, patch
@@ -11,8 +14,10 @@ import tuf.api.exceptions
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.client import AuthRequestsFetcher, Client
+import tufup.client  # for patch
+from tufup.client import AuthRequestsFetcher, Client, EXTRACT_DIR_NAME, PurgeManifest
 from tufup.common import TargetMeta
+from tufup.utils.platform_specific import ON_WINDOWS
 
 ROOT_FILENAME = 'root.json'
 TARGETS_FILENAME = 'targets.json'
@@ -74,6 +79,25 @@ class ClientTests(TempDirTestCase):
         shutil.copy(
             src=TEST_REPO_DIR / 'targets' / client.current_archive.path.name,
             dst=client.current_archive_local_path,
+        )
+        return client
+
+    def populate_refreshed_client(self, client):
+        # directly use target files from test repo as downloaded files
+        client.downloaded_target_files = {
+            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
+            for target_meta in client.trusted_target_metas
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
+        }
+        # specify new archive (normally done in _check_updates)
+        archives = [
+            tp
+            for tp in client.trusted_target_metas
+            if tp.is_archive and str(tp.version) == '3.0rc0'
+        ]
+        client.new_archive_info = client.get_targetinfo(archives[-1])
+        client.new_archive_local_path = pathlib.Path(
+            client.target_dir, client.new_archive_info.path
         )
         return client
 
@@ -185,23 +209,7 @@ class ClientTests(TempDirTestCase):
                     self.assertEqual(downloaded_path, str(local_path))
 
     def test__apply_updates(self):
-        client = self.get_refreshed_client()
-        # directly use target files from test repo as downloaded files
-        client.downloaded_target_files = {
-            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
-            for target_meta in client.trusted_target_metas
-            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
-        }
-        # specify new archive (normally done in _check_updates)
-        archives = [
-            tp
-            for tp in client.trusted_target_metas
-            if tp.is_archive and str(tp.version) == '3.0rc0'
-        ]
-        client.new_archive_info = client.get_targetinfo(archives[-1])
-        client.new_archive_local_path = pathlib.Path(
-            client.target_dir, client.new_archive_info.path
-        )
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
         # test confirmation
         mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
@@ -212,6 +220,44 @@ class ClientTests(TempDirTestCase):
         mock_install = Mock()
         client._apply_updates(install=mock_install, skip_confirmation=True)
         mock_install.assert_called()
+
+    def test__extract_archive_with_purge(self):
+        temp_extract_dir = self.temp_dir_path / EXTRACT_DIR_NAME
+        temp_extract_dir.mkdir()
+        self.client_kwargs['extract_dir'] = temp_extract_dir
+        self.client_kwargs['purge_extract_dir'] = True
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
+        # ensure new archive exists in targets dir(dummy)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / client.new_archive_local_path.name,
+            dst=client.new_archive_local_path,
+        )
+        # test extract
+        client._extract_archive()
+        self.assertTrue(any(client.extract_dir.iterdir()))
+        # a purge manifest file should now exist
+        purge_manifest = PurgeManifest(dir_to_purge=client.extract_dir)
+        self.assertTrue(purge_manifest.file_path.exists())
+
+    def test__extract_archive_without_purge(self):
+        temp_extract_dir = self.temp_dir_path / EXTRACT_DIR_NAME
+        temp_extract_dir.mkdir()
+        self.client_kwargs['extract_dir'] = temp_extract_dir
+        self.client_kwargs['purge_extract_dir'] = False
+        client = self.populate_refreshed_client(client=self.get_refreshed_client())
+        # ensure new archive exists in targets dir(dummy)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / client.new_archive_local_path.name,
+            dst=client.new_archive_local_path,
+        )
+        # test extract
+        with patch.object(tufup.client.PurgeManifest, 'purge') as mock_purge:
+            client._extract_archive()
+        # purge must not be called
+        self.assertFalse(mock_purge.called)
+        # a purge manifest file should now exist
+        purge_manifest = PurgeManifest(dir_to_purge=client.extract_dir)
+        self.assertTrue(purge_manifest.file_path.exists())
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):
@@ -308,3 +354,109 @@ class AuthRequestsFetcherTests(unittest.TestCase):
         for __ in fetcher._chunks(response=mock_response):
             pass
         self.assertEqual(chunk_count, mock_hook.call_count)
+
+
+class PurgeManifestTests(TempDirTestCase):
+    def test_init(self):
+        self.assertTrue(PurgeManifest(dir_to_purge='some/path'))
+
+    def test_file_path_property(self):
+        self.assertTrue(PurgeManifest(dir_to_purge='some/path').file_path)
+
+    def test_read_from_file(self):
+        purge_manifest = PurgeManifest(dir_to_purge=self.temp_dir_path)
+        self.assertIsNone(purge_manifest.read_from_file())
+        # write dummy manifest file
+        purge_manifest.file_path.write_text('[]')
+        # test
+        self.assertEqual([], purge_manifest.read_from_file())
+
+    def test_write_to_file(self):
+        purge_manifest = PurgeManifest(dir_to_purge=self.temp_dir_path)
+        manifest = ['some.file']
+        purge_manifest.write_to_file(manifest=manifest)
+        self.assertEqual(manifest, json.loads(purge_manifest.file_path.read_text()))
+
+    def test_purge_no_manifest_file(self):
+        # prepare
+        dir_to_purge = self.temp_dir_path
+        dummy_file_path = dir_to_purge.joinpath('dummy.file')
+        dummy_file_path.touch()
+        purge_manifest = PurgeManifest(dir_to_purge=dir_to_purge)
+        # test
+        purge_manifest.purge()
+        self.assertTrue(dummy_file_path.exists())
+
+    def test_purge(self):
+        # create dummy files
+        dir_to_purge = self.temp_dir_path
+        subdir = dir_to_purge / 'subdir'
+        subdir.mkdir()
+        readonly_file = dir_to_purge / 'readonly.dummy'
+        items_to_purge = [
+            readonly_file,
+            dir_to_purge / 'some.dummy',
+            subdir / 'other.dummy',
+            subdir,
+        ]
+        items_to_keep = [dir_to_purge / 'file.to.keep']
+        for item in items_to_purge + items_to_keep:
+            if not item.exists():
+                item.touch()
+        # make sure readonly file is readonly
+        readonly_file.chmod(0o444)  # could also use touch(mode=0o444)
+        self.assertFalse(os.access(readonly_file, os.W_OK))
+        # write manifest file manually (when writing the manifest from a .tar.gz
+        # archive, each dir and each item in that dir is listed, recursively,
+        # so we also need to include both subdir and the items inside subdir here)
+        purge_manifest = PurgeManifest(dir_to_purge=dir_to_purge)
+        manifest = [
+            str(item.relative_to(dir_to_purge))
+            for item in items_to_purge + [purge_manifest.file_path]
+        ]
+        purge_manifest.file_path.write_text(json.dumps(manifest))
+        # test
+        purge_manifest.purge()
+        for path in items_to_purge:
+            self.assertFalse(path.exists())
+        for path in items_to_keep:
+            self.assertTrue(path.exists())
+
+    def test_create_from_archive(self):
+        # create dummy files, including some hidden
+        dir_to_purge = self.temp_dir_path
+        hidden_subdir = dir_to_purge / '.hidden'
+        hidden_subdir.mkdir()
+        if ON_WINDOWS:
+            # https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/attrib
+            subprocess.run(['attrib', '+h', str(hidden_subdir)], check=True)
+        dummy_file_in_hidden_subdir = hidden_subdir / 'other.dummy'
+        dummy_file_in_hidden_subdir.touch()
+        dummy_file = dir_to_purge / 'some.dummy'
+        dummy_file.touch()
+        # create dummy archive
+        archive_path = self.temp_dir_path / 'dummy_archive.tar.gz'
+        # todo: should create tar using shutil.make_archive, like in make_gztar_archive, to test handling of "." and "./"
+        with tarfile.open(archive_path, mode='w:gz') as tar:
+            for path in [dummy_file, hidden_subdir]:
+                tar.add(
+                    name=path, arcname=path.relative_to(dir_to_purge), recursive=True
+                )
+        # test
+        purge_manifest = PurgeManifest(dir_to_purge=dir_to_purge)
+        purge_manifest.create_from_archive(archive=archive_path)
+        self.assertTrue(purge_manifest.file_path.exists())
+        # load manifest data manually (normally we would use read_from_file)
+        manifest = json.loads(purge_manifest.file_path.read_text())
+        self.assertEqual(
+            {
+                item.relative_to(dir_to_purge).as_posix()
+                for item in [
+                    purge_manifest.file_path,
+                    hidden_subdir,
+                    dummy_file,
+                    dummy_file_in_hidden_subdir,
+                ]
+            },
+            set(manifest),
+        )

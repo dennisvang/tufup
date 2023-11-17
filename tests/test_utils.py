@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import tufup.utils
+from tufup.utils.platform_specific import ON_WINDOWS
 from tests import TempDirTestCase
 
 
@@ -22,6 +23,77 @@ class RemovePathTests(TempDirTestCase):
             with self.subTest(msg=arg_type):
                 self.assertTrue(tufup.utils.remove_path(path=arg_type(dir_path)))
                 self.assertFalse(dir_path.exists())
+
+    def test_remove_dir_containing_readonly_file(self):
+        """
+        on linux: a readonly file does not prevent deletion of the parent directory
+
+        on windows: a readonly file prevents deletion of the parent directory
+        """
+        # prepare readonly file
+        dir_path = self.temp_dir_path / 'dir'
+        file_path = dir_path / 'readonly.file'
+        dir_path.mkdir()
+        file_path.touch(mode=0o444)
+        # test
+        self.assertEqual(not ON_WINDOWS, tufup.utils.remove_path(dir_path))
+        if ON_WINDOWS:
+            self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
+
+    def test_remove_readonly_file(self):
+        """
+        on linux: a readonly file does not prevent deletion of the file
+
+        on windows: a readonly file prevents file deletion
+        """
+        # prepare readonly file
+        dir_path = self.temp_dir_path / 'dir'
+        file_path = dir_path / 'readonly.file'
+        dir_path.mkdir()
+        file_path.touch(mode=0o444)
+        # test
+        self.assertEqual(not ON_WINDOWS, tufup.utils.remove_path(file_path))
+        if ON_WINDOWS:
+            self.assertTrue(tufup.utils.remove_path(file_path, remove_readonly=True))
+
+    def test_remove_readonly_dir(self):
+        """
+        on linux: a readonly directory prevents deletion of the directory itself
+
+        on windows: a "readonly" directory prevents deletion of the directory,
+        even though some sources suggest "the Read-only attribute for a folder is
+        typically ignored by Windows" [1]
+
+        [1]: https://support.microsoft.com/en-gb/topic/you-cannot-view-or-change-the-read-only-or-the-system-attributes-of-folders-in-windows-server-2003-in-windows-xp-in-windows-vista-or-in-windows-7-55bd5ec5-d19e-6173-0df1-8f5b49247165
+        """
+        # prepare readonly directory
+        dir_path = self.temp_dir_path / 'readonly_dir'
+        file_path = dir_path / 'dummy.file'
+        dir_path.mkdir()
+        file_path.touch()
+        dir_path.chmod(0o555)  # dir must have execution permission
+        # test
+        self.assertFalse(tufup.utils.remove_path(dir_path))
+        self.assertTrue(tufup.utils.remove_path(dir_path, remove_readonly=True))
+
+    def test_remove_file_from_readonly_dir(self):
+        """
+        on linux: a readonly directory prevents deletion of the files in the directory
+
+        on windows: a readonly directory does not prevent file deletion
+        """
+        # prepare readonly directory
+        dir_path = self.temp_dir_path / 'readonly_dir'
+        file_path = dir_path / 'dummy.file'
+        dir_path.mkdir()
+        file_path.touch()
+        dir_path.chmod(0o555)  # dir must have execution permission
+        # test
+        self.assertEqual(ON_WINDOWS, tufup.utils.remove_path(file_path))
+        if not ON_WINDOWS:
+            # for this to work, remove_path would have to change permissions on the
+            # file's parent directory, which could lead to unwelcome surprises...
+            self.assertFalse(tufup.utils.remove_path(file_path, remove_readonly=True))
 
 
 class InputTests(unittest.TestCase):
