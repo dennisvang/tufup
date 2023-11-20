@@ -171,11 +171,22 @@ class Patcher(object):
         """
         Create a binary patch file based on source and destination files.
 
+        If the source and/or destination files are compressed (.gz), decompress first.
+
         Patch file path matches destination file path, except for suffix.
         """
         # replace suffix twice, in case we have a .tar.gz
         patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
-        bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
+        with TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = pathlib.Path(tmp_dir)
+            # decompress files, if necessary, otherwise diff can become very large
+            decompressed_paths = dict(src_path=src_path, dst_path=dst_path)
+            for key, path in decompressed_paths.items():
+                if path.suffix == SUFFIX_GZIP:
+                    decompressed_paths[key] = tmp_dir_path / path.with_suffix('').name
+                    cls.gzip(src_path=path, dst_path=decompressed_paths[key])
+            # create patch
+            bsdiff4.file_diff(**decompressed_paths, patch_path=patch_path)
         return patch_path
 
     @classmethod
@@ -186,5 +197,20 @@ class Patcher(object):
         Destination file path matches patch file path, except for suffix.
         """
         dst_path = patch_path.with_suffix(SUFFIX_ARCHIVE)
-        bsdiff4.file_patch(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
+        # decompress source if necessary
+        with TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = pathlib.Path(tmp_dir)
+            decompressed_src_path = src_path
+            if src_path.suffix == SUFFIX_GZIP:
+                decompressed_src_path = tmp_dir_path / src_path.with_suffix('').name
+                cls.gzip(src_path=src_path, dst_path=decompressed_src_path)
+            decompressed_dst_path = tmp_dir_path / dst_path.with_suffix('').name
+            # apply patch to .tar archives
+            bsdiff4.file_patch(
+                src_path=decompressed_src_path,
+                dst_path=decompressed_dst_path,
+                patch_path=patch_path,
+            )
+            # compress result
+            cls.gzip(src_path=decompressed_dst_path, dst_path=dst_path)
         return dst_path

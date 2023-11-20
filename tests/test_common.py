@@ -1,5 +1,8 @@
+import gzip
 import logging
 import pathlib
+import shutil
+import tarfile
 
 import bsdiff4
 from packaging.version import Version
@@ -135,21 +138,31 @@ class TestTargetMeta(TempDirTestCase):
 class PatcherTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
-        # dummy paths
-        self.old_archive_path = self.temp_dir_path / 'my_app-1.0.tar.gz'
-        self.new_archive_path = self.temp_dir_path / 'my_app-2.0.tar.gz'
-        self.new_patch_path = self.temp_dir_path / 'my_app-2.0.patch'
-        # write dummy archive data to files
-        self.old_archive_path.write_bytes(b'old archive data')
-        self.new_archive_data = b'new archive data'
-        self.new_archive_path.write_bytes(self.new_archive_data)
-        # create patch file (see Patcher.create_patch)
-        bsdiff4.file_diff(
-            src_path=self.old_archive_path,
-            dst_path=self.new_archive_path,
-            patch_path=self.new_patch_path,
+        self.file_paths = dict()
+        self.tar_paths = dict()
+        self.gz_paths = dict()
+        for key in ['old', 'new']:
+            # create dummy file
+            file_path = self.temp_dir_path / key
+            file_path.write_text(key)
+            # create .tar archive from dummy file
+            tar_path = file_path.with_suffix('.tar')
+            with tarfile.open(tar_path, 'w') as tar:
+                tar.add(file_path)
+            # compress .tar file using gzip
+            gz_path = tar_path.with_suffix('.tar.gz')
+            with tar_path.open(mode='rb') as tar_file:
+                with gzip.open(gz_path, mode='wb') as gz_file:
+                    shutil.copyfileobj(tar_file, gz_file)
+            # keep reference
+            self.file_paths[key] = file_path
+            self.tar_paths[key] = tar_path
+            self.gz_paths[key] = gz_path
+        # expected patch data
+        self.expected_patch_bytes = bsdiff4.diff(
+            src_bytes=self.tar_paths['old'].read_bytes(),
+            dst_bytes=self.tar_paths['new'].read_bytes(),
         )
-        self.new_patch_data = self.new_patch_path.read_bytes()
 
     def test_gzip_compress_decompress(self):
         # prepare
@@ -180,21 +193,21 @@ class PatcherTests(TempDirTestCase):
         self.assertEqual(dummy_data, decompressed_path.read_bytes())
 
     def test_create_patch(self):
-        # remove existing patch file, just to be sure
-        self.new_patch_path.unlink()
         # test
-        new_patch_path = Patcher.create_patch(
-            src_path=self.old_archive_path, dst_path=self.new_archive_path
+        patch_path = Patcher.create_patch(
+            src_path=self.gz_paths['old'], dst_path=self.gz_paths['new']
         )
-        self.assertTrue(new_patch_path.exists())
-        self.assertEqual(self.new_patch_data, new_patch_path.read_bytes())
+        self.assertTrue(patch_path.exists())
+        self.assertEqual(self.expected_patch_bytes, patch_path.read_bytes())
 
     def test_apply_patch(self):
-        # remove existing "new archive" file, just to be sure
-        self.new_archive_path.unlink()
+        # write dummy patch file
+        name = 'latest'
+        patch_path = self.temp_dir_path / (name + '.patch')
+        patch_path.write_bytes(self.expected_patch_bytes)
         # test
-        new_archive_path = Patcher.apply_patch(
-            src_path=self.old_archive_path, patch_path=self.new_patch_path
+        new_gz_path = Patcher.apply_patch(
+            src_path=self.gz_paths['old'], patch_path=patch_path
         )
-        self.assertTrue(new_archive_path.exists())
-        self.assertEqual(self.new_archive_data, new_archive_path.read_bytes())
+        self.assertEqual(name + '.tar.gz', new_gz_path.name)
+        self.assertTrue(new_gz_path.exists())
