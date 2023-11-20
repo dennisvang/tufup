@@ -171,20 +171,24 @@ class Patcher(object):
         """
         Create a binary patch file based on source and destination files.
 
-        If the source and/or destination files are compressed (.gz), decompress first.
+        The source and destination files are decompressed first, so the patch is
+        created based on the .tar archives. A diff based on the .tar.gz files could
+        become very large, making it practically useless.
 
         Patch file path matches destination file path, except for suffix.
         """
-        # replace suffix twice, in case we have a .tar.gz
+        # only accept .tar.gz files
+        for path in [src_path, dst_path]:
+            assert path.suffix == SUFFIX_GZIP, f'not a .gz file: {path}'
+        # replace suffix (twice, for .tar.gz)
         patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
+        # decompress files to prevent large diff
         with TemporaryDirectory() as tmp_dir:
             tmp_dir_path = pathlib.Path(tmp_dir)
-            # decompress files, if necessary, otherwise diff can become very large
             decompressed_paths = dict(src_path=src_path, dst_path=dst_path)
             for key, path in decompressed_paths.items():
-                if path.suffix == SUFFIX_GZIP:
-                    decompressed_paths[key] = tmp_dir_path / path.with_suffix('').name
-                    cls.gzip(src_path=path, dst_path=decompressed_paths[key])
+                decompressed_paths[key] = tmp_dir_path / path.with_suffix('').name
+                cls.gzip(src_path=path, dst_path=decompressed_paths[key])
             # create patch
             bsdiff4.file_diff(**decompressed_paths, patch_path=patch_path)
         return patch_path
@@ -194,18 +198,23 @@ class Patcher(object):
         """
         Apply binary patch file to source file to create destination file.
 
+        Patches are based on the (uncompressed) .tar archives, so the source .tar.gz
+        archive is decompressed, then the patch is applied, and the resulting .tar is
+        compressed again, to save storage space.
+
         Destination file path matches patch file path, except for suffix.
         """
+        # only accept .tar.gz files
+        assert src_path.suffix == SUFFIX_GZIP, f'not a .gz file: {src_path}'
         dst_path = patch_path.with_suffix(SUFFIX_ARCHIVE)
-        # decompress source if necessary
+        # decompress archive, apply patch, and compress again
         with TemporaryDirectory() as tmp_dir:
             tmp_dir_path = pathlib.Path(tmp_dir)
-            decompressed_src_path = src_path
-            if src_path.suffix == SUFFIX_GZIP:
-                decompressed_src_path = tmp_dir_path / src_path.with_suffix('').name
-                cls.gzip(src_path=src_path, dst_path=decompressed_src_path)
-            decompressed_dst_path = tmp_dir_path / dst_path.with_suffix('').name
+            # decompress
+            decompressed_src_path = tmp_dir_path / src_path.with_suffix('').name
+            cls.gzip(src_path=src_path, dst_path=decompressed_src_path)
             # apply patch to .tar archives
+            decompressed_dst_path = tmp_dir_path / dst_path.with_suffix('').name
             bsdiff4.file_patch(
                 src_path=decompressed_src_path,
                 dst_path=decompressed_dst_path,
