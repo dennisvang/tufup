@@ -12,7 +12,7 @@ from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
-from tufup.common import TargetMeta
+from tufup.common import Patcher, TargetMeta
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
@@ -240,23 +240,26 @@ class Client(tuf.ngclient.Updater):
         an extract_dir is created in a platform-specific temporary location.
         """
         # patch current archive (if we have patches) or use new full archive
-        archive_bytes = None
+        patched_archive_path = None
         for target, file_path in sorted(self.downloaded_target_files.items()):
             if target.is_archive:
                 # just ensure the full archive file is available
                 assert len(self.downloaded_target_files) == 1
                 assert self.new_archive_local_path.exists()
             elif target.is_patch:
-                # create new archive by patching current archive (patches
-                # must be sorted by increasing version)
-                if archive_bytes is None:
-                    archive_bytes = self.current_archive_local_path.read_bytes()
-                archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
-        if archive_bytes:
+                # create new archive by patching current archive (patches must be
+                # sorted by increasing version)
+                patched_archive_path = Patcher.apply_patch(
+                    src_path=self.current_archive_local_path, patch_path=file_path
+                )
+                assert patched_archive_path == self.new_archive_local_path
+        if patched_archive_path:
             # verify the patched archive length and hash
-            self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
-            # write the patched new archive
-            self.new_archive_local_path.write_bytes(archive_bytes)
+            # todo: this is currently expected to fail because Patcher.gzip does not yet produce reproducible files (see mtime arg)...
+            # todo: implement fallback to full update if patch update fails for whatever reason
+            self.new_archive_info.verify_length_and_hashes(
+                data=patched_archive_path.read_bytes()
+            )
         # extract archive to temporary directory
         if self.extract_dir is None:
             self.extract_dir = DEFAULT_EXTRACT_DIR
