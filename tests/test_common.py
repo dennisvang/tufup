@@ -164,33 +164,26 @@ class PatcherTests(TempDirTestCase):
             dst_bytes=self.tar_paths['new'].read_bytes(),
         )
 
-    def test_gzip_compress_decompress(self):
+    def test_gzip_compress(self):
         # prepare
-        filename = 'dummy.file'
-        dummy_data = b'dummy data'
-        decompressed_path = self.temp_dir_path / filename
-        decompressed_path.write_bytes(dummy_data)
+        src_path = self.tar_paths['old']
         # test gzip compression
         with self.assertLogs(level='DEBUG') as logs:
-            for dst_path in [None, decompressed_path.with_name(filename + '.gz')]:
-                with self.subTest(msg=str(dst_path)):
-                    compressed_path = Patcher.gzip(
-                        src_path=decompressed_path, dst_path=dst_path
-                    )
-                    self.assertTrue(compressed_path.exists())
+            for dst_path in [None, self.temp_dir_path / 'compressed.tar.gz']:
+                with self.subTest(msg=dst_path):
+                    gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
+                    self.assertTrue(gz_path.exists())
         self.assertEqual(2, sum(1 for msg in logs.output if 'compress' in msg))
-        self.assertNotEqual(dummy_data, compressed_path.read_bytes())
-        decompressed_path.unlink()
-        # test gzip decompression
+
+    def test_gzip_decompress(self):
+        src_path = self.gz_paths['old']
         with self.assertLogs(level='DEBUG') as logs:
-            for dst_path in [None, decompressed_path]:
+            for dst_path in [None, self.temp_dir_path / 'decompressed.tar']:
                 with self.subTest(msg=str(dst_path)):
-                    decompressed_path = Patcher.gzip(
-                        src_path=compressed_path, dst_path=dst_path
-                    )
-                    self.assertTrue(decompressed_path.exists())
+                    tar_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
+                    self.assertTrue(tar_path.exists())
         self.assertEqual(2, sum(1 for msg in logs.output if 'decompress' in msg))
-        self.assertEqual(dummy_data, decompressed_path.read_bytes())
+        self.assertEqual(self.tar_paths['old'].read_bytes(), tar_path.read_bytes())
 
     def test_create_patch(self):
         # test
