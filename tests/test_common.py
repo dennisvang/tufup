@@ -151,6 +151,31 @@ class PatcherTests(TempDirTestCase):
         )
         self.new_patch_data = self.new_patch_path.read_bytes()
 
+    def test_gzip_compress_decompress(self):
+        # prepare
+        filename = 'dummy.file'
+        dummy_data = b'dummy data'
+        decompressed_path = self.temp_dir_path / filename
+        decompressed_path.write_bytes(dummy_data)
+        # test
+        with self.subTest(msg='gzip_compress'):
+            for dst_path in [None, decompressed_path.with_name(filename + '.gz')]:
+                with self.subTest(msg=str(dst_path)):
+                    compressed_path = Patcher.gzip_compress(
+                        src_path=decompressed_path, dst_path=dst_path
+                    )
+                    self.assertTrue(compressed_path.exists())
+        self.assertNotEqual(dummy_data, compressed_path.read_bytes())
+        decompressed_path.unlink()
+        with self.subTest(msg='gzip_decompress'):
+            for dst_path in [None, decompressed_path]:
+                with self.subTest(msg=str(dst_path)):
+                    decompressed_path = Patcher.gzip_decompress(
+                        src_path=compressed_path, dst_path=dst_path
+                    )
+                    self.assertTrue(decompressed_path.exists())
+        self.assertEqual(dummy_data, decompressed_path.read_bytes())
+
     def test_create_patch(self):
         # remove existing patch file, just to be sure
         self.new_patch_path.unlink()

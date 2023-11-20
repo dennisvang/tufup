@@ -1,6 +1,9 @@
+import gzip
 import logging
 import pathlib
 import re
+import shutil
+from tempfile import TemporaryDirectory
 from typing import Optional, Union
 
 import bsdiff4
@@ -8,7 +11,9 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
-SUFFIX_ARCHIVE = '.tar.gz'
+SUFFIX_TAR = '.tar'
+SUFFIX_GZIP = '.gz'
+SUFFIX_ARCHIVE = SUFFIX_TAR + SUFFIX_GZIP
 SUFFIX_PATCH = '.patch'
 
 
@@ -130,6 +135,37 @@ class TargetMeta(object):
 
 
 class Patcher(object):
+    @classmethod
+    def gzip_compress(
+            cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None
+    ) -> pathlib.Path:
+        """
+        compress a file using gzip
+        https://docs.python.org/3/library/gzip.html#examples-of-usage
+        """
+        if dst_path is None:
+            dst_path = src_path.with_suffix(src_path.suffix + SUFFIX_GZIP)
+        with src_path.open(mode='rb') as src_file:
+            with gzip.open(dst_path, mode='wb') as dst_file:
+                shutil.copyfileobj(src_file, dst_file)
+        return dst_path
+
+    @classmethod
+    def gzip_decompress(
+            cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None
+    ) -> pathlib.Path:
+        """
+        decompress a gzipped file
+        https://docs.python.org/3/library/gzip.html#examples-of-usage
+        """
+        assert src_path.suffix == SUFFIX_GZIP, 'src_path suffix not ".gz"'
+        if dst_path is None:
+            dst_path = src_path.with_suffix('')
+        with gzip.open(src_path, mode='rb') as src_file:
+            with dst_path.open(mode='wb') as dst_file:
+                shutil.copyfileobj(src_file, dst_file)
+        return dst_path
+
     @classmethod
     def create_patch(
         cls, src_path: pathlib.Path, dst_path: pathlib.Path
