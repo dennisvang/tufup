@@ -137,7 +137,7 @@ class TargetMeta(object):
 class Patcher(object):
     @classmethod
     def gzip(
-            cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None
+        cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None
     ) -> pathlib.Path:
         """
         compress or decompress a file using gzip
