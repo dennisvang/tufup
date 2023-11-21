@@ -137,31 +137,43 @@ class TargetMeta(object):
 class Patcher(object):
     @classmethod
     def gzip(
-        cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None
+        cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None, **kwargs
     ) -> pathlib.Path:
         """
-        compress or decompress a file using gzip
+        Compress or decompress a file using gzip.
 
-        the direction, i.e. compress or decompress, depends on src_path.suffix
+        The direction, i.e. compress or decompress, depends on src_path.suffix.
 
-        https://docs.python.org/3/library/gzip.html#examples-of-usage
+        Supported kwargs, i.e. `compresslevel` and/or `mtime`, are passed on to
+        `gzip.compress()` [5].
+
+        Note that gzip includes filename and timestamp by default, which makes the
+        resulting file unreproducible. To fix this we need to do the equivalent of
+        `gzip --no-name` from GNU gzip [1]. Python's gzip package supports the
+        `mtime` argument to set the timestamp [2]. Also see SOURCE_DATE_EPOCH env
+        setting [3], [4] (not supported by Python's gzip, afaik). In addition,
+        we need to make sure the same algorithm is used, with the same compression
+        setting.
+
+        [1]: https://www.gnu.org/software/gzip/manual/gzip.html#Invoking-gzip
+        [2]: https://docs.python.org/3/library/gzip.html#examples-of-usage
+        [3]: https://reproducible-builds.org/docs/source-date-epoch/
+        [4]: https://www.gnu.org/software/gzip/manual/gzip.html#Environment
+        [5]: https://docs.python.org/3/library/gzip.html#gzip.compress
         """
         if src_path.suffix == SUFFIX_GZIP:
-            direction = 'decompress'
+            gzip_function = gzip.decompress
             dst_suffix = ''
-            src_open = gzip.open
-            dst_open = open
+            if kwargs:
+                logger.warning(f'gzip.decompress does not accept kwargs: {kwargs}')
+                kwargs = dict()
         else:
-            direction = 'compress'
+            gzip_function = gzip.compress
             dst_suffix = src_path.suffix + SUFFIX_GZIP
-            src_open = open
-            dst_open = gzip.open
         if dst_path is None:
             dst_path = src_path.with_suffix(dst_suffix)
-        logger.debug(f'gzip {direction} {src_path} into {dst_path}')
-        with src_open(src_path, mode='rb') as src_file:
-            with dst_open(dst_path, mode='wb') as dst_file:
-                shutil.copyfileobj(src_file, dst_file)
+        logger.debug(f'gzip {gzip_function.__name__} {src_path} into {dst_path}')
+        dst_path.write_bytes(gzip_function(data=src_path.read_bytes(), **kwargs))
         return dst_path
 
     @classmethod

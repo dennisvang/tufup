@@ -171,9 +171,14 @@ class PatcherTests(TempDirTestCase):
         with self.assertLogs(level='DEBUG') as logs:
             for dst_path in [None, self.temp_dir_path / 'compressed.tar.gz']:
                 with self.subTest(msg=dst_path):
-                    gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
+                    gz_path = Patcher.gzip(
+                        src_path=src_path, dst_path=dst_path,# mtime=src_path.stat().st_mtime
+                    )
                     self.assertTrue(gz_path.exists())
         self.assertEqual(2, sum(1 for msg in logs.output if 'compress' in msg))
+        # test reproducibility
+        self.assertNotEqual(self.gz_paths['old'], gz_path)  # it's not the same file
+        self.assertEqual(self.gz_paths['old'].read_bytes(), gz_path.read_bytes())
 
     def test_gzip_decompress(self):
         src_path = self.gz_paths['old']

@@ -1,4 +1,3 @@
-import bsdiff4
 import logging
 import pathlib
 import shutil
