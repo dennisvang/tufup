@@ -2,7 +2,6 @@ import gzip
 import logging
 import pathlib
 import re
-import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, Union
 
@@ -147,19 +146,22 @@ class Patcher(object):
         Supported kwargs, i.e. `compresslevel` and/or `mtime`, are passed on to
         `gzip.compress()` [5].
 
-        Note that gzip includes filename and timestamp by default, which makes the
-        resulting file unreproducible. To fix this we need to do the equivalent of
-        `gzip --no-name` from GNU gzip [1]. Python's gzip package supports the
-        `mtime` argument to set the timestamp [2]. Also see SOURCE_DATE_EPOCH env
-        setting [3], [4] (not supported by Python's gzip, afaik). In addition,
-        we need to make sure the same algorithm is used, with the same compression
-        setting.
+        Note that gzip includes both *filename* and *timestamp* by default,
+        which makes the resulting files unreproducible. To fix this we need to do the
+        equivalent of `gzip --no-name` from GNU gzip [1]. Using `gzip.open()` or
+        using the `gzip.GzipFile` class will add the filename to the header, but this
+        can be prevented by using `gzip.compress()`, which also supports an `mtime`
+        argument to set the timestamp [2]. Also see SOURCE_DATE_EPOCH env setting [
+        3], [4] (not supported by Python's gzip, afaik). In addition, we need to make
+        sure the same algorithm is used, with the same compression setting. Also see
+        GZIP header definition in rfc1952 spec [6].
 
         [1]: https://www.gnu.org/software/gzip/manual/gzip.html#Invoking-gzip
         [2]: https://docs.python.org/3/library/gzip.html#examples-of-usage
         [3]: https://reproducible-builds.org/docs/source-date-epoch/
         [4]: https://www.gnu.org/software/gzip/manual/gzip.html#Environment
         [5]: https://docs.python.org/3/library/gzip.html#gzip.compress
+        [6]: https://datatracker.ietf.org/doc/html/rfc1952#page-5
         """
         if src_path.suffix == SUFFIX_GZIP:
             gzip_function = gzip.decompress
