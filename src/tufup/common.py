@@ -234,6 +234,6 @@ class Patcher(object):
                 dst_path=decompressed_dst_path,
                 patch_path=patch_path,
             )
-            # compress result
-            cls.gzip(src_path=decompressed_dst_path, dst_path=dst_path)
+            # compress result (mtime=0 for reproducibility)
+            cls.gzip(src_path=decompressed_dst_path, dst_path=dst_path, mtime=0)
         return dst_path

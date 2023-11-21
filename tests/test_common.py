@@ -3,7 +3,6 @@ import logging
 import pathlib
 import struct
 import tarfile
-import time
 
 import bsdiff4
 from packaging.version import Version
@@ -142,19 +141,7 @@ class PatcherTests(TempDirTestCase):
         self.file_paths = dict()
         self.tar_paths = dict()
         self.gz_paths = dict()
-        # The gzip header contains an mtime field [1], and we need to make sure we
-        # can set this field properly. However, the resolution of os.stat.mtime
-        # depends on the operating system and file system, e.g. Windows/FAT32 has a 2
-        # sec resolution [2], so to check for inequality of the *default* mtime in
-        # the gzip header, we would need to force a delay on the order of seconds in
-        # our tests. To work around this, we override the mtime field for test files.
-        # [1]: https://datatracker.ietf.org/doc/html/rfc1952#page-5
-        # [2]: https://docs.python.org/3.12/library/os.html#os.stat_result
-        mtimes = dict(
-            old=time.time() - 100,  # some arbitrary time in the past [seconds]
-            new=None,  # i.e. just use the default mtime (current time)
-        )
-        for key, mtime in mtimes.items():
+        for key in ['old', 'new']:
             # create dummy file
             file_path = self.temp_dir_path / key
             file_path.write_text(key)
@@ -162,9 +149,11 @@ class PatcherTests(TempDirTestCase):
             tar_path = file_path.with_suffix('.tar')
             with tarfile.open(tar_path, 'w') as tar:
                 tar.add(file_path)
-            # compress .tar file using gzip (without filename in header)
+            # compress .tar file using gzip (without filename and timestamp in header)
+            # "MTIME = 0 means no time stamp is available."
+            # https://datatracker.ietf.org/doc/html/rfc1952#page-7
             gz_path = tar_path.with_suffix('.tar.gz')
-            gz_path.write_bytes(gzip.compress(data=tar_path.read_bytes(), mtime=mtime))
+            gz_path.write_bytes(gzip.compress(data=tar_path.read_bytes(), mtime=0))
             # keep reference
             self.file_paths[key] = file_path
             self.tar_paths[key] = tar_path
@@ -193,43 +182,36 @@ class PatcherTests(TempDirTestCase):
         self.assertEqual(expected_mtime, MTIME)
         self.assertFalse(FNAME)
 
-    def test_gzip_compress_reproducibility(self):
-        # verify that different mtimes lead to differences in the gz file
-        not_repr_gz_path = Patcher.gzip(
-            src_path=self.tar_paths['old'],
-            dst_path=self.temp_dir_path / 'not-reproducible.tar.gz',
+    def test_gzip_compress_default(self):
+        self.assertEqual(
+            self.gz_paths['old'], Patcher.gzip(src_path=self.tar_paths['old'])
         )
-        self.assertNotEqual(
-            self.gz_paths['old'].read_bytes(), not_repr_gz_path.read_bytes()
+
+    def test_gzip_decompress_default(self):
+        self.assertEqual(
+            self.tar_paths['old'], Patcher.gzip(src_path=self.gz_paths['old'])
         )
-        # verify that we can override the mtime to remove these differences
-        repr_gz_path = Patcher.gzip(
-            src_path=self.tar_paths['old'],
-            dst_path=self.temp_dir_path / 'reproducible.tar.gz',
-            mtime=0,
-        )
-        self.assertEqual(self.gz_paths['old'].read_bytes(), repr_gz_path.read_bytes())
 
     def test_gzip_compress(self):
         # prepare
         src_path = self.tar_paths['old']
+        dst_path = self.temp_dir_path / 'compressed.tar.gz'
         # test gzip compression
         with self.assertLogs(level='DEBUG') as logs:
-            for dst_path in [None, self.temp_dir_path / 'compressed.tar.gz']:
-                with self.subTest(msg=dst_path):
-                    gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
-                    self.assertTrue(gz_path.exists())
-        self.assertEqual(2, sum(1 for msg in logs.output if 'compress' in msg))
-        # note these are not byte-for-byte equal, because of the default mtime
+            gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path, mtime=0)
+        self.assertTrue(gz_path.exists())
+        self.assertIn(' compress', logs.output[0])  # keep whitespace
+        self.assertEqual(self.gz_paths['old'].read_bytes(), gz_path.read_bytes())
 
     def test_gzip_decompress(self):
+        # prepare
         src_path = self.gz_paths['old']
+        dst_path = self.temp_dir_path / 'decompressed.tar'
+        # test gzip decompression
         with self.assertLogs(level='DEBUG') as logs:
-            for dst_path in [None, self.temp_dir_path / 'decompressed.tar']:
-                with self.subTest(msg=str(dst_path)):
-                    tar_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
-                    self.assertTrue(tar_path.exists())
-        self.assertEqual(2, sum(1 for msg in logs.output if 'decompress' in msg))
+            tar_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
+        self.assertTrue(tar_path.exists())
+        self.assertIn('decompress', logs.output[0])
         self.assertEqual(self.tar_paths['old'].read_bytes(), tar_path.read_bytes())
 
     def test_create_patch(self):
@@ -251,3 +233,4 @@ class PatcherTests(TempDirTestCase):
         )
         self.assertEqual(name + '.tar.gz', new_gz_path.name)
         self.assertTrue(new_gz_path.exists())
+        self.assertEqual(self.gz_paths['new'].read_bytes(), new_gz_path.read_bytes())
