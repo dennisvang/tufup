@@ -3,6 +3,8 @@ from datetime import date, datetime, timedelta
 import json
 import logging
 import pathlib
+import struct
+import tarfile
 from tempfile import TemporaryDirectory
 from time import sleep
 from unittest.mock import Mock, patch
@@ -96,14 +98,20 @@ class ModuleTests(TempDirTestCase):
                     dst_dir=self.temp_dir_path,
                     app_name=app_name,
                     version=version,
-                    base_dir='.',  # this kwarg is allowed
-                    root_dir='some path',  # this kwarg is removed
                 )
             self.assertIsInstance(archive, TargetMeta)
             self.assertEqual(exists, mock_input_no.called)
             self.assertTrue(archive.path.exists())
             self.assertTrue(app_name in str(archive.path))
             self.assertTrue(version in str(archive.path))
+        # check mtime in archive gzip header (see RFC 1952 and test_common.py)
+        mtime = struct.unpack('<I', archive.path.read_bytes()[4:8])[0]
+        self.assertEqual(0, mtime)
+        # check archive content
+        with tarfile.open(archive.path) as tar:
+            self.assertEqual(
+                {'root.txt', 'sub', 'sub/sub.txt'}, set(item.name for item in tar)
+            )
 
 
 class BaseTests(TempDirTestCase):
