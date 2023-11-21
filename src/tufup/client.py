@@ -238,7 +238,8 @@ class Client(tuf.ngclient.Updater):
         Note this has a side-effect: if self.extract_dir is not specified,
         an extract_dir is created in a platform-specific temporary location.
         """
-        # patch current archive (if we have patches) or use new full archive
+        # patch current archive or use new full archive (if there are multiple
+        # patches, these are applied sequentially)
         patched_archive_path = None
         for target, file_path in sorted(self.downloaded_target_files.items()):
             if target.is_archive:
@@ -251,11 +252,11 @@ class Client(tuf.ngclient.Updater):
                 patched_archive_path = Patcher.apply_patch(
                     src_path=self.current_archive_local_path, patch_path=file_path
                 )
-                assert patched_archive_path == self.new_archive_local_path
+                logger.debug(f'patch applied: {file_path}')
         if patched_archive_path:
-            # verify the patched archive length and hash
-            # todo: this is currently expected to fail because Patcher.gzip does not yet produce reproducible files (see mtime arg)...
             # todo: implement fallback to full update if patch update fails for whatever reason
+            assert patched_archive_path.name == self.new_archive_local_path.name
+            # verify the patched archive length and hash
             self.new_archive_info.verify_length_and_hashes(
                 data=patched_archive_path.read_bytes()
             )
