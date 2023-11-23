@@ -44,8 +44,10 @@ REPO_DIR = BASE_DIR / DEFAULT_REPO_DIR_NAME
 META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
 TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
+TMP = 365 * 100
+
 # Settings
-EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
+EXPIRATION_DAYS = dict(root=TMP, targets=TMP, snapshot=TMP, timestamp=TMP)
 THRESHOLDS = dict(root=2, targets=1, snapshot=1, timestamp=1)
 KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
 KEY_MAP['root'].append('root_two')  # use two keys for root
@@ -134,7 +136,7 @@ for new_version in new_versions:
 repo = Repository.from_config()
 
 # Re-sign expired roles (downstream roles are refreshed automatically)
-repo.refresh_expiration_date(role_name='snapshot', days=9)
+repo.refresh_expiration_date(role_name='snapshot', days=TMP)
 repo.publish_changes(private_key_dirs=[ONLINE_DIR])
 
 # Time goes by

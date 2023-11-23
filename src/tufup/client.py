@@ -248,14 +248,19 @@ class Client(tuf.ngclient.Updater):
                 assert len(self.downloaded_target_files) == 1
                 assert self.new_archive_local_path.exists()
             elif target.is_patch:
+                if patched_archive_path is None:
+                    patched_archive_path = self.current_archive_local_path
                 # create new archive by patching current archive (patches must be
                 # sorted by increasing version)
                 patched_archive_path = Patcher.apply_patch(
-                    src_path=self.current_archive_local_path, patch_path=file_path
+                    src_path=patched_archive_path, patch_path=file_path
                 )
                 logger.debug(f'patch applied: {file_path}')
         if patched_archive_path:
-            # todo: implement fallback to full update if patch update fails for whatever reason
+            # verify that the hash of the final result of the (possibly) sequential
+            # patching process matches that of the full archive specified in the tuf
+            # metadata
+            # todo: implement fallback to full update if patch update fails
             assert patched_archive_path.name == self.new_archive_local_path.name
             # verify the patched archive length and hash
             self.new_archive_info.verify_length_and_hashes(

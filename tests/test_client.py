@@ -186,23 +186,24 @@ class ClientTests(TempDirTestCase):
 
     def test__apply_updates(self):
         client = self.get_refreshed_client()
-        # directly use target files from test repo as downloaded files
-        client.downloaded_target_files = {
-            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
-            for target_meta in client.trusted_target_metas
-            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
-        }
+        # copy patch files from test repo to simulate downloaded files
+        client.downloaded_target_files = dict()
+        for target_meta in client.trusted_target_metas:
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']:
+                src_target_path = TEST_REPO_DIR / 'targets' / str(target_meta)
+                dst_target = shutil.copy(src=src_target_path, dst=self.target_dir)
+                client.downloaded_target_files[target_meta] = pathlib.Path(dst_target)
         # specify new archive (normally done in _check_updates)
-        archives = [
+        [new_archive] = [
             tp
             for tp in client.trusted_target_metas
             if tp.is_archive and str(tp.version) == '3.0rc0'
         ]
-        client.new_archive_info = client.get_targetinfo(archives[-1])
+        client.new_archive_info = client.get_targetinfo(new_archive)
         client.new_archive_local_path = pathlib.Path(
-            client.target_dir, client.new_archive_info.path
+            self.target_dir, new_archive.filename
         )
-        # test confirmation
+        # test sequential patches (with confirmation)
         mock_install = Mock()
         with patch('builtins.input', Mock(return_value='y')):
             client._apply_updates(install=mock_install, skip_confirmation=False)
