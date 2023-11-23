@@ -170,17 +170,21 @@ class PatcherTests(TempDirTestCase):
         # https://datatracker.ietf.org/doc/html/rfc1952#page-4
         gzip_header_bytes = 10  # "basic" header size
         # make dummy data
-        expected_mtime = 123
+        expected_mtime = 0  # "MTIME = 0 means no time stamp is available."
         gz_bytes = gzip.compress(data=b'dummy', mtime=expected_mtime)
         # read basic header (variable names from RFC 1952)
         (ID1, ID2, CM, FLG, MTIME, XFL, OS) = struct.unpack(
-            '<BBBBIBB', gz_bytes[:gzip_header_bytes]
+            '<BBBBLBB', gz_bytes[:gzip_header_bytes]
         )
         # extract flags (variable names from RFC 1952)
         (FTEXT, FHCRC, FEXTRA, FNAME, FCOMMENT) = (FLG & 1 << i for i in range(5))
         # verify that we don't have a filename, and mtime matches expectation
         self.assertEqual(expected_mtime, MTIME)
         self.assertFalse(FNAME)
+        self.assertEqual(8, CM)  # "deflate method"
+        self.assertEqual(2, XFL)  # "maximum compression"
+        # https://github.com/python/cpython/issues/112346
+        self.assertEqual(255, OS)  # "unknown"
 
     def test_gzip_compress_default(self):
         self.assertEqual(
