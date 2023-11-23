@@ -261,6 +261,7 @@ class Client(tuf.ngclient.Updater):
             # patching process matches that of the full archive specified in the tuf
             # metadata
             # todo: implement fallback to full update if patch update fails
+            #  (this means we have to step back and download the full archive first...)
             assert patched_archive_path.name == self.new_archive_local_path.name
             # verify the patched archive length and hash
             self.new_archive_info.verify_length_and_hashes(

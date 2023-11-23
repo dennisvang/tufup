@@ -154,7 +154,8 @@ class Patcher(object):
         argument to set the timestamp [2]. Also see SOURCE_DATE_EPOCH env setting [
         3], [4] (not supported by Python's gzip, afaik). In addition, we need to make
         sure the same algorithm is used, with the same compression setting. Also see
-        GZIP header definition in rfc1952 spec [6].
+        GZIP header definition in rfc1952 spec [6], and python's implementation in the
+         gzip module [7].
 
         [1]: https://www.gnu.org/software/gzip/manual/gzip.html#Invoking-gzip
         [2]: https://docs.python.org/3/library/gzip.html#examples-of-usage
@@ -162,6 +163,7 @@ class Patcher(object):
         [4]: https://www.gnu.org/software/gzip/manual/gzip.html#Environment
         [5]: https://docs.python.org/3/library/gzip.html#gzip.compress
         [6]: https://datatracker.ietf.org/doc/html/rfc1952#page-5
+        [7]: https://github.com/python/cpython/blob/d9fc15222e96942e30ea8b0561dec5c82ecb4663/Lib/gzip.py#L599
         """
         if src_path.suffix == SUFFIX_GZIP:
             gzip_function = gzip.decompress

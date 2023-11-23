@@ -205,6 +205,7 @@ class PatcherTests(TempDirTestCase):
             gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path, mtime=0)
         self.assertTrue(gz_path.exists())
         self.assertIn(' compress', logs.output[0])  # keep whitespace
+        # check reproducibilty
         self.assertEqual(self.gz_paths['old'].read_bytes(), gz_path.read_bytes())
 
     def test_gzip_decompress(self):
@@ -216,6 +217,7 @@ class PatcherTests(TempDirTestCase):
             tar_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
         self.assertTrue(tar_path.exists())
         self.assertIn('decompress', logs.output[0])
+        # check reproducibilty
         self.assertEqual(self.tar_paths['old'].read_bytes(), tar_path.read_bytes())
 
     def test_create_patch(self):
