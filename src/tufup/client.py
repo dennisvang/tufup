@@ -198,6 +198,7 @@ class Client(tuf.ngclient.Updater):
             # is not available, we must do a full update)
             self.new_targets = new_patches
             no_patches = total_patch_size == 0
+            # todo: change condition to patch size > some percentage of full archive size
             patches_too_big = total_patch_size > self.new_archive_info.length
             current_archive_not_found = not self.current_archive_local_path.exists()
             if not patch or no_patches or patches_too_big or current_archive_not_found:

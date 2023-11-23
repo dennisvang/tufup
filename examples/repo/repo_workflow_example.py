@@ -115,7 +115,7 @@ for new_version in new_versions:
 
     # Create dummy content for new update
     if new_version == new_versions[-1]:
-        # large change (total patch size will be larger than full archive size)
+        # large change (total patch size will be approx. as large as full archive size)
         dummy_file_content = secrets.token_bytes(dummy_file_size)
     else:
         # small change
