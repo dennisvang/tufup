@@ -95,12 +95,14 @@ def make_gztar_archive(
             print('Using existing archive.')
             return TargetMeta(archive_path)
     # create archive
-    with tempfile.NamedTemporaryFile(mode='wb') as temp_file:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # we use TemporaryDirectory because a TemporaryFile cannot be opened multiple
+        # times on Windows ([Errno 13] Permission denied)
+        temp_file_path = pathlib.Path(temp_dir) / 'temp.tar'
         # make temporary tar archive
-        with tarfile.open(fileobj=temp_file, mode='w') as tar:
+        with tarfile.open(temp_file_path, mode='w') as tar:
             for path in src_dir.iterdir():
                 tar.add(name=path, arcname=path.relative_to(src_dir), recursive=True)
-        temp_file_path = pathlib.Path(temp_file.name)
         # compress tar archive using gzip (force mtime to zero for reproducibility)
         Patcher.gzip(src_path=temp_file_path, dst_path=archive_path, mtime=0)
     return TargetMeta(target_path=archive_path)
