@@ -17,6 +17,7 @@ from tufup.utils.platform_specific import install_update
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
+MAX_SIZE_RATIO = 0.8  # do full update if patch-size/full-size > MAX_SIZE_RATIO
 
 
 class Client(tuf.ngclient.Updater):
@@ -198,8 +199,9 @@ class Client(tuf.ngclient.Updater):
             # is not available, we must do a full update)
             self.new_targets = new_patches
             no_patches = total_patch_size == 0
-            # todo: change condition to patch size > some percentage of full archive size
-            patches_too_big = total_patch_size > self.new_archive_info.length
+            patches_too_big = (
+                total_patch_size / self.new_archive_info.length > MAX_SIZE_RATIO
+            )
             current_archive_not_found = not self.current_archive_local_path.exists()
             if not patch or no_patches or patches_too_big or current_archive_not_found:
                 self.new_targets = {new_archive_meta: self.new_archive_info}
