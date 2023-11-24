@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
@@ -45,7 +46,15 @@ META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
 TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
 # Settings
-EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
+_TEST_EXPIRATION = int(os.getenv('TEST_EXPIRATION', 0))  # for creating test repo data
+if _TEST_EXPIRATION:
+    logger.warning(f'using TEST_EXPIRATION: {_TEST_EXPIRATION} days')
+EXPIRATION_DAYS = dict(
+    root=_TEST_EXPIRATION or 365,
+    targets=_TEST_EXPIRATION or 100,
+    snapshot=_TEST_EXPIRATION or 7,
+    timestamp=_TEST_EXPIRATION or 1,
+)
 THRESHOLDS = dict(root=2, targets=1, snapshot=1, timestamp=1)
 KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
 KEY_MAP['root'].append('root_two')  # use two keys for root
@@ -134,7 +143,7 @@ for new_version in new_versions:
 repo = Repository.from_config()
 
 # Re-sign expired roles (downstream roles are refreshed automatically)
-repo.refresh_expiration_date(role_name='snapshot', days=9)
+repo.refresh_expiration_date(role_name='snapshot', days=_TEST_EXPIRATION or 9)
 repo.publish_changes(private_key_dirs=[ONLINE_DIR])
 
 # Time goes by
