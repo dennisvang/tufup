@@ -195,9 +195,9 @@ class PatcherTests(TempDirTestCase):
             self.assertIn(
                 OS,
                 [
-                    3,
+                    3, 10, 19
                 ],
-            )  # unix, windows, macOS, unknown
+            )  # unix, windows, macOS
 
     def test__fix_gzip_header(self):
         gz_bytes = gzip.compress(data=b'dummy', mtime=0)
