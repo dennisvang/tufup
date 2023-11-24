@@ -9,10 +9,10 @@ import bsdiff4
 from packaging.version import Version
 
 from tests import TempDirTestCase
-from tufup.common import Patcher, TargetMeta
+from tufup.common import GZipper, Patcher, TargetMeta
 
 
-class TestTargetMeta(TempDirTestCase):
+class TargetMetaTests(TempDirTestCase):
     def test_init_whitespace(self):
         for kwargs in [
             dict(target_path='w h i t e s p a c e-1.2.3.tar.gz'),
@@ -136,6 +136,100 @@ class TestTargetMeta(TempDirTestCase):
         self.assertEqual('app-1.0.tar.gz', filename)
 
 
+class GZipperTests(TempDirTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        # uncompressed file for reference
+        uncompressed_bytes = b'just some dummy data'
+        self.raw_path = self.temp_dir_path / 'original.raw'
+        self.raw_path.write_bytes(uncompressed_bytes)
+        # compress data using gzip (without filename and timestamp in header)
+        # "MTIME = 0 means no time stamp is available."
+        # https://datatracker.ietf.org/doc/html/rfc1952#page-7
+        compressed_bytes = gzip.compress(data=uncompressed_bytes, mtime=0)
+        self.gz_path = self.temp_dir_path / 'original.raw.gz'
+        self.gz_path.write_bytes(compressed_bytes)
+        # fix header: set OS field to 255 "unknown" in gzip header (for python >3.10)
+        with self.gz_path.open(mode='r+b') as gz_file:
+            gz_file.seek(9)  # 10th byte is OS field
+            gz_file.write(b'\xff')  # value 255 "unknown"
+
+    def test_gzip_header(self):
+        # see gzip header definition in RFC 1952
+        # byte order: little endian (format '<', relevant for MTIME)
+        # https://datatracker.ietf.org/doc/html/rfc1952#page-4
+        gzip_header_size = 10  # "basic" header size in bytes
+        # make dummy data
+        expected_mtime = 0  # "MTIME = 0 means no time stamp is available."
+        gz_bytes = gzip.compress(data=b'dummy', mtime=expected_mtime)
+        # read basic header (variable names from RFC 1952)
+        (ID1, ID2, CM, FLG, MTIME, XFL, OS) = struct.unpack(
+            '<BBBBLBB', gz_bytes[:gzip_header_size]
+        )
+        # extract flags (variable names from RFC 1952)
+        (FTEXT, FHCRC, FEXTRA, FNAME, FCOMMENT) = (FLG & 1 << i for i in range(5))
+        # verify that we don't have a filename, and mtime matches expectation
+        self.assertEqual(expected_mtime, MTIME)
+        self.assertFalse(FNAME)
+        self.assertEqual(8, CM)  # "deflate method"
+        self.assertEqual(2, XFL)  # "maximum compression"
+        # https://github.com/python/cpython/issues/112346
+        if sys.version_info[1] < 11:
+            self.assertEqual(255, OS)  # "unknown"
+        else:
+            self.assertIn(OS, [3, 10, 19])  # unix, windows, macOS
+
+    def test__fix_gzip_header(self):
+        # check that the OS header field is forced to 255 "unknown"
+        gz_bytes = gzip.compress(data=b'dummy', mtime=0)
+        gz_path = self.temp_dir_path / 'unfixed.gz'
+        gz_path.write_bytes(gz_bytes)
+        offset = 9
+        desired_value = b'\xff'
+        old_value = gz_bytes[offset : offset + 1]  # slice to keep bytes
+        if sys.version_info[1] > 10:
+            self.assertNotEqual(desired_value, old_value)
+        GZipper._fix_gzip_header(gz_path)
+        new_value = gz_path.read_bytes()[offset : offset + 1]  # slice to keep bytes
+        self.assertEqual(desired_value, new_value)
+
+    def test_gzip_compress_default(self):
+        self.assertEqual(
+            self.gz_path.read_bytes(),
+            GZipper.gzip(src_path=self.raw_path, mtime=0).read_bytes(),
+        )
+
+    def test_gzip_decompress_default(self):
+        self.assertEqual(
+            self.raw_path.read_bytes(),
+            GZipper.gzip(src_path=self.gz_path).read_bytes(),
+        )
+
+    def test_gzip_compress(self):
+        # prepare
+        src_path = self.raw_path
+        dst_path = self.temp_dir_path / 'other.gz'
+        # test gzip compression
+        with self.assertLogs(level='DEBUG') as logs:
+            other_gz_path = GZipper.gzip(src_path=src_path, dst_path=dst_path, mtime=0)
+        self.assertTrue(other_gz_path.exists())
+        self.assertIn(' compress', logs.output[0])  # keep whitespace
+        # check reproducibilty
+        self.assertEqual(self.gz_path.read_bytes(), other_gz_path.read_bytes())
+
+    def test_gzip_decompress(self):
+        # prepare
+        src_path = self.gz_path
+        dst_path = self.temp_dir_path / 'other.raw'
+        # test gzip decompression
+        with self.assertLogs(level='DEBUG') as logs:
+            other_raw_path = GZipper.gzip(src_path=src_path, dst_path=dst_path)
+        self.assertTrue(other_raw_path.exists())
+        self.assertIn('decompress', logs.output[0])
+        # check reproducibilty
+        self.assertEqual(self.raw_path.read_bytes(), other_raw_path.read_bytes())
+
+
 class PatcherTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -168,83 +262,6 @@ class PatcherTests(TempDirTestCase):
             src_bytes=self.tar_paths['old'].read_bytes(),
             dst_bytes=self.tar_paths['new'].read_bytes(),
         )
-
-    def test_gzip_header(self):
-        # see gzip header definition in RFC 1952
-        # byte order: little endian (format '<', relevant for MTIME)
-        # https://datatracker.ietf.org/doc/html/rfc1952#page-4
-        gzip_header_size = 10  # "basic" header size in bytes
-        # make dummy data
-        expected_mtime = 0  # "MTIME = 0 means no time stamp is available."
-        gz_bytes = gzip.compress(data=b'dummy', mtime=expected_mtime)
-        # read basic header (variable names from RFC 1952)
-        (ID1, ID2, CM, FLG, MTIME, XFL, OS) = struct.unpack(
-            '<BBBBLBB', gz_bytes[:gzip_header_size]
-        )
-        # extract flags (variable names from RFC 1952)
-        (FTEXT, FHCRC, FEXTRA, FNAME, FCOMMENT) = (FLG & 1 << i for i in range(5))
-        # verify that we don't have a filename, and mtime matches expectation
-        self.assertEqual(expected_mtime, MTIME)
-        self.assertFalse(FNAME)
-        self.assertEqual(8, CM)  # "deflate method"
-        self.assertEqual(2, XFL)  # "maximum compression"
-        # https://github.com/python/cpython/issues/112346
-        if sys.version_info[1] < 11:
-            self.assertEqual(255, OS)  # "unknown"
-        else:
-            self.assertIn(
-                OS,
-                [
-                    3, 10, 19
-                ],
-            )  # unix, windows, macOS
-
-    def test__fix_gzip_header(self):
-        gz_bytes = gzip.compress(data=b'dummy', mtime=0)
-        gz_path = self.temp_dir_path / 'test.gz'
-        gz_path.write_bytes(gz_bytes)
-        offset = 9
-        desired_value = b'\xff'
-        old_value = gz_bytes[offset : offset + 1]  # slice to keep bytes
-        if sys.version_info[1] > 10:
-            self.assertNotEqual(desired_value, old_value)
-        Patcher._fix_gzip_header(gz_path)
-        new_value = gz_path.read_bytes()[offset : offset + 1]  # slice to keep bytes
-        self.assertEqual(desired_value, new_value)
-
-    def test_gzip_compress_default(self):
-        self.assertEqual(
-            self.gz_paths['old'], Patcher.gzip(src_path=self.tar_paths['old'])
-        )
-
-    def test_gzip_decompress_default(self):
-        self.assertEqual(
-            self.tar_paths['old'], Patcher.gzip(src_path=self.gz_paths['old'])
-        )
-
-    def test_gzip_compress(self):
-        # prepare
-        src_path = self.tar_paths['old']
-        dst_path = self.temp_dir_path / 'compressed.tar.gz'
-        # test gzip compression
-        with self.assertLogs(level='DEBUG') as logs:
-            gz_path = Patcher.gzip(src_path=src_path, dst_path=dst_path, mtime=0)
-        self.assertTrue(gz_path.exists())
-        self.assertIn(' compress', logs.output[0])  # keep whitespace
-        # check reproducibilty
-        self.assertEqual(self.gz_paths['old'].read_bytes(), gz_path.read_bytes())
-
-    def test_gzip_decompress(self):
-        # prepare
-        src_path = self.gz_paths['old']
-        dst_path = self.temp_dir_path / 'decompressed.tar'
-        # test gzip decompression
-        with self.assertLogs(level='DEBUG') as logs:
-            tar_path = Patcher.gzip(src_path=src_path, dst_path=dst_path)
-        self.assertTrue(tar_path.exists())
-        self.assertIn('decompress', logs.output[0])
-        # check reproducibilty
-        self.assertEqual(self.tar_paths['old'].read_bytes(), tar_path.read_bytes())
 
     def test_create_patch(self):
         # test

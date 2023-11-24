@@ -133,7 +133,7 @@ class TargetMeta(object):
         return cls.filename_pattern.format(name=name, version=version, suffix=suffix)
 
 
-class Patcher(object):
+class GZipper(object):
     @staticmethod
     def _fix_gzip_header(file_path: pathlib.Path):
         """
@@ -205,6 +205,8 @@ class Patcher(object):
             cls._fix_gzip_header(dst_path)
         return dst_path
 
+
+class Patcher(object):
     @classmethod
     def create_patch(
         cls, src_path: pathlib.Path, dst_path: pathlib.Path
@@ -229,7 +231,7 @@ class Patcher(object):
             decompressed_paths = dict(src_path=src_path, dst_path=dst_path)
             for key, path in decompressed_paths.items():
                 decompressed_paths[key] = tmp_dir_path / path.with_suffix('').name
-                cls.gzip(src_path=path, dst_path=decompressed_paths[key])
+                GZipper.gzip(src_path=path, dst_path=decompressed_paths[key])
             # create patch
             bsdiff4.file_diff(**decompressed_paths, patch_path=patch_path)
         return patch_path
@@ -253,7 +255,7 @@ class Patcher(object):
             tmp_dir_path = pathlib.Path(tmp_dir)
             # decompress
             decompressed_src_path = tmp_dir_path / src_path.with_suffix('').name
-            cls.gzip(src_path=src_path, dst_path=decompressed_src_path)
+            GZipper.gzip(src_path=src_path, dst_path=decompressed_src_path)
             # apply patch to .tar archives
             decompressed_dst_path = tmp_dir_path / dst_path.with_suffix('').name
             bsdiff4.file_patch(
@@ -262,5 +264,5 @@ class Patcher(object):
                 patch_path=patch_path,
             )
             # compress result (mtime=0 for reproducibility)
-            cls.gzip(src_path=decompressed_dst_path, dst_path=dst_path, mtime=0)
+            GZipper.gzip(src_path=decompressed_dst_path, dst_path=dst_path, mtime=0)
         return dst_path

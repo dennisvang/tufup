@@ -39,7 +39,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from tufup.common import Patcher, SUFFIX_PATCH, TargetMeta
+from tufup.common import GZipper, Patcher, SUFFIX_PATCH, TargetMeta
 from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ def make_gztar_archive(
             for path in src_dir.iterdir():
                 tar.add(name=path, arcname=path.relative_to(src_dir), recursive=True)
         # compress tar archive using gzip (force mtime to zero for reproducibility)
-        Patcher.gzip(src_path=temp_file_path, dst_path=archive_path, mtime=0)
+        GZipper.gzip(src_path=temp_file_path, dst_path=archive_path, mtime=0)
     return TargetMeta(target_path=archive_path)
 
 
