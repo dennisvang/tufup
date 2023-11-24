@@ -2,6 +2,7 @@ import gzip
 import logging
 import pathlib
 import struct
+import sys
 import tarfile
 
 import bsdiff4
@@ -154,6 +155,10 @@ class PatcherTests(TempDirTestCase):
             # https://datatracker.ietf.org/doc/html/rfc1952#page-7
             gz_path = tar_path.with_suffix('.tar.gz')
             gz_path.write_bytes(gzip.compress(data=tar_path.read_bytes(), mtime=0))
+            # set OS field to 255 "unknown" in gzip header (for python >3.10)
+            with gz_path.open(mode='r+b') as gz_file:
+                gz_file.seek(9)  # 10th byte is OS field
+                gz_file.write(b'\xff')  # value 255 "unknown"
             # keep reference
             self.file_paths[key] = file_path
             self.tar_paths[key] = tar_path
@@ -166,15 +171,15 @@ class PatcherTests(TempDirTestCase):
 
     def test_gzip_header(self):
         # see gzip header definition in RFC 1952
-        # byte order: little endian
+        # byte order: little endian (format '<', relevant for MTIME)
         # https://datatracker.ietf.org/doc/html/rfc1952#page-4
-        gzip_header_bytes = 10  # "basic" header size
+        gzip_header_size = 10  # "basic" header size in bytes
         # make dummy data
         expected_mtime = 0  # "MTIME = 0 means no time stamp is available."
         gz_bytes = gzip.compress(data=b'dummy', mtime=expected_mtime)
         # read basic header (variable names from RFC 1952)
         (ID1, ID2, CM, FLG, MTIME, XFL, OS) = struct.unpack(
-            '<BBBBLBB', gz_bytes[:gzip_header_bytes]
+            '<BBBBLBB', gz_bytes[:gzip_header_size]
         )
         # extract flags (variable names from RFC 1952)
         (FTEXT, FHCRC, FEXTRA, FNAME, FCOMMENT) = (FLG & 1 << i for i in range(5))
@@ -184,7 +189,28 @@ class PatcherTests(TempDirTestCase):
         self.assertEqual(8, CM)  # "deflate method"
         self.assertEqual(2, XFL)  # "maximum compression"
         # https://github.com/python/cpython/issues/112346
-        self.assertEqual(255, OS)  # "unknown"
+        if sys.version_info[1] < 11:
+            self.assertEqual(255, OS)  # "unknown"
+        else:
+            self.assertIn(
+                OS,
+                [
+                    3,
+                ],
+            )  # unix, windows, macOS, unknown
+
+    def test__fix_gzip_header(self):
+        gz_bytes = gzip.compress(data=b'dummy', mtime=0)
+        gz_path = self.temp_dir_path / 'test.gz'
+        gz_path.write_bytes(gz_bytes)
+        offset = 9
+        desired_value = b'\xff'
+        old_value = gz_bytes[offset : offset + 1]  # slice to keep bytes
+        if sys.version_info[1] > 10:
+            self.assertNotEqual(desired_value, old_value)
+        Patcher._fix_gzip_header(gz_path)
+        new_value = gz_path.read_bytes()[offset : offset + 1]  # slice to keep bytes
+        self.assertEqual(desired_value, new_value)
 
     def test_gzip_compress_default(self):
         self.assertEqual(

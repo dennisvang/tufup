@@ -134,6 +134,18 @@ class TargetMeta(object):
 
 
 class Patcher(object):
+    @staticmethod
+    def _fix_gzip_header(file_path: pathlib.Path):
+        """
+        quick & dirty fix to ensure that the OS byte in the gzip header is 255 "unknown"
+        """
+        OS_FIELD = dict(offset=9, bytes=b'\xff')  # noqa
+        file_path = pathlib.Path(file_path).resolve()
+        with file_path.open(mode='r+b') as file_obj:
+            file_obj.seek(OS_FIELD['offset'])
+            file_obj.write(OS_FIELD['bytes'])
+        logger.debug(f'gzip header fixed for {file_path}')
+
     @classmethod
     def gzip(
         cls, src_path: pathlib.Path, dst_path: Optional[pathlib.Path] = None, **kwargs
@@ -146,16 +158,26 @@ class Patcher(object):
         Supported kwargs, i.e. `compresslevel` and/or `mtime`, are passed on to
         `gzip.compress()` [5].
 
-        Note that gzip includes both *filename* and *timestamp* by default,
-        which makes the resulting files unreproducible. To fix this we need to do the
-        equivalent of `gzip --no-name` from GNU gzip [1]. Using `gzip.open()` or
-        using the `gzip.GzipFile` class will add the filename to the header, but this
-        can be prevented by using `gzip.compress()`, which also supports an `mtime`
-        argument to set the timestamp [2]. Also see SOURCE_DATE_EPOCH env setting [
-        3], [4] (not supported by Python's gzip, afaik). In addition, we need to make
-        sure the same algorithm is used, with the same compression setting. Also see
-        GZIP header definition in rfc1952 spec [6], and python's implementation in the
-         gzip module [7].
+        # Notes
+
+        - See GZIP header definition in rfc1952 spec [6], and python's implementation
+        in the gzip module [7].
+
+        - The gzip header [6] includes an MTIME (timestamp) field by default,
+        as well as an OS field. In addition, the FNAME (filename) field may be
+        specified. This makes the default gzip header unreproducible. To fix this we
+        need to do the equivalent of `gzip --no-name` from GNU gzip [1].
+
+        - Both `gzip.open()` and the `gzip.GzipFile` class set the FNAME field in the
+        header. To prevent this, we use `gzip.compress()` instead, which also
+        supports an `mtime` argument to set a fixed timestamp [2].
+
+        - To ensure identical gzip output, we need to make sure the same algorithm is
+        used, with the same compression setting.
+
+        - BEWARE: The output of the gzip compression depends on the implementation,
+        so there is no guarantee that different operating systems will yield
+        identical compressed data, even if all settings and headers are equal.
 
         [1]: https://www.gnu.org/software/gzip/manual/gzip.html#Invoking-gzip
         [2]: https://docs.python.org/3/library/gzip.html#examples-of-usage
@@ -178,6 +200,9 @@ class Patcher(object):
             dst_path = src_path.with_suffix(dst_suffix)
         logger.debug(f'gzip {gzip_function.__name__} {src_path} into {dst_path}')
         dst_path.write_bytes(gzip_function(data=src_path.read_bytes(), **kwargs))
+        if dst_suffix:
+            # fix compressed file header
+            cls._fix_gzip_header(dst_path)
         return dst_path
 
     @classmethod
