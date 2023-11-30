@@ -6,6 +6,7 @@ from typing import Optional
 import unittest
 from unittest.mock import Mock, patch
 
+import packaging.version
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
 from tuf.ngclient import TargetFile
@@ -212,6 +213,14 @@ class ClientTests(TempDirTestCase):
         mock_install = Mock()
         client._apply_updates(install=mock_install, skip_confirmation=True)
         mock_install.assert_called()
+
+    def test_version_comparison(self):
+        # verify assumed version hierarchy
+        v = packaging.version.Version
+        self.assertTrue(
+            v('0.0.0') < v('0.1a') < v('0.1b') < v('0.1rc') < v('0.1rc1') < v('0.1')
+        )
+        self.assertEqual(v('0.1rc'), v('0.1rc0'))
 
 
 class AuthRequestsFetcherTests(unittest.TestCase):

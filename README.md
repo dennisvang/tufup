@@ -157,7 +157,7 @@ If the app checks the alpha channel (`'a'`), it finds `2.0.0a3`.
 Just to be clear: `tufup` assumes a typical linear release history without branching, so
 
 ```none
-0.0 < 0.1a < 0.1b < 0.1rc < 0.1rc0 < 0.1rc1 < 0.1 < ...
+0.0 < 0.1a < 0.1b < 0.1rc < 0.1rc1 < 0.1 < ...
 ```
 
 ## Migrating from other update frameworks

@@ -8,7 +8,7 @@ from tests import TempDirTestCase
 from tufup.common import Patcher, TargetMeta
 
 
-class TestTargetMeta(TempDirTestCase):
+class TargetMetaTests(TempDirTestCase):
     def test_init_whitespace(self):
         for kwargs in [
             dict(target_path='w h i t e s p a c e-1.2.3.tar.gz'),
