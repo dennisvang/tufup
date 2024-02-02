@@ -358,6 +358,7 @@ class Roles(Base):
         self,
         local_path: Union[pathlib.Path, str],
         url_path_segments: Optional[List[str]] = None,
+        custom: Optional[dict] = None,
     ):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
@@ -365,9 +366,13 @@ class Roles(Base):
         url_path_segments = url_path_segments or []
         url_path_segments.append(local_path.name)
         url_path = '/'.join(url_path_segments)
+        # create targetfile instance
         target_file_info = TargetFile.from_file(
             target_file_path=url_path, local_path=str(local_path)
         )
+        if custom:
+            # todo: should we verify that custom is a dict?
+            target_file_info.unrecognized_fields['custom'] = custom
         # note we assume self.targets has been initialized
         self.targets.signed.targets[url_path] = target_file_info
 

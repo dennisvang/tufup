@@ -331,26 +331,33 @@ class RolesTests(TempDirTestCase):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)
         roles.targets = Mock(signed=Mock(targets=dict()))
-        # test
+        # test (path must exist)
         filename = 'my_app.tar.gz'
         local_target_path = self.temp_dir_path / filename
-        # path must exist
         with self.assertRaises(FileNotFoundError):
             roles.add_or_update_target(local_path=local_target_path)
+        # test (path segments)
         local_target_path.write_bytes(b'some bytes')
-        # test
-        for segments, expected_url_path in [
+        cases = [
             (None, filename),
-            ([], filename),
+            ([], filename),  # update
             (['a', 'b'], 'a/b/' + filename),
-        ]:
-            roles.add_or_update_target(
-                local_path=local_target_path, url_path_segments=segments
-            )
+            (['a', 'b'], 'a/b/' + filename),  # update with segments
+        ]
+        for segments, expected_url_path in cases:
             with self.subTest(msg=segments):
+                roles.add_or_update_target(
+                    local_path=local_target_path, url_path_segments=segments
+                )
                 self.assertIsInstance(
                     roles.targets.signed.targets[expected_url_path], TargetFile
                 )
+        # ensure update did not create new items
+        self.assertEqual(2, len(roles.targets.signed.targets))
+        # test (custom)
+        custom = dict(something='whatever')
+        roles.add_or_update_target(local_path=local_target_path, custom=custom)
+        self.assertEqual(custom, roles.targets.signed.targets[filename].custom)
 
     def test_remove_target(self):
         # prepare
