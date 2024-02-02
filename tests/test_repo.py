@@ -705,20 +705,29 @@ class RepositoryTests(TempDirTestCase):
         self.assertIn(new_key_name, repo.encrypted_keys)
 
     def test_add_bundle(self):
+        app_name = 'test'
+        version = '1.0'
         # prepare
         bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
         bundle_dir.mkdir(parents=True)
         bundle_file = bundle_dir / 'dummy.exe'
         bundle_file.touch()
         repo = Repository(
-            app_name='test',
+            app_name=app_name,
             keys_dir=self.temp_dir_path / 'keystore',
             repo_dir=self.temp_dir_path / 'repo',
         )
         repo.initialize()  # todo: make test independent...
         # test
-        repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
+        repo.add_bundle(
+            new_version=version,
+            new_bundle_dir=bundle_dir,
+            custom_metadata_for_archive=dict(whatever='something'),
+            custom_metadata_for_patch=None,
+        )
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
+        target_name = f'{app_name}-{version}.tar.gz'
+        self.assertTrue(repo.roles.targets.signed.targets[target_name].custom)
 
     def test_add_bundle_no_patch(self):
         # prepare

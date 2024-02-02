@@ -714,6 +714,8 @@ class Repository(object):
         new_bundle_dir: Union[pathlib.Path, str],
         new_version: Optional[str] = None,
         skip_patch: bool = False,
+        custom_metadata_for_archive: Optional[dict] = None,
+        custom_metadata_for_patch: Optional[dict] = None,
     ):
         """
         Adds a new application bundle to the local repository.
@@ -745,14 +747,18 @@ class Repository(object):
         latest_archive = self.roles.get_latest_archive()
         if not latest_archive or latest_archive.version < new_archive.version:
             # register new archive
-            self.roles.add_or_update_target(local_path=new_archive.path)
+            self.roles.add_or_update_target(
+                local_path=new_archive.path, custom=custom_metadata_for_archive
+            )
             # create patch, if possible, and register that too
             if latest_archive and not skip_patch:
                 patch_path = Patcher.create_patch(
                     src_path=self.targets_dir / latest_archive.path,
                     dst_path=self.targets_dir / new_archive.path,
                 )
-                self.roles.add_or_update_target(local_path=patch_path)
+                self.roles.add_or_update_target(
+                    local_path=patch_path, custom=custom_metadata_for_patch
+                )
 
     def remove_latest_bundle(self):
         """
