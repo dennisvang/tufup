@@ -12,6 +12,29 @@ SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
 
+def _immutable(value):
+    """
+    Make value immutable, recursively, so the result is hashable.
+
+    Applies to (nested) dict, list, set, and bytearray [1] mutable sequence types.
+    Everything else is passed through unaltered, so the more exotic mutable types are
+    not supported.
+
+    [1]: https://peps.python.org/pep-3137/
+    """
+    # recursive cases
+    if isinstance(value, dict):
+        return tuple((k, _immutable(v)) for k, v in value.items())
+    elif isinstance(value, list):
+        return tuple(_immutable(v) for v in value)
+    elif isinstance(value, set):
+        return frozenset(_immutable(v) for v in value)
+    elif isinstance(value, bytearray):
+        return bytes(value)
+    # base case
+    return value
+
+
 class TargetMeta(object):
     filename_pattern = '{name}-{version}{suffix}'
     filename_regex = re.compile(
@@ -59,7 +82,7 @@ class TargetMeta(object):
         https://docs.python.org/3/glossary.html#term-hashable
 
         """
-        return hash(tuple(self.__dict__.items()))
+        return hash(_immutable(self.__dict__))
 
     def __eq__(self, other):
         if type(other) is not type(self):
