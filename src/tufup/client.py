@@ -66,8 +66,8 @@ class Client(tuf.ngclient.Updater):
         _trusted_target_metas = []
         if self._trusted_set.targets:
             _trusted_target_metas = [
-                TargetMeta(target_path=key)
-                for key in self._trusted_set.targets.signed.targets.keys()
+                TargetMeta(target_path=key, custom=target.custom)
+                for key, target in self._trusted_set.targets.signed.targets.items()
             ]
             logger.debug(f'{len(_trusted_target_metas)} TargetMeta objects created')
         else:

@@ -97,6 +97,15 @@ class ClientTests(TempDirTestCase):
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
         self.assertTrue(client.trusted_target_metas)
+        # in the example data, only the patches have custom metadata, as defined in
+        # the repo_workflow_example.py script
+        for meta in client.trusted_target_metas:
+            with self.subTest(msg=meta):
+                if meta.is_patch:
+                    self.assertTrue(meta.custom)
+                    self.assertIsInstance(meta.custom, dict)
+                else:
+                    self.assertIsNone(meta.custom)
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()

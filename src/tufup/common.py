@@ -24,6 +24,7 @@ class TargetMeta(object):
         name: Optional[str] = None,
         version: Optional[str] = None,
         is_archive: Optional[bool] = True,
+        custom: Optional[dict] = None,
     ):
         """
         Initialize either with target_path, or with name, version, archive.
@@ -42,6 +43,7 @@ class TargetMeta(object):
             logger.critical(
                 f'invalid filename "{self.filename}": whitespace not allowed'
             )
+        self.custom = custom
 
     def __str__(self):
         return str(self.target_path_str)
