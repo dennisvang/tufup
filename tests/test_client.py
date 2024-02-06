@@ -200,7 +200,6 @@ class ClientTests(TempDirTestCase):
 
     def test__apply_updates(self):
         client = self.get_refreshed_client()
-        # todo: add custom metdata to test repo target files
         # directly use target files from test repo as downloaded files
         client.downloaded_target_files = {
             target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)

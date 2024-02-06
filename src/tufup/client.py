@@ -253,8 +253,6 @@ class Client(tuf.ngclient.Updater):
                     archive_bytes = self.current_archive_local_path.read_bytes()
                 archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
         if archive_bytes:
-            if self.new_archive_info.custom:
-                logger.debug(f'custom metadata: {self.new_archive_info.custom}')
             # verify the patched archive length and hash
             self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
             # write the patched new archive
