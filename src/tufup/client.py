@@ -1,4 +1,4 @@
-import bsdiff4
+from copy import deepcopy
 import logging
 import pathlib
 import shutil
@@ -7,6 +7,7 @@ import tempfile
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
+import bsdiff4
 import requests
 from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
@@ -18,6 +19,7 @@ from tufup.utils.platform_specific import install_update
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
+SUFFIX_FAILED = '.failed'
 
 
 class Client(tuf.ngclient.Updater):
@@ -194,17 +196,27 @@ class Client(tuf.ngclient.Updater):
             total_patch_size = sum(
                 target_file.length for target_file in new_patches.values()
             )
+            # abort patch update if any of the new patches have failed on a previous run
+            abort_patch = False
+            for patch_info in new_patches.values():
+                patch_info_mod = deepcopy(patch_info)  # modify a copy, just to be sure
+                patch_info_mod.path += SUFFIX_FAILED
+                if self.find_cached_target(targetinfo=patch_info_mod):
+                    logger.debug(f'aborting patch due to {patch_info_mod.path}')
+                    abort_patch = True
             # use file size to decide if we want to do a patch update or a
             # full update (if there are no patches, or if the current archive
             # is not available, we must do a full update)
             self.new_targets = new_patches
             no_patches = total_patch_size == 0
-            patches_too_big = total_patch_size > self.new_archive_info.length
-            current_archive_not_found = not self.current_archive_local_path.exists()
-            if not patch or no_patches or patches_too_big or current_archive_not_found:
+            patch_too_big = total_patch_size > self.new_archive_info.length
+            no_archive = not self.current_archive_local_path.exists()
+            if not patch or no_patches or patch_too_big or no_archive or abort_patch:
+                # fall back on full update
                 self.new_targets = {new_archive_meta: self.new_archive_info}
                 logger.debug('full update available')
             else:
+                # continue with patch update
                 logger.debug('patch update(s) available')
         else:
             self.new_targets = {}

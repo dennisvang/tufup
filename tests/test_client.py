@@ -12,7 +12,7 @@ import tuf.api.exceptions
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.client import AuthRequestsFetcher, Client
+from tufup.client import AuthRequestsFetcher, Client, SUFFIX_FAILED
 from tufup.common import TargetMeta
 
 ROOT_FILENAME = 'root.json'
@@ -181,6 +181,27 @@ class ClientTests(TempDirTestCase):
                 self.assertTrue(client.check_for_updates(pre=pre))
                 target_meta = next(iter(client.new_targets.keys()))
                 self.assertTrue(target_meta.is_archive)
+
+    def test_check_for_updates_failed_patch(self):
+        client = self.get_refreshed_client()
+        # first verify that we would normally get a patch update
+        with patch.object(client, 'refresh', Mock()):
+            client.check_for_updates()
+            target_meta = next(iter(client.new_targets.keys()))
+            self.assertTrue(target_meta.is_patch)
+        # copy the patch into the client cache to simulate existing failed patch
+        client_cache_dir = pathlib.Path(client.target_dir)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / target_meta.filename,
+            dst=client_cache_dir / (target_meta.filename + SUFFIX_FAILED),
+        )
+        # test: should fall back on full archive update
+        with patch.object(client, 'refresh', Mock()):
+            with self.assertLogs(level='DEBUG') as logs:
+                client.check_for_updates()
+                target_meta = next(iter(client.new_targets.keys()))
+            self.assertTrue(target_meta.is_archive)
+            self.assertIn('aborting', ''.join(logs.output))
 
     def test__download_updates(self):
         client = Client(**self.client_kwargs)
