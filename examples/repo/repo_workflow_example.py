@@ -17,17 +17,23 @@ from tufup.repo import (
 
 """
 
+This script was based on the python-tuf basic repo example [1]. The script generates a 
+complete example repository, including key pairs and example data. It illustrates 
+some common repository operations.
+
+NOTE: This script creates subdirectories and files in the tufup/examples/repo directory.
+
+NOTE: This script was also used to generate the test data in tests/data.
+
 NOTE: The repo content can be served for local testing as follows:
 
     python -m http.server -d examples/repo/repository
 
-NOTE: This script creates subdirectories and files in the 
-tufup/examples/repo directory. 
-
 NOTE: When running this script in PyCharm, ensure "Emulate terminal in output 
-console" is enabled in the run configuration, otherwise the encryption 
-passwords cannot be entered. 
+console" is enabled in the run configuration, otherwise the encryption passwords 
+cannot be entered.
 
+[1]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/manual_repo/basic_repo.py
 """
 
 logger = logging.getLogger(__name__)
