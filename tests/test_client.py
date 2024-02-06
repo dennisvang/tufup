@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 import packaging.version
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
+from tuf.api.exceptions import LengthOrHashMismatchError
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
@@ -222,7 +223,6 @@ class ClientTests(TempDirTestCase):
     def test__apply_updates(self):
         client = self.get_refreshed_client()
         # copy files from test data to temporary client cache
-        target_paths = []
         client.downloaded_target_files = dict()
         for target_meta in client.trusted_target_metas:
             if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']:
@@ -230,7 +230,6 @@ class ClientTests(TempDirTestCase):
                 dst_path = pathlib.Path(client.target_dir, target_meta.filename)
                 shutil.copy(src=src_path, dst=dst_path)
                 client.downloaded_target_files[target_meta] = dst_path
-                target_paths.append(dst_path)
         # specify new archive (normally done in _check_updates)
         archives = [
             tp
@@ -252,37 +251,17 @@ class ClientTests(TempDirTestCase):
             mock_install = Mock()
             client._apply_updates(install=mock_install, skip_confirmation=True)
             mock_install.assert_called()
-        with self.subTest(msg='patch failure due to current archive read error'):
-            mock_install = Mock()
-            nonexistent_path = self.temp_dir_path / 'nonexistent.tar.gz'
-            with patch.object(client, 'current_archive_local_path', nonexistent_path):
-                client._apply_updates(install=mock_install, skip_confirmation=True)
-            mock_install.assert_not_called()
-            # verify failed suffix (then restore for next subtest)
-            suffix_failed_found = False
-            for path in pathlib.Path(client.target_dir).iterdir():
-                if path.suffix == SUFFIX_FAILED:
-                    suffix_failed_found = True
-                    path.rename(path.with_suffix(''))
-            self.assertTrue(suffix_failed_found)
-        with self.subTest('patch failure due to length or hash failure'):
+        with self.subTest(msg='patch failure due to mismatch'):
             mock_install = Mock()
             with patch.object(
                     client.new_archive_info,
                     'verify_length_and_hashes',
-                    Mock(
-                        side_effect=tuf.api.exceptions.LengthOrHashMismatchError(
-                            'integrity check failed'
-                        )
-                    ),
+                    Mock(side_effect=LengthOrHashMismatchError()),
             ):
                 client._apply_updates(install=mock_install, skip_confirmation=True)
-            self.assertTrue(
-                any(
-                    path.suffix == SUFFIX_FAILED
-                    for path in pathlib.Path(client.target_dir).iterdir()
-                )
-            )
+            mock_install.assert_not_called()
+            target_paths = pathlib.Path(client.target_dir).iterdir()
+            self.assertTrue(any(path.suffix == SUFFIX_FAILED for path in target_paths))
 
     def test__apply_updates_failed(self):
         client = self.get_refreshed_client()

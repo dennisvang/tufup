@@ -273,7 +273,7 @@ class Client(tuf.ngclient.Updater):
                 # write the patched new archive
                 self.new_archive_local_path.write_bytes(archive_bytes)
         except Exception as e:
-            if target and file_path:
+            if target and file_path and file_path.exists():
                 renamed_path = file_path.replace(
                     file_path.with_suffix(file_path.suffix + SUFFIX_FAILED)
                 )
