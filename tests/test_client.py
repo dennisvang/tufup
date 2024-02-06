@@ -254,9 +254,9 @@ class ClientTests(TempDirTestCase):
         with self.subTest(msg='patch failure due to mismatch'):
             mock_install = Mock()
             with patch.object(
-                    client.new_archive_info,
-                    'verify_length_and_hashes',
-                    Mock(side_effect=LengthOrHashMismatchError()),
+                client.new_archive_info,
+                'verify_length_and_hashes',
+                Mock(side_effect=LengthOrHashMismatchError()),
             ):
                 client._apply_updates(install=mock_install, skip_confirmation=True)
             mock_install.assert_not_called()
