@@ -9,10 +9,11 @@ from unittest.mock import Mock, patch
 import packaging.version
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
+from tuf.api.exceptions import LengthOrHashMismatchError
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.client import AuthRequestsFetcher, Client
+from tufup.client import AuthRequestsFetcher, Client, SUFFIX_FAILED
 from tufup.common import TargetMeta
 
 ROOT_FILENAME = 'root.json'
@@ -182,6 +183,27 @@ class ClientTests(TempDirTestCase):
                 target_meta = next(iter(client.new_targets.keys()))
                 self.assertTrue(target_meta.is_archive)
 
+    def test_check_for_updates_failed_patch(self):
+        client = self.get_refreshed_client()
+        # first verify that we would normally get a patch update
+        with patch.object(client, 'refresh', Mock()):
+            client.check_for_updates()
+            target_meta = next(iter(client.new_targets.keys()))
+            self.assertTrue(target_meta.is_patch)
+        # copy the patch into the client cache to simulate existing failed patch
+        client_cache_dir = pathlib.Path(client.target_dir)
+        shutil.copy(
+            src=TEST_REPO_DIR / 'targets' / target_meta.filename,
+            dst=client_cache_dir / (target_meta.filename + SUFFIX_FAILED),
+        )
+        # test: should fall back on full archive update
+        with patch.object(client, 'refresh', Mock()):
+            with self.assertLogs(level='DEBUG') as logs:
+                client.check_for_updates()
+                target_meta = next(iter(client.new_targets.keys()))
+            self.assertTrue(target_meta.is_archive)
+            self.assertIn('aborting', ''.join(logs.output))
+
     def test__download_updates(self):
         client = Client(**self.client_kwargs)
         client.new_targets = {Mock(): Mock()}
@@ -200,12 +222,14 @@ class ClientTests(TempDirTestCase):
 
     def test__apply_updates(self):
         client = self.get_refreshed_client()
-        # directly use target files from test repo as downloaded files
-        client.downloaded_target_files = {
-            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
-            for target_meta in client.trusted_target_metas
-            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
-        }
+        # copy files from test data to temporary client cache
+        client.downloaded_target_files = dict()
+        for target_meta in client.trusted_target_metas:
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']:
+                src_path = TEST_REPO_DIR / 'targets' / target_meta.filename
+                dst_path = pathlib.Path(client.target_dir, target_meta.filename)
+                shutil.copy(src=src_path, dst=dst_path)
+                client.downloaded_target_files[target_meta] = dst_path
         # specify new archive (normally done in _check_updates)
         archives = [
             tp
@@ -216,16 +240,28 @@ class ClientTests(TempDirTestCase):
         client.new_archive_local_path = pathlib.Path(
             client.target_dir, client.new_archive_info.path
         )
-        # test confirmation
-        mock_install = Mock()
-        with patch('builtins.input', Mock(return_value='y')):
-            client._apply_updates(install=mock_install, skip_confirmation=False)
-        self.assertTrue(any(client.extract_dir.iterdir()))
-        self.assertTrue(mock_install.called)
-        # test skip confirmation
-        mock_install = Mock()
-        client._apply_updates(install=mock_install, skip_confirmation=True)
-        mock_install.assert_called()
+        # tests
+        with self.subTest(msg='with confirmation'):
+            mock_install = Mock()
+            with patch('builtins.input', Mock(return_value='y')):
+                client._apply_updates(install=mock_install, skip_confirmation=False)
+            self.assertTrue(any(client.extract_dir.iterdir()))
+            self.assertTrue(mock_install.called)
+        with self.subTest(msg='skip confirmation'):
+            mock_install = Mock()
+            client._apply_updates(install=mock_install, skip_confirmation=True)
+            mock_install.assert_called()
+        with self.subTest(msg='patch failure due to mismatch'):
+            mock_install = Mock()
+            with patch.object(
+                client.new_archive_info,
+                'verify_length_and_hashes',
+                Mock(side_effect=LengthOrHashMismatchError()),
+            ):
+                client._apply_updates(install=mock_install, skip_confirmation=True)
+            mock_install.assert_not_called()
+            target_paths = pathlib.Path(client.target_dir).iterdir()
+            self.assertTrue(any(path.suffix == SUFFIX_FAILED for path in target_paths))
 
     def test_version_comparison(self):
         # verify assumed version hierarchy
