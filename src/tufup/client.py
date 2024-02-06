@@ -253,22 +253,33 @@ class Client(tuf.ngclient.Updater):
         """
         # patch current archive (if we have patches) or use new full archive
         archive_bytes = None
-        for target, file_path in sorted(self.downloaded_target_files.items()):
-            if target.is_archive:
-                # just ensure the full archive file is available
-                assert len(self.downloaded_target_files) == 1
-                assert self.new_archive_local_path.exists()
-            elif target.is_patch:
-                # create new archive by patching current archive (patches
-                # must be sorted by increasing version)
-                if archive_bytes is None:
-                    archive_bytes = self.current_archive_local_path.read_bytes()
-                archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
-        if archive_bytes:
-            # verify the patched archive length and hash
-            self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
-            # write the patched new archive
-            self.new_archive_local_path.write_bytes(archive_bytes)
+        file_path = None
+        target = None
+        try:
+            for target, file_path in sorted(self.downloaded_target_files.items()):
+                if target.is_archive:
+                    # just ensure the full archive file is available
+                    assert len(self.downloaded_target_files) == 1, 'too many targets'
+                    assert self.new_archive_local_path.exists(), 'new archive missing'
+                elif target.is_patch:
+                    # create new archive by patching current archive (patches
+                    # must be sorted by increasing version)
+                    if archive_bytes is None:
+                        archive_bytes = self.current_archive_local_path.read_bytes()
+                    archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
+            if archive_bytes:
+                # verify the patched archive length and hash
+                self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
+                # write the patched new archive
+                self.new_archive_local_path.write_bytes(archive_bytes)
+        except Exception as e:
+            if target and file_path:
+                renamed_path = file_path.replace(
+                    file_path.with_suffix(file_path.suffix + SUFFIX_FAILED)
+                )
+                logger.debug(f'update failed: target renamed to {renamed_path}')
+            logger.error(f'update aborted: {e}')
+            return
         # extract archive to temporary directory
         if self.extract_dir is None:
             self.extract_dir = DEFAULT_EXTRACT_DIR

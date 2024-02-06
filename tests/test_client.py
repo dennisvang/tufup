@@ -221,12 +221,16 @@ class ClientTests(TempDirTestCase):
 
     def test__apply_updates(self):
         client = self.get_refreshed_client()
-        # directly use target files from test repo as downloaded files
-        client.downloaded_target_files = {
-            target_meta: TEST_REPO_DIR / 'targets' / str(target_meta)
-            for target_meta in client.trusted_target_metas
-            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']
-        }
+        # copy files from test data to temporary client cache
+        target_paths = []
+        client.downloaded_target_files = dict()
+        for target_meta in client.trusted_target_metas:
+            if target_meta.is_patch and str(target_meta.version) in ['2.0', '3.0rc0']:
+                src_path = TEST_REPO_DIR / 'targets' / target_meta.filename
+                dst_path = pathlib.Path(client.target_dir, target_meta.filename)
+                shutil.copy(src=src_path, dst=dst_path)
+                client.downloaded_target_files[target_meta] = dst_path
+                target_paths.append(dst_path)
         # specify new archive (normally done in _check_updates)
         archives = [
             tp
@@ -237,16 +241,51 @@ class ClientTests(TempDirTestCase):
         client.new_archive_local_path = pathlib.Path(
             client.target_dir, client.new_archive_info.path
         )
-        # test confirmation
-        mock_install = Mock()
-        with patch('builtins.input', Mock(return_value='y')):
-            client._apply_updates(install=mock_install, skip_confirmation=False)
-        self.assertTrue(any(client.extract_dir.iterdir()))
-        self.assertTrue(mock_install.called)
-        # test skip confirmation
-        mock_install = Mock()
-        client._apply_updates(install=mock_install, skip_confirmation=True)
-        mock_install.assert_called()
+        # tests
+        with self.subTest(msg='with confirmation'):
+            mock_install = Mock()
+            with patch('builtins.input', Mock(return_value='y')):
+                client._apply_updates(install=mock_install, skip_confirmation=False)
+            self.assertTrue(any(client.extract_dir.iterdir()))
+            self.assertTrue(mock_install.called)
+        with self.subTest(msg='skip confirmation'):
+            mock_install = Mock()
+            client._apply_updates(install=mock_install, skip_confirmation=True)
+            mock_install.assert_called()
+        with self.subTest(msg='patch failure due to current archive read error'):
+            mock_install = Mock()
+            nonexistent_path = self.temp_dir_path / 'nonexistent.tar.gz'
+            with patch.object(client, 'current_archive_local_path', nonexistent_path):
+                client._apply_updates(install=mock_install, skip_confirmation=True)
+            mock_install.assert_not_called()
+            # verify failed suffix (then restore for next subtest)
+            suffix_failed_found = False
+            for path in pathlib.Path(client.target_dir).iterdir():
+                if path.suffix == SUFFIX_FAILED:
+                    suffix_failed_found = True
+                    path.rename(path.with_suffix(''))
+            self.assertTrue(suffix_failed_found)
+        with self.subTest('patch failure due to length or hash failure'):
+            mock_install = Mock()
+            with patch.object(
+                    client.new_archive_info,
+                    'verify_length_and_hashes',
+                    Mock(
+                        side_effect=tuf.api.exceptions.LengthOrHashMismatchError(
+                            'integrity check failed'
+                        )
+                    ),
+            ):
+                client._apply_updates(install=mock_install, skip_confirmation=True)
+            self.assertTrue(
+                any(
+                    path.suffix == SUFFIX_FAILED
+                    for path in pathlib.Path(client.target_dir).iterdir()
+                )
+            )
+
+    def test__apply_updates_failed(self):
+        client = self.get_refreshed_client()
 
     def test_version_comparison(self):
         # verify assumed version hierarchy
