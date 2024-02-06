@@ -60,7 +60,7 @@ class TargetMeta(object):
         return hash(tuple(self.__dict__.items()))
 
     def __eq__(self, other):
-        if type(other) != type(self):
+        if type(other) is not type(self):
             return NotImplemented
         return vars(self) == vars(other)
 
@@ -70,7 +70,7 @@ class TargetMeta(object):
         without having to specify an explicit sorting key. Note this
         disregards app name, platform, and suffixes.
         """
-        if type(other) != type(self):
+        if type(other) is not type(self):
             return NotImplemented
         return self.version < other.version
 
