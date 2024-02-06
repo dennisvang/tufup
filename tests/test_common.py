@@ -1,11 +1,31 @@
 import logging
 import pathlib
+from typing import Hashable
+from unittest import TestCase
 
 import bsdiff4
 from packaging.version import Version
 
 from tests import TempDirTestCase
-from tufup.common import Patcher, TargetMeta
+from tufup.common import _immutable, Patcher, TargetMeta  # noqa
+
+
+class ImmutableTests(TestCase):
+    def test_immutable(self):
+        cases = [
+            'a',
+            b'b',
+            1,
+            ('a', 1),
+            ['a', 1],
+            {'a', 1},
+            bytearray(b'b'),
+            dict(a=1),
+            [dict(a=[dict(c={1})], b=bytearray(b'd'))],
+        ]
+        for case in cases:
+            with self.subTest(msg=case):
+                self.assertIsInstance(_immutable(case), Hashable)
 
 
 class TargetMetaTests(TempDirTestCase):

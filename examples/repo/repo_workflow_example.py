@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import pathlib
 import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
@@ -16,17 +17,23 @@ from tufup.repo import (
 
 """
 
+This script was based on the python-tuf basic repo example [1]. The script generates a 
+complete example repository, including key pairs and example data. It illustrates 
+some common repository operations.
+
+NOTE: This script creates subdirectories and files in the tufup/examples/repo directory.
+
+NOTE: This script was also used to generate the test data in tests/data.
+
 NOTE: The repo content can be served for local testing as follows:
 
     python -m http.server -d examples/repo/repository
 
-NOTE: This script creates subdirectories and files in the 
-tufup/examples/repo directory. 
-
 NOTE: When running this script in PyCharm, ensure "Emulate terminal in output 
-console" is enabled in the run configuration, otherwise the encryption 
-passwords cannot be entered. 
+console" is enabled in the run configuration, otherwise the encryption passwords 
+cannot be entered.
 
+[1]: https://github.com/theupdateframework/python-tuf/blob/develop/examples/manual_repo/basic_repo.py
 """
 
 logger = logging.getLogger(__name__)
@@ -45,11 +52,22 @@ META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
 TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
 # Settings
-EXPIRATION_DAYS = dict(root=365, targets=100, snapshot=7, timestamp=1)
+_TEST_EXPIRATION = int(os.getenv('TEST_EXPIRATION', 0))  # for creating test repo data
+if _TEST_EXPIRATION:
+    logger.warning(f'using TEST_EXPIRATION: {_TEST_EXPIRATION} days')
+EXPIRATION_DAYS = dict(
+    root=_TEST_EXPIRATION or 365,
+    targets=_TEST_EXPIRATION or 100,
+    snapshot=_TEST_EXPIRATION or 7,
+    timestamp=_TEST_EXPIRATION or 1,
+)
 THRESHOLDS = dict(root=2, targets=1, snapshot=1, timestamp=1)
 KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
 KEY_MAP['root'].append('root_two')  # use two keys for root
 ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
+
+# Custom metadata
+DUMMY_METADATA = dict(whatever='important')
 
 # Create repository instance
 repo = Repository(
@@ -122,9 +140,13 @@ for new_version in new_versions:
         dummy_file_content += secrets.token_bytes(dummy_delta_size)
     dummy_file_path.write_bytes(dummy_file_content)
 
-    # Create archive and patch and register the new update (here we sign
-    # everything at once, for convenience)
-    repo.add_bundle(new_version=new_version, new_bundle_dir=dummy_bundle_dir)
+    # Create archive and patch and register the new update (here we sign everything
+    # at once, for convenience)
+    repo.add_bundle(
+        new_version=new_version,
+        new_bundle_dir=dummy_bundle_dir,
+        custom_metadata_for_patch=DUMMY_METADATA,  # just to point out the option
+    )
     repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])
 
 # Time goes by

@@ -331,26 +331,33 @@ class RolesTests(TempDirTestCase):
         # prepare
         roles = Roles(dir_path=self.temp_dir_path)
         roles.targets = Mock(signed=Mock(targets=dict()))
-        # test
+        # test (path must exist)
         filename = 'my_app.tar.gz'
         local_target_path = self.temp_dir_path / filename
-        # path must exist
         with self.assertRaises(FileNotFoundError):
             roles.add_or_update_target(local_path=local_target_path)
+        # test (path segments)
         local_target_path.write_bytes(b'some bytes')
-        # test
-        for segments, expected_url_path in [
+        cases = [
             (None, filename),
-            ([], filename),
+            ([], filename),  # update
             (['a', 'b'], 'a/b/' + filename),
-        ]:
-            roles.add_or_update_target(
-                local_path=local_target_path, url_path_segments=segments
-            )
+            (['a', 'b'], 'a/b/' + filename),  # update with segments
+        ]
+        for segments, expected_url_path in cases:
             with self.subTest(msg=segments):
+                roles.add_or_update_target(
+                    local_path=local_target_path, url_path_segments=segments
+                )
                 self.assertIsInstance(
                     roles.targets.signed.targets[expected_url_path], TargetFile
                 )
+        # ensure update did not create new items
+        self.assertEqual(2, len(roles.targets.signed.targets))
+        # test (custom)
+        custom = dict(something='whatever')
+        roles.add_or_update_target(local_path=local_target_path, custom=custom)
+        self.assertEqual(custom, roles.targets.signed.targets[filename].custom)
 
     def test_remove_target(self):
         # prepare
@@ -698,20 +705,29 @@ class RepositoryTests(TempDirTestCase):
         self.assertIn(new_key_name, repo.encrypted_keys)
 
     def test_add_bundle(self):
+        app_name = 'test'
+        version = '1.0'
         # prepare
         bundle_dir = self.temp_dir_path / 'dist' / 'test_app'
         bundle_dir.mkdir(parents=True)
         bundle_file = bundle_dir / 'dummy.exe'
         bundle_file.touch()
         repo = Repository(
-            app_name='test',
+            app_name=app_name,
             keys_dir=self.temp_dir_path / 'keystore',
             repo_dir=self.temp_dir_path / 'repo',
         )
         repo.initialize()  # todo: make test independent...
         # test
-        repo.add_bundle(new_version='1.0', new_bundle_dir=bundle_dir)
+        repo.add_bundle(
+            new_version=version,
+            new_bundle_dir=bundle_dir,
+            custom_metadata_for_archive=dict(whatever='something'),
+            custom_metadata_for_patch=None,
+        )
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
+        target_name = f'{app_name}-{version}.tar.gz'
+        self.assertTrue(repo.roles.targets.signed.targets[target_name].custom)
 
     def test_add_bundle_no_patch(self):
         # prepare

@@ -97,6 +97,15 @@ class ClientTests(TempDirTestCase):
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
         self.assertTrue(client.trusted_target_metas)
+        # in the example data, only the patches have custom metadata, as defined in
+        # the repo_workflow_example.py script
+        for meta in client.trusted_target_metas:
+            with self.subTest(msg=meta):
+                if meta.is_patch:
+                    self.assertTrue(meta.custom)
+                    self.assertIsInstance(meta.custom, dict)
+                else:
+                    self.assertIsNone(meta.custom)
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()
@@ -142,7 +151,8 @@ class ClientTests(TempDirTestCase):
         with patch.object(client, 'refresh', Mock()):
             for pre, expected in [(None, 1), ('a', 1), ('b', 2), ('rc', 2)]:
                 with self.subTest(msg=pre):
-                    self.assertTrue(client.check_for_updates(pre=pre))
+                    target_meta = client.check_for_updates(pre=pre)
+                    self.assertTrue(target_meta)
                     self.assertEqual(expected, len(client.new_targets))
                     if pre == 'a':
                         self.assertTrue(
@@ -152,6 +162,9 @@ class ClientTests(TempDirTestCase):
                         self.assertTrue(
                             all(item.is_patch for item in client.new_targets.keys())
                         )
+                    # verify that we can access custom metadata where needed
+                    if target_meta.is_patch:
+                        self.assertTrue(target_meta.custom)
 
     def test_check_for_updates_already_up_to_date(self):
         self.client_kwargs['current_version'] = '4.0a0'

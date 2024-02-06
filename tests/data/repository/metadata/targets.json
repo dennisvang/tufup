@@ -1,58 +1,67 @@
 {
  "signatures": [
   {
-   "keyid": "40e032f119d90855f540d23cbd364388de5f622cf868cf5c767df661a8678bcb",
-   "sig": "a89f36cc8fbf81947886f526865c3489da0e1dcde93a3e493946948b625d059cbbf5cb79759e1c5989e359f806b336605c8e56319f30d1f0ea7aa23746453c0c"
+   "keyid": "3515ef592c09ddb3a09da0096802afc26852dc7a1978cb1c99fbe3a6f5c0c1a1",
+   "sig": "dd175aeed38f8a1a844507fa465e36be5577920becd6fd44d424de3b8caac4e4d9ac9b3afd2813e12b8412ff963495d16bdff0e4035b98d7026518018aadd005"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2032-05-07T15:17:51Z",
-  "spec_version": "1.0.29",
+  "expires": "2051-06-24T09:37:39Z",
+  "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
     "hashes": {
-     "sha256": "2e9b081bd1e904ffb1d6c804406044e6b8a3e645abcc8aaa7b850cf44c7b16d6"
+     "sha256": "223dfd468edbe36256dc119f8477ac4025279ae3705dec04a32002e81b10fd16"
     },
-    "length": 101417
+    "length": 101613
    },
    "example_app-2.0.patch": {
-    "hashes": {
-     "sha256": "033a3181db239a60e99f113b8bd7365334aeba86b0cc4a8e45561d03d0133001"
+    "custom": {
+     "whatever": "important"
     },
-    "length": 20475
+    "hashes": {
+     "sha256": "f7ee90e00fa69d5832eeee193f9b6bb2d32ff028c413f47fbaf853b3d2add27f"
+    },
+    "length": 18709
    },
    "example_app-2.0.tar.gz": {
     "hashes": {
-     "sha256": "1dddab8403835e37166ef950776cd89ede0adebd5f62b1779c4a15929805827f"
+     "sha256": "d85f423a56427e522ac4d093a6ce94abcc2cc32f99b80a39b87832d8e4ba9ad8"
     },
-    "length": 101537
+    "length": 101744
    },
    "example_app-3.0rc0.patch": {
-    "hashes": {
-     "sha256": "85519146d28c954d9263b04a959002feafaf6fbda1e15f5ecdc1e76bf06e0ce7"
+    "custom": {
+     "whatever": "important"
     },
-    "length": 20310
+    "hashes": {
+     "sha256": "dcf2ce8ca9fc0ccc0e541fb0fca97a7772374177197a41fa4cf17653ef850956"
+    },
+    "length": 6458
    },
    "example_app-3.0rc0.tar.gz": {
     "hashes": {
-     "sha256": "edbfc88b5a2ed2da2c8c949958187b99e9d58adf301b20524331bdaaaa450e41"
+     "sha256": "d7fa6ddd397282e8fa81924a31f340ebbcb8c082604c0549a38f5882cd3716c6"
     },
-    "length": 101628
+    "length": 101841
    },
    "example_app-4.0a0.patch": {
-    "hashes": {
-     "sha256": "d4e059c936db10eff5a51e21b8a2c2ead3c27230dac1e75c4f5ed959eacbb37e"
+    "custom": {
+     "whatever": "important"
     },
-    "length": 102335
+    "hashes": {
+     "sha256": "0fc6918d6d0757e234fe550e26bca659503166da3d3f493ec6bdbb5281b356ce"
+    },
+    "length": 102567
    },
    "example_app-4.0a0.tar.gz": {
     "hashes": {
-     "sha256": "0393ca32f4081297da7e7a1b5bf87eda9c94c4e2ccaedb55a6befd539da3687c"
+     "sha256": "05304765a0cb4e40cbd7ca2587aeb5f0db36cd9b617921e0d141bb91d3304e2c"
     },
-    "length": 101423
+    "length": 101642
    }
   },
-  "version": 4
+  "version": 6
  }
 }

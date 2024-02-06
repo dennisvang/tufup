@@ -1,3 +1,3 @@
-Large parts of the test data were copied verbatim from the `python-tuf` [repository_data][1] folder.
+These test data were generated using the examples/repo/repo_workflow_example.py script.
 
-[1]: https://github.com/theupdateframework/python-tuf/tree/develop/tests/repository_data
+(expiration dates were set to some time far in the future)
