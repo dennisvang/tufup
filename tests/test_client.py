@@ -263,9 +263,6 @@ class ClientTests(TempDirTestCase):
             target_paths = pathlib.Path(client.target_dir).iterdir()
             self.assertTrue(any(path.suffix == SUFFIX_FAILED for path in target_paths))
 
-    def test__apply_updates_failed(self):
-        client = self.get_refreshed_client()
-
     def test_version_comparison(self):
         # verify assumed version hierarchy
         v = packaging.version.Version
