@@ -626,7 +626,7 @@ class Repository(object):
         instance._load_keys_and_roles(create_keys=False)
         return instance
 
-    def initialize(self, extra_key_dirs: Optional[list[pathlib.Path]] = None):
+    def initialize(self, extra_key_dirs: Optional[List[pathlib.Path]] = None):
         """
         Initialize (or update) the local repository.
 
