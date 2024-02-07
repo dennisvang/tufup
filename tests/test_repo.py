@@ -257,21 +257,22 @@ class KeysTests(TempDirTestCase):
         # create dummy private key files in separate folders
         key_names = [
             ('online', [Snapshot.type, Timestamp.type]),
-            ('offline', [Root.type, Targets.type]),
+            ('offline/subdir', [Root.type, Targets.type]),  # subdir tests recursion
         ]
-        key_dirs = []
         for dir_name, role_names in key_names:
             dir_path = self.temp_dir_path / dir_name
-            dir_path.mkdir()
-            key_dirs.append(dir_path)
+            dir_path.mkdir(parents=True)
             for role_name in role_names:
                 filename = Keys.filename_pattern.format(key_name=role_name)
                 (dir_path / filename).touch()
         # test
+        key_dirs = list(self.temp_dir_path.iterdir())  # ['online', 'offline']
         for role_name in TOP_LEVEL_ROLE_NAMES:
             key_path = Keys.find_private_key(key_name=role_name, key_dirs=key_dirs)
+            self.assertTrue(key_path)
             self.assertIn(role_name, str(key_path))
             self.assertTrue(key_path.exists())
+        self.assertIsNone(Keys.find_private_key(key_name='missing', key_dirs=key_dirs))
 
 
 class RolesTests(TempDirTestCase):
@@ -610,6 +611,35 @@ class RepositoryTests(TempDirTestCase):
             date.today() + timedelta(days=DUMMY_EXPIRATION_DAYS['root']),
             repo.roles.root.signed.expires.date(),
         )
+
+    def test_initialize_extra_key_dirs(self):
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+            expiration_days=DUMMY_EXPIRATION_DAYS,
+        )
+        repo.initialize()
+        # move private keys to separate dir
+        private_key_dir = self.temp_dir_path / 'private_keys'
+        private_key_dir.mkdir()
+        for path in repo.keys_dir.iterdir():
+            if path.is_file() and not path.suffix:
+                path.rename(target=private_key_dir / path.name)
+        # remove metadata files
+        for path in repo.metadata_dir.iterdir():
+            if path.suffix == '.json':
+                path.unlink()
+        # reproduce issue #102
+        with self.assertRaises(Exception) as context:
+            repo.initialize()
+        self.assertIn('no private keys found', str(context.exception).lower())
+        # test fix
+        try:
+            repo.initialize(extra_key_dirs=[private_key_dir])
+        except Exception as e:
+            self.fail(msg=f'unexpected exception: {e}')
 
     def test_refresh_expiration_date(self):
         repo = Repository(
