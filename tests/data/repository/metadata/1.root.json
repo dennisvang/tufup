@@ -1,51 +1,51 @@
 {
  "signatures": [
   {
-   "keyid": "104c43225506bf7637a0061775a0d23ca8693e6bb4b270bc9ee9664259eb77d8",
-   "sig": "aa37e6a5e46938eb7c72054f2f2ff929e949283be67149c2a4fe481e51b91d8cc16876cbce03619af1d0b331ebf1d72ec368069ca49cca8d95a96eeaa06bfc07"
+   "keyid": "b7ad916e4138911155b771d0ede66666e9647e7fb6c85a1904be97dee5653568",
+   "sig": "8582f12a66a923c8069a4385ef594c345ca2bd69741c0ba2691c4cb20e005e7a771f6ca651852d1264d13107d108c5843d3f9b69bcd20500f7108cca6e6c8901"
   },
   {
-   "keyid": "eb456bc4372b9aef1aea4790911d748a741d27ad0bd0eabcfe41e7fe3c6e9a8f",
-   "sig": "b70196c013a883d0ae5fede183e1c49556ee26fecb0798968e41a391121c39ab229ed2e1f7067760232aeac0b709ecf48a29df34f0184349c5d96f4e9be91703"
+   "keyid": "d4ec748f9476f9f7e1f0a247b917dde4abe8a024de9ba34c7458b41bec8be6b2",
+   "sig": "3f2a6d6cd8232d0ca1f2b75445a7dc9bc4342f72fe88204fac7e7acad48eb6102ff1ba4b1efaf8f8ec32ee11cf68a5f92e34300f66b37e5970e878f77b2e9c0b"
   }
  ],
  "signed": {
   "_type": "root",
   "consistent_snapshot": false,
-  "expires": "2051-06-24T09:37:39Z",
+  "expires": "2051-06-25T13:08:41Z",
   "keys": {
-   "0eb56770be481c3a117f0487e7b6762edd0eaac7860ba85530dba400edf7de03": {
+   "5ef48ab6f5398d2bf17f1f4c4fc0e0440c4aa3734a05ae523561e02e8a99957a": {
     "keytype": "ed25519",
     "keyval": {
-     "public": "2ec5e87c77fe70d918d92a1d849f4ec12907a34cf208123bbbc6d1e4bd584885"
+     "public": "98dfc1375ce8818259ba23aa24bb596d6a60026e555285baccc1d3524677bcfe"
     },
     "scheme": "ed25519"
    },
-   "104c43225506bf7637a0061775a0d23ca8693e6bb4b270bc9ee9664259eb77d8": {
+   "b7ad916e4138911155b771d0ede66666e9647e7fb6c85a1904be97dee5653568": {
     "keytype": "ed25519",
     "keyval": {
-     "public": "c8eaa5bf0f26e7247c965388a7ce7d3a25113899139c3d9bd2dbbb5e95577397"
+     "public": "4cec23f563ae4d97e22c823ed8c3c2effed9ca568fab68179f0a338526003813"
     },
     "scheme": "ed25519"
    },
-   "3515ef592c09ddb3a09da0096802afc26852dc7a1978cb1c99fbe3a6f5c0c1a1": {
+   "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5": {
     "keytype": "ed25519",
     "keyval": {
-     "public": "a27a0209711787a4227cbfed23735a75b5f7f5cb0cd6acbf7a239fa2c3535434"
+     "public": "6849e4a7ca3e121cce7368dc939419fd2de031f4f33fc86083ff1bed4db8403a"
     },
     "scheme": "ed25519"
    },
-   "5fcbe7c4faa87ab25bea551c0c4b0ac6e47a07caf5e7633314a784c54ad2ea8a": {
+   "d4ec748f9476f9f7e1f0a247b917dde4abe8a024de9ba34c7458b41bec8be6b2": {
     "keytype": "ed25519",
     "keyval": {
-     "public": "41bf1adabf1f564de734fa5fb584a65b943317978a4dcbe39bab03ee722ee73f"
+     "public": "4e156bc0a9ba4cce79cd53405d597a906f70e6b4a737c96b21fb69ca8d0c0efc"
     },
     "scheme": "ed25519"
    },
-   "eb456bc4372b9aef1aea4790911d748a741d27ad0bd0eabcfe41e7fe3c6e9a8f": {
+   "eddb87d254d513c1404d71e17620ecf5260e1836babdaa55197916c582f37a00": {
     "keytype": "ed25519",
     "keyval": {
-     "public": "f5033e2659886185ceedec69e2cfee0f348ea63dfffafd5f8566d001b45c470d"
+     "public": "6479fe966d5b5fb11d3339c18b42235bbe2a49e54966d6d1bc6a79e7985aedf8"
     },
     "scheme": "ed25519"
    }
@@ -53,26 +53,26 @@
   "roles": {
    "root": {
     "keyids": [
-     "eb456bc4372b9aef1aea4790911d748a741d27ad0bd0eabcfe41e7fe3c6e9a8f",
-     "104c43225506bf7637a0061775a0d23ca8693e6bb4b270bc9ee9664259eb77d8"
+     "d4ec748f9476f9f7e1f0a247b917dde4abe8a024de9ba34c7458b41bec8be6b2",
+     "b7ad916e4138911155b771d0ede66666e9647e7fb6c85a1904be97dee5653568"
     ],
     "threshold": 2
    },
    "snapshot": {
     "keyids": [
-     "5fcbe7c4faa87ab25bea551c0c4b0ac6e47a07caf5e7633314a784c54ad2ea8a"
+     "5ef48ab6f5398d2bf17f1f4c4fc0e0440c4aa3734a05ae523561e02e8a99957a"
     ],
     "threshold": 1
    },
    "targets": {
     "keyids": [
-     "3515ef592c09ddb3a09da0096802afc26852dc7a1978cb1c99fbe3a6f5c0c1a1"
+     "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5"
     ],
     "threshold": 1
    },
    "timestamp": {
     "keyids": [
-     "0eb56770be481c3a117f0487e7b6762edd0eaac7860ba85530dba400edf7de03"
+     "eddb87d254d513c1404d71e17620ecf5260e1836babdaa55197916c582f37a00"
     ],
     "threshold": 1
    }

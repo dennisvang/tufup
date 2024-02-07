@@ -1,13 +1,13 @@
 {
  "signatures": [
   {
-   "keyid": "3515ef592c09ddb3a09da0096802afc26852dc7a1978cb1c99fbe3a6f5c0c1a1",
-   "sig": "dd175aeed38f8a1a844507fa465e36be5577920becd6fd44d424de3b8caac4e4d9ac9b3afd2813e12b8412ff963495d16bdff0e4035b98d7026518018aadd005"
+   "keyid": "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5",
+   "sig": "dbcc91a73275a2478489e491b3054328659ce5e7cdeeb7623fe41e745cbe585a0dc874e05d80a291c5658138549051a24d81f3fb61093b6133b5d3e8927e9e01"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2051-06-24T09:37:39Z",
+  "expires": "2051-06-25T13:08:48Z",
   "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
@@ -17,45 +17,57 @@
     "length": 101613
    },
    "example_app-2.0.patch": {
-    "custom": {
-     "whatever": "important"
-    },
     "hashes": {
      "sha256": "f7ee90e00fa69d5832eeee193f9b6bb2d32ff028c413f47fbaf853b3d2add27f"
     },
     "length": 18709
    },
    "example_app-2.0.tar.gz": {
+    "custom": {
+     "changes": [
+      "this has changed",
+      "that has changed",
+      "..."
+     ]
+    },
     "hashes": {
      "sha256": "d85f423a56427e522ac4d093a6ce94abcc2cc32f99b80a39b87832d8e4ba9ad8"
     },
     "length": 101744
    },
    "example_app-3.0rc0.patch": {
-    "custom": {
-     "whatever": "important"
-    },
     "hashes": {
      "sha256": "dcf2ce8ca9fc0ccc0e541fb0fca97a7772374177197a41fa4cf17653ef850956"
     },
     "length": 6458
    },
    "example_app-3.0rc0.tar.gz": {
+    "custom": {
+     "changes": [
+      "this has changed",
+      "that has changed",
+      "..."
+     ]
+    },
     "hashes": {
      "sha256": "d7fa6ddd397282e8fa81924a31f340ebbcb8c082604c0549a38f5882cd3716c6"
     },
     "length": 101841
    },
    "example_app-4.0a0.patch": {
-    "custom": {
-     "whatever": "important"
-    },
     "hashes": {
      "sha256": "0fc6918d6d0757e234fe550e26bca659503166da3d3f493ec6bdbb5281b356ce"
     },
     "length": 102567
    },
    "example_app-4.0a0.tar.gz": {
+    "custom": {
+     "changes": [
+      "this has changed",
+      "that has changed",
+      "..."
+     ]
+    },
     "hashes": {
      "sha256": "05304765a0cb4e40cbd7ca2587aeb5f0db36cd9b617921e0d141bb91d3304e2c"
     },
