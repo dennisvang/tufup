@@ -6,7 +6,6 @@ import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
-from tufup.utils import remove_path
 from tufup.repo import (
     DEFAULT_KEY_MAP,
     DEFAULT_KEYS_DIR_NAME,
@@ -42,8 +41,22 @@ logging.basicConfig(level=logging.DEBUG)
 
 APP_NAME = 'example_app'
 
+# Default base directory
+EXAMPLE_DIR = pathlib.Path(__file__).resolve().parent
+BASE_DIR = EXAMPLE_DIR
+
+# This script is also used to create/update test data, in which case we need to
+# override some variables. Everything related to _UPDATE_TEST_DATA can be ignored for
+# normal use.
+_UPDATE_TEST_DATA = os.getenv('UPDATE_TEST_DATA')  # see dirs_to_clean for values
+TEST_DATA_EXPIRATION_DAYS = None
+if _UPDATE_TEST_DATA is not None:
+    TEST_DATA_EXPIRATION_DAYS = 10000
+    PROJECT_DIR = EXAMPLE_DIR.parent.parent
+    BASE_DIR = PROJECT_DIR / 'tests' / 'data'
+    logger.warning(f'updating test data in {BASE_DIR}')
+
 # Specify local example paths
-BASE_DIR = pathlib.Path(__file__).resolve().parent
 KEYS_DIR = BASE_DIR / DEFAULT_KEYS_DIR_NAME
 ONLINE_DIR = KEYS_DIR / 'online_secrets'
 OFFLINE_DIR_1 = KEYS_DIR / 'offline_secrets_1'
@@ -52,22 +65,13 @@ REPO_DIR = BASE_DIR / DEFAULT_REPO_DIR_NAME
 META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
 TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
-# This script is also used to create/update test data, in which case we need to
-# override some variables. Everything related to _UPDATE_TEST_DATA can be ignored for
-# normal use.
-_UPDATE_TEST_DATA = os.getenv('UPDATE_TEST_DATA')
-TEST_DATA_EXPIRATION_DAYS = None
 if _UPDATE_TEST_DATA is not None:
-    TEST_DATA_EXPIRATION_DAYS = 10000
-    PROJECT_DIR = BASE_DIR.parent.parent
-    TEST_DATA_DIR = PROJECT_DIR / 'tests' / 'data'
-    REPO_DIR = TEST_DATA_DIR / DEFAULT_REPO_DIR_NAME
-    META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
-    TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
-    logger.warning(f'updating test data in {TEST_DATA_DIR}')
     # start with clean slate
     dirs_to_clean = dict(
-        metadata=[META_DIR], targets=[TARGETS_DIR], all=[META_DIR, TARGETS_DIR]
+        keys=[KEYS_DIR, META_DIR],  # metadata depends on keys, so remove both
+        metadata=[META_DIR],
+        targets=[TARGETS_DIR, META_DIR],  # metadata depends on targets, so remove both
+        all=[KEYS_DIR, META_DIR, TARGETS_DIR],
     )
     for dir_path in dirs_to_clean.get(_UPDATE_TEST_DATA, []):
         for path in dir_path.iterdir():
@@ -197,5 +201,6 @@ repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR]
 
 # restore example config if necessary (ignore for normal use)
 if _UPDATE_TEST_DATA:
-    repo.repo_dir = BASE_DIR / DEFAULT_REPO_DIR_NAME
+    repo.keys_dir = EXAMPLE_DIR / DEFAULT_KEYS_DIR_NAME
+    repo.repo_dir = EXAMPLE_DIR / DEFAULT_REPO_DIR_NAME
     repo.save_config()
