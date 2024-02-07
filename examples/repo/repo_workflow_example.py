@@ -6,6 +6,7 @@ import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
+from tufup.utils import remove_path
 from tufup.repo import (
     DEFAULT_KEY_MAP,
     DEFAULT_KEYS_DIR_NAME,
@@ -41,7 +42,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 APP_NAME = 'example_app'
 
-# Specify local paths
+# Specify local example paths
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 KEYS_DIR = BASE_DIR / DEFAULT_KEYS_DIR_NAME
 ONLINE_DIR = KEYS_DIR / 'online_secrets'
@@ -51,15 +52,31 @@ REPO_DIR = BASE_DIR / DEFAULT_REPO_DIR_NAME
 META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
 TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 
+# This script is also used to create/update test data, in which case we need to
+# override some variables. Everything related to _UPDATE_TEST_DATA can be ignored for
+# normal use.
+_UPDATE_TEST_DATA = int(os.getenv('UPDATE_TEST_DATA', 0))
+TEST_DATA_EXPIRATION_DAYS = None
+if _UPDATE_TEST_DATA:
+    TEST_DATA_EXPIRATION_DAYS = 10000
+    PROJECT_DIR = BASE_DIR.parent.parent
+    TEST_DATA_DIR = PROJECT_DIR / 'tests' / 'data'
+    REPO_DIR = TEST_DATA_DIR / DEFAULT_REPO_DIR_NAME
+    META_DIR = REPO_DIR / DEFAULT_META_DIR_NAME
+    TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
+    logger.warning(f'updating test data in {TEST_DATA_DIR}')
+    # start with clean slate
+    for dir_path in [META_DIR, TARGETS_DIR]:
+        for path in dir_path.iterdir():
+            if path.suffix in ['.gz', '.patch', '.json']:
+                path.unlink()
+
 # Settings
-_TEST_EXPIRATION = int(os.getenv('TEST_EXPIRATION', 0))  # for creating test repo data
-if _TEST_EXPIRATION:
-    logger.warning(f'using TEST_EXPIRATION: {_TEST_EXPIRATION} days')
 EXPIRATION_DAYS = dict(
-    root=_TEST_EXPIRATION or 365,
-    targets=_TEST_EXPIRATION or 100,
-    snapshot=_TEST_EXPIRATION or 7,
-    timestamp=_TEST_EXPIRATION or 1,
+    root=TEST_DATA_EXPIRATION_DAYS or 365,
+    targets=TEST_DATA_EXPIRATION_DAYS or 100,
+    snapshot=TEST_DATA_EXPIRATION_DAYS or 7,
+    timestamp=TEST_DATA_EXPIRATION_DAYS or 1,
 )
 THRESHOLDS = dict(root=2, targets=1, snapshot=1, timestamp=1)
 KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
@@ -67,7 +84,7 @@ KEY_MAP['root'].append('root_two')  # use two keys for root
 ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
 
 # Custom metadata
-DUMMY_METADATA = dict(whatever='important')
+DUMMY_METADATA = dict(changes=['this has changed', 'that has changed', '...'])
 
 # Create repository instance
 repo = Repository(
@@ -145,7 +162,7 @@ for new_version in new_versions:
     repo.add_bundle(
         new_version=new_version,
         new_bundle_dir=dummy_bundle_dir,
-        custom_metadata_for_patch=DUMMY_METADATA,  # just to point out the option
+        custom_metadata=DUMMY_METADATA,  # just to point out the option
     )
     repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])
 
@@ -174,3 +191,8 @@ repo.replace_key(
     new_private_key_encrypted=False,
 )
 repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])
+
+# restore example config if necessary (ignore for normal use)
+if _UPDATE_TEST_DATA:
+    repo.repo_dir = BASE_DIR / DEFAULT_REPO_DIR_NAME
+    repo.save_config()
