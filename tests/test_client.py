@@ -98,11 +98,11 @@ class ClientTests(TempDirTestCase):
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
         self.assertTrue(client.trusted_target_metas)
-        # in the example data, only the patches have custom metadata, as defined in
+        # in the test data, only the archives have custom metadata, as defined in
         # the repo_workflow_example.py script
         for meta in client.trusted_target_metas:
             with self.subTest(msg=meta):
-                if meta.is_patch:
+                if meta.is_archive and str(meta.version) != '1.0':
                     self.assertTrue(meta.custom)
                     self.assertIsInstance(meta.custom, dict)
                 else:
