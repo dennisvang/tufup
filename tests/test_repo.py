@@ -257,21 +257,22 @@ class KeysTests(TempDirTestCase):
         # create dummy private key files in separate folders
         key_names = [
             ('online', [Snapshot.type, Timestamp.type]),
-            ('offline', [Root.type, Targets.type]),
+            ('offline/subdir', [Root.type, Targets.type]),  # subdir tests recursion
         ]
-        key_dirs = []
         for dir_name, role_names in key_names:
             dir_path = self.temp_dir_path / dir_name
-            dir_path.mkdir()
-            key_dirs.append(dir_path)
+            dir_path.mkdir(parents=True)
             for role_name in role_names:
                 filename = Keys.filename_pattern.format(key_name=role_name)
                 (dir_path / filename).touch()
         # test
+        key_dirs = list(self.temp_dir_path.iterdir())  # ['online', 'offline']
         for role_name in TOP_LEVEL_ROLE_NAMES:
             key_path = Keys.find_private_key(key_name=role_name, key_dirs=key_dirs)
+            self.assertTrue(key_path)
             self.assertIn(role_name, str(key_path))
             self.assertTrue(key_path.exists())
+        self.assertIsNone(Keys.find_private_key(key_name='missing', key_dirs=key_dirs))
 
 
 class RolesTests(TempDirTestCase):

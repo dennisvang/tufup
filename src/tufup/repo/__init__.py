@@ -260,16 +260,28 @@ class Keys(Base):
         return roles_map
 
     @classmethod
-    def find_private_key(cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]):
-        private_key_path = None
+    def find_private_key(
+        cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]
+    ) -> Optional[pathlib.Path]:
+        """
+        recursively search key_dirs for a private key with specified key_name
+
+        returns path to first matching file (or None)
+        """
         private_key_filename = cls.filename_pattern.format(key_name=key_name)
         for key_dir in key_dirs:
             key_dir = pathlib.Path(key_dir)  # ensure Path
             for path in key_dir.iterdir():
                 if path.is_file() and path.name == private_key_filename:
-                    private_key_path = path
-                    break
-        return private_key_path
+                    # base case
+                    return path
+                elif path.is_dir():
+                    # recursive case
+                    private_key_path = cls.find_private_key(
+                        key_name=key_name, key_dirs=[path]
+                    )
+                    if private_key_path:
+                        return private_key_path
 
 
 class Roles(Base):
