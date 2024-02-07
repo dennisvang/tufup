@@ -752,8 +752,7 @@ class RepositoryTests(TempDirTestCase):
         repo.add_bundle(
             new_version=version,
             new_bundle_dir=bundle_dir,
-            custom_metadata_for_archive=dict(whatever='something'),
-            custom_metadata_for_patch=None,
+            custom_metadata=dict(whatever='something'),
         )
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
         target_name = f'{app_name}-{version}.tar.gz'
