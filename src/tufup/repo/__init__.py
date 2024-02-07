@@ -614,7 +614,7 @@ class Repository(object):
         instance._load_keys_and_roles(create_keys=False)
         return instance
 
-    def initialize(self):
+    def initialize(self, extra_key_dirs: Optional[list[pathlib.Path]] = None):
         """
         Initialize (or update) the local repository.
 
@@ -627,6 +627,8 @@ class Repository(object):
 
         Safe to call for existing keys and roles.
         """
+        extra_key_dirs = extra_key_dirs or []
+
         # Ensure dirs exist
         for path in [self.keys_dir, self.metadata_dir, self.targets_dir]:
             path.mkdir(parents=True, exist_ok=True)
@@ -636,7 +638,7 @@ class Repository(object):
 
         # Publish root metadata (save 1.root.json and copy to root.json)
         if not self.roles.file_path('root').exists():
-            self.publish_changes(private_key_dirs=[self.keys_dir])
+            self.publish_changes(private_key_dirs=[self.keys_dir] + extra_key_dirs)
 
     def refresh_expiration_date(self, role_name: str, days: Optional[int] = None):
         if days is None:

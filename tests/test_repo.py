@@ -611,6 +611,35 @@ class RepositoryTests(TempDirTestCase):
             repo.roles.root.signed.expires.date(),
         )
 
+    def test_initialize_extra_key_dirs(self):
+        # prepare
+        repo = Repository(
+            app_name='test',
+            keys_dir=self.temp_dir_path / 'keystore',
+            repo_dir=self.temp_dir_path / 'repo',
+            expiration_days=DUMMY_EXPIRATION_DAYS,
+        )
+        repo.initialize()
+        # move private keys to separate dir
+        private_key_dir = self.temp_dir_path / 'private_keys'
+        private_key_dir.mkdir()
+        for path in repo.keys_dir.iterdir():
+            if path.is_file() and not path.suffix:
+                path.rename(target=private_key_dir / path.name)
+        # remove metadata files
+        for path in repo.metadata_dir.iterdir():
+            if path.suffix == '.json':
+                path.unlink()
+        # reproduce issue #102
+        with self.assertRaises(Exception) as context:
+            repo.initialize()
+        self.assertIn('no private keys found', str(context.exception).lower())
+        # test fix
+        try:
+            repo.initialize(extra_key_dirs=[private_key_dir])
+        except Exception as e:
+            self.fail(msg=f'unexpected exception: {e}')
+
     def test_refresh_expiration_date(self):
         repo = Repository(
             app_name='test',
