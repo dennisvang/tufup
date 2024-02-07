@@ -55,9 +55,9 @@ TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
 # This script is also used to create/update test data, in which case we need to
 # override some variables. Everything related to _UPDATE_TEST_DATA can be ignored for
 # normal use.
-_UPDATE_TEST_DATA = int(os.getenv('UPDATE_TEST_DATA', 0))
+_UPDATE_TEST_DATA = os.getenv('UPDATE_TEST_DATA')
 TEST_DATA_EXPIRATION_DAYS = None
-if _UPDATE_TEST_DATA:
+if _UPDATE_TEST_DATA is not None:
     TEST_DATA_EXPIRATION_DAYS = 10000
     PROJECT_DIR = BASE_DIR.parent.parent
     TEST_DATA_DIR = PROJECT_DIR / 'tests' / 'data'
@@ -66,7 +66,10 @@ if _UPDATE_TEST_DATA:
     TARGETS_DIR = REPO_DIR / DEFAULT_TARGETS_DIR_NAME
     logger.warning(f'updating test data in {TEST_DATA_DIR}')
     # start with clean slate
-    for dir_path in [META_DIR, TARGETS_DIR]:
+    dirs_to_clean = dict(
+        metadata=[META_DIR], targets=[TARGETS_DIR], all=[META_DIR, TARGETS_DIR]
+    )
+    for dir_path in dirs_to_clean.get(_UPDATE_TEST_DATA, []):
         for path in dir_path.iterdir():
             if path.suffix in ['.gz', '.patch', '.json']:
                 path.unlink()
