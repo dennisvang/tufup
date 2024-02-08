@@ -3,14 +3,13 @@ import hashlib
 import logging
 import pathlib
 import re
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_HASH_ALGORITHM = 'sha256'
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
@@ -158,6 +157,8 @@ class TargetMeta(object):
 
 
 class Patcher(object):
+    DEFAULT_HASH_ALGORITHM = 'sha256'
+
     @staticmethod
     def get_size_and_hash(
         archive_path: pathlib.Path, algorithm: str = DEFAULT_HASH_ALGORITHM
