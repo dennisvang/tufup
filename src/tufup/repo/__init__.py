@@ -765,11 +765,17 @@ class Repository(object):
             )
             # create patch, if possible, and register that too
             if latest_archive and not skip_patch:
-                patch_path = Patcher.create_patch(
-                    src_path=self.targets_dir / latest_archive.path,
-                    dst_path=self.targets_dir / new_archive.path,
+                src_path = self.targets_dir / latest_archive.path
+                dst_path = self.targets_dir / new_archive.path
+                patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
+                Patcher.diff(
+                    src_path=src_path, dst_path=dst_path, patch_path=patch_path
                 )
-                self.roles.add_or_update_target(local_path=patch_path)
+                self.roles.add_or_update_target(
+                    local_path=patch_path,
+                    # size and hash are used to verify integrity of patch result
+                    custom=Patcher.get_size_and_hash(archive_path=dst_path),
+                )
 
     def remove_latest_bundle(self):
         """

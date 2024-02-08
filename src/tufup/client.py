@@ -256,7 +256,10 @@ class Client(tuf.ngclient.Updater):
         file_path = None
         target = None
         try:
+            # todo: replace this by new Patcher.patch() etc.
             for target, file_path in sorted(self.downloaded_target_files.items()):
+                # there are two options: either we get exactly one single archive,
+                # or we get one or more patches
                 if target.is_archive:
                     # just ensure the full archive file is available
                     assert len(self.downloaded_target_files) == 1, 'too many targets'

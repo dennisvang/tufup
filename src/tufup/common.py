@@ -1,13 +1,16 @@
+import gzip
+import hashlib
 import logging
 import pathlib
 import re
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_HASH_ALGORITHM = 'sha256'
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
@@ -155,27 +158,62 @@ class TargetMeta(object):
 
 
 class Patcher(object):
-    @classmethod
-    def create_patch(
-        cls, src_path: pathlib.Path, dst_path: pathlib.Path
-    ) -> pathlib.Path:
+    @staticmethod
+    def get_size_and_hash(
+        archive_path: pathlib.Path, algorithm: str = DEFAULT_HASH_ALGORITHM
+    ) -> dict:
         """
-        Create a binary patch file based on source and destination files.
+        note we could also use tuf.api.metadata.TargetFile for this, but that we'll
+        keep this part independent from tuf, for clarity and flexibility
+        """
+        hash_obj = getattr(hashlib, algorithm)()
+        with gzip.open(archive_path, mode='rb') as archive_file:
+            tar_bytes = archive_file.read()
+        hash_obj.update(tar_bytes)
+        # hexdigest returns digest as string
+        return dict(size=len(tar_bytes), hash=[algorithm, hash_obj.hexdigest()])
 
-        Patch file path matches destination file path, except for suffix.
-        """
-        # replace suffix twice, in case we have a .tar.gz
-        patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
-        bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
-        return patch_path
+    @staticmethod
+    def verify_size_and_hash():
+        ...
 
-    @classmethod
-    def apply_patch(cls, src_path: pathlib.Path, patch_path: pathlib.Path):
+    @staticmethod
+    def diff(
+        src_path: pathlib.Path, dst_path: pathlib.Path, patch_path: pathlib.Path
+    ) -> None:
         """
-        Apply binary patch file to source file to create destination file.
+        Create a patch file from the binary difference between source and destination
+        .tar archives. The source and destination files are expected to be
+        gzip-compressed (.tar.gz).
+        """
+        with (
+            gzip.open(src_path, mode='rb') as src_file,
+            gzip.open(dst_path, mode='rb') as dst_file,
+        ):
+            patch_path.write_bytes(
+                bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_file.read())
+            )
 
-        Destination file path matches patch file path, except for suffix.
+    @staticmethod
+    def patch(
+        src_path: pathlib.Path, dst_path: pathlib.Path, patch_paths: List[pathlib.Path]
+    ) -> None:
         """
-        dst_path = patch_path.with_suffix(SUFFIX_ARCHIVE)
-        bsdiff4.file_patch(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
-        return dst_path
+        Apply one or more binary patch files to source file to create destination file.
+
+        Patch paths *must* be sorted by version (ascending).
+
+        Source file and destination file are gzip-compressed tar archives, but the
+        patches are applied to the *uncompressed* tar archives.
+        """
+        # decompress .tar data from source .tar.gz file
+        with gzip.open(src_path, mode='rb') as src_file:
+            tar_bytes = src_file.read()
+        # apply cumulative patches
+        for patch_path in patch_paths:
+            tar_bytes = bsdiff4.patch(
+                src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
+            )
+        # compress .tar data into destination .tar.gz file
+        with gzip.open(dst_path, mode='wb') as dst_file:
+            dst_file.write(tar_bytes)
