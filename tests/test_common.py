@@ -1,3 +1,5 @@
+import gzip
+import hashlib
 import logging
 import pathlib
 from typing import Hashable
@@ -155,38 +157,82 @@ class TargetMetaTests(TempDirTestCase):
 class PatcherTests(TempDirTestCase):
     def setUp(self) -> None:
         super().setUp()
-        # dummy paths
-        self.old_archive_path = self.temp_dir_path / 'my_app-1.0.tar.gz'
-        self.new_archive_path = self.temp_dir_path / 'my_app-2.0.tar.gz'
-        self.new_patch_path = self.temp_dir_path / 'my_app-2.0.patch'
-        # write dummy archive data to files
-        self.old_archive_path.write_bytes(b'old archive data')
-        self.new_archive_data = b'new archive data'
-        self.new_archive_path.write_bytes(self.new_archive_data)
-        # create patch file (see Patcher.create_patch)
-        bsdiff4.file_diff(
-            src_path=self.old_archive_path,
-            dst_path=self.new_archive_path,
-            patch_path=self.new_patch_path,
-        )
-        self.new_patch_data = self.new_patch_path.read_bytes()
+        # define dummy .tar content
+        self.tar_content = {
+            'v-1': b'this is the original content',
+            'v-2': b'this content is somewhat different',
+            'v-3': b'this content has changed again',
+        }
+        # create patch content
+        self.patch_content = dict()
+        for src, dst in [('v-1', 'v-2'), ('v-2', 'v-3')]:
+            self.patch_content[dst] = bsdiff4.diff(
+                src_bytes=self.tar_content[src],
+                dst_bytes=self.tar_content[dst],
+            )
+        # create dummy files
+        self.targz_paths = dict()
+        for key, tar_content in self.tar_content.items():
+            self.targz_paths[key] = self.temp_dir_path / f'{key}.tar.gz'
+            with gzip.open(self.targz_paths[key], mode='wb') as gz_file:
+                gz_file.write(tar_content)
+        self.patch_paths = dict()
+        for key, patch_content in self.patch_content.items():
+            self.patch_paths[key] = self.temp_dir_path / f'{key}.patch'
+            self.patch_paths[key].write_bytes(patch_content)
+        # determine size and hash
+        hash_algorithm = 'sha256'
+        self.tar_fingerprints = dict()
+        for key, tar_content in self.tar_content.items():
+            if key == 'v-1':
+                continue
+            hash_obj = getattr(hashlib, hash_algorithm)()
+            hash_obj.update(tar_content)
+            self.tar_fingerprints[key] = dict(
+                tar_size=len(tar_content),
+                tar_hash=hash_obj.hexdigest(),
+                tar_hash_algorithm=hash_algorithm,
+            )
 
-    def test_create_patch(self):
-        # remove existing patch file, just to be sure
-        self.new_patch_path.unlink()
+    def test_diff_and_hash(self):
+        # prepare
+        src = 'v-1'
+        dst = 'v-2'
+        patch_path = self.temp_dir_path / 'test.patch'
         # test
-        new_patch_path = Patcher.create_patch(
-            src_path=self.old_archive_path, dst_path=self.new_archive_path
+        dst_fingerprint = Patcher.diff_and_hash(
+            src_path=self.targz_paths[src],
+            dst_path=self.targz_paths[dst],
+            patch_path=patch_path,
         )
-        self.assertTrue(new_patch_path.exists())
-        self.assertEqual(self.new_patch_data, new_patch_path.read_bytes())
+        self.assertTrue(patch_path.exists())
+        self.assertEqual(self.patch_content[dst], patch_path.read_bytes())
+        self.assertEqual(self.tar_fingerprints[dst], dst_fingerprint)
 
-    def test_apply_patch(self):
-        # remove existing "new archive" file, just to be sure
-        self.new_archive_path.unlink()
+    def test_patch_and_verify(self):
+        # prepare
+        src = 'v-1'
+        dst = 'v-3'  # note we're skipping v-2
+        patch_targets = dict()
+        for key, patch_path in self.patch_paths.items():
+            patch_meta = TargetMeta(
+                target_path=patch_path, custom=self.tar_fingerprints[key]
+            )
+            patch_targets[patch_meta] = patch_path
+        # verify that we're applying two patches cumulatively
+        self.assertEqual(2, len(patch_targets))
         # test
-        new_archive_path = Patcher.apply_patch(
-            src_path=self.old_archive_path, patch_path=self.new_patch_path
+        dst_path = self.temp_dir_path / 'reconstructed.tar.gz'
+        Patcher.patch_and_verify(
+            src_path=self.targz_paths[src],
+            dst_path=dst_path,
+            patch_targets=patch_targets,
         )
-        self.assertTrue(new_archive_path.exists())
-        self.assertEqual(self.new_archive_data, new_archive_path.read_bytes())
+        self.assertTrue(dst_path.exists())
+        # note that gzip compressed files are not reproducible by default (even when
+        # using identical uncompressed data), so we must compare the uncompressed data
+        with (
+            gzip.open(self.targz_paths[dst], mode='rb') as original_tar,
+            gzip.open(dst_path, mode='rb') as reconstructed_tar,
+        ):
+            self.assertEqual(original_tar.read(), reconstructed_tar.read())

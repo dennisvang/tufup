@@ -768,12 +768,13 @@ class Repository(object):
                 src_path = self.targets_dir / latest_archive.path
                 dst_path = self.targets_dir / new_archive.path
                 patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
+                # create patch
                 dst_size_and_hash = Patcher.diff_and_hash(
                     src_path=src_path, dst_path=dst_path, patch_path=patch_path
                 )
+                # register patch (size and hash are used by the client to verify the
+                # integrity of the patched archive)
                 self.roles.add_or_update_target(
-                    # size and hash are used by the client to verify the integrity of
-                    # the patched archive
                     local_path=patch_path, custom=dst_size_and_hash
                 )
 
