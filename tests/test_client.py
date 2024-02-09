@@ -9,7 +9,6 @@ from unittest.mock import Mock, patch
 import packaging.version
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
-from tuf.api.exceptions import LengthOrHashMismatchError
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
