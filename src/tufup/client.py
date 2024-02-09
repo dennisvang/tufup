@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
 SUFFIX_FAILED = '.failed'
+# do full update if patch-size/full-size > MAX_SIZE_RATIO
+MAX_SIZE_RATIO = 0.8
 
 
 class Client(tuf.ngclient.Updater):
@@ -208,7 +210,9 @@ class Client(tuf.ngclient.Updater):
             # is not available, we must do a full update)
             self.new_targets = new_patches
             no_patches = total_patch_size == 0
-            patch_too_big = total_patch_size > self.new_archive_info.length
+            patch_too_big = (
+                total_patch_size / self.new_archive_info.length > MAX_SIZE_RATIO
+            )
             no_archive = not self.current_archive_local_path.exists()
             if not patch or no_patches or patch_too_big or no_archive or abort_patch:
                 # fall back on full update
