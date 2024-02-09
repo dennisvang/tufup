@@ -383,6 +383,7 @@ class Roles(Base):
             target_file_path=url_path, local_path=str(local_path)
         )
         if custom:
+            # todo: handle creation of patch metadata here?
             # todo: should we verify that custom is a dict?
             target_file_info.unrecognized_fields['custom'] = custom
         # note we assume self.targets has been initialized
