@@ -75,11 +75,11 @@ def in_(days: float) -> datetime:
 
 
 def make_gztar_archive(
-        src_dir: Union[pathlib.Path, str],
-        dst_dir: Union[pathlib.Path, str],
-        app_name: str,
-        version: str,
-        **kwargs,  # allowed kwargs are passed on to shutil.make_archive
+    src_dir: Union[pathlib.Path, str],
+    dst_dir: Union[pathlib.Path, str],
+    app_name: str,
+    version: str,
+    **kwargs,  # allowed kwargs are passed on to shutil.make_archive
 ) -> Optional[TargetMeta]:
     # remove disallowed kwargs
     for key in ['base_name', 'root_dir', 'format']:
@@ -151,11 +151,11 @@ class Keys(Base):
     filename_pattern = '{key_name}'
 
     def __init__(
-            self,
-            dir_path: Union[pathlib.Path, str, None] = None,
-            encrypted: Optional[List[str]] = None,
-            key_map: Optional[RolesDict] = None,
-            thresholds: Optional[RolesDict] = None,
+        self,
+        dir_path: Union[pathlib.Path, str, None] = None,
+        encrypted: Optional[List[str]] = None,
+        key_map: Optional[RolesDict] = None,
+        thresholds: Optional[RolesDict] = None,
     ):
         if dir_path is None:
             dir_path = pathlib.Path.cwd() / DEFAULT_KEYS_DIR_NAME
@@ -211,7 +211,7 @@ class Keys(Base):
 
     @staticmethod
     def create_key_pair(
-            private_key_path: pathlib.Path, encrypted: bool
+        private_key_path: pathlib.Path, encrypted: bool
     ) -> pathlib.Path:
         if encrypted:
             # encrypt private key
@@ -261,7 +261,7 @@ class Keys(Base):
 
     @classmethod
     def find_private_key(
-            cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]
+        cls, key_name: str, key_dirs: List[Union[pathlib.Path, str]]
     ) -> Optional[pathlib.Path]:
         """
         recursively search key_dirs for a private key with specified key_name
@@ -367,10 +367,10 @@ class Roles(Base):
                 )
 
     def add_or_update_target(
-            self,
-            local_path: Union[pathlib.Path, str],
-            url_path_segments: Optional[List[str]] = None,
-            custom: Optional[dict] = None,
+        self,
+        local_path: Union[pathlib.Path, str],
+        url_path_segments: Optional[List[str]] = None,
+        custom: Optional[dict] = None,
     ):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
@@ -512,15 +512,15 @@ class Repository(object):
     config_filename = '.tufup-repo-config'
 
     def __init__(
-            self,
-            app_name: str,
-            app_version_attr: Optional[str] = None,
-            repo_dir: Union[pathlib.Path, str, None] = None,
-            keys_dir: Union[pathlib.Path, str, None] = None,
-            key_map: Optional[RolesDict] = None,
-            encrypted_keys: Optional[List[str]] = None,
-            expiration_days: Optional[RolesDict] = None,
-            thresholds: Optional[RolesDict] = None,
+        self,
+        app_name: str,
+        app_version_attr: Optional[str] = None,
+        repo_dir: Union[pathlib.Path, str, None] = None,
+        keys_dir: Union[pathlib.Path, str, None] = None,
+        key_map: Optional[RolesDict] = None,
+        encrypted_keys: Optional[List[str]] = None,
+        expiration_days: Optional[RolesDict] = None,
+        thresholds: Optional[RolesDict] = None,
     ):
         if repo_dir is None:
             repo_dir = DEFAULT_REPO_DIR_NAME
@@ -658,10 +658,10 @@ class Repository(object):
         self.roles.set_expiration_date(role_name=role_name, days=days)
 
     def replace_key(
-            self,
-            old_key_name: str,
-            new_public_key_path: Union[pathlib.Path, str],
-            new_private_key_encrypted: bool,
+        self,
+        old_key_name: str,
+        new_public_key_path: Union[pathlib.Path, str],
+        new_private_key_encrypted: bool,
     ):
         """
         Replace an existing key by a new one, e.g. after a key compromise.
@@ -701,10 +701,10 @@ class Repository(object):
                 )
 
     def add_key(
-            self,
-            role_name: str,
-            public_key_path: Union[pathlib.Path, str],
-            encrypted: bool,
+        self,
+        role_name: str,
+        public_key_path: Union[pathlib.Path, str],
+        encrypted: bool,
     ):
         """
         Register a new public key for the specified role.
@@ -724,11 +724,11 @@ class Repository(object):
             self.encrypted_keys.append(key_name)
 
     def add_bundle(
-            self,
-            new_bundle_dir: Union[pathlib.Path, str],
-            new_version: Optional[str] = None,
-            skip_patch: bool = False,
-            custom_metadata: Optional[dict] = None,  # archive only
+        self,
+        new_bundle_dir: Union[pathlib.Path, str],
+        new_version: Optional[str] = None,
+        skip_patch: bool = False,
+        custom_metadata: Optional[dict] = None,  # archive only
     ):
         """
         Adds a new application bundle to the local repository.
@@ -879,9 +879,9 @@ class Repository(object):
             logger.info('Config file updated.')
 
     def threshold_sign(
-            self,
-            role_name: str,
-            private_key_dirs: List[Union[pathlib.Path, str]],
+        self,
+        role_name: str,
+        private_key_dirs: List[Union[pathlib.Path, str]],
     ) -> int:
         """
         Sign the metadata file for a specific role, and save changes to disk.
