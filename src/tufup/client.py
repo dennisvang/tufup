@@ -13,7 +13,7 @@ from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
-from tufup.common import TargetMeta
+from tufup.common import Patcher, TargetMeta
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
@@ -251,32 +251,28 @@ class Client(tuf.ngclient.Updater):
         Note this has a side-effect: if self.extract_dir is not specified,
         an extract_dir is created in a platform-specific temporary location.
         """
-        # patch current archive (if we have patches) or use new full archive
-        archive_bytes = None
-        file_path = None
-        target = None
+        # either patch the current archive (if we have patches) or use new full archive
         try:
-            # todo: replace this by new Patcher.patch() etc.
-            for target, file_path in sorted(self.downloaded_target_files.items()):
-                # there are two options: either we get exactly one single archive,
-                # or we get one or more patches
-                if target.is_archive:
-                    # just ensure the full archive file is available
-                    assert len(self.downloaded_target_files) == 1, 'too many targets'
-                    assert self.new_archive_local_path.exists(), 'new archive missing'
-                elif target.is_patch:
-                    # create new archive by patching current archive (patches
-                    # must be sorted by increasing version)
-                    if archive_bytes is None:
-                        archive_bytes = self.current_archive_local_path.read_bytes()
-                    archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
-            if archive_bytes:
-                # verify the patched archive length and hash
-                self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
-                # write the patched new archive
-                self.new_archive_local_path.write_bytes(archive_bytes)
+            if next(iter(self.downloaded_target_files.keys())).is_archive:
+                # full archive is available
+                if len(self.downloaded_target_files) != 1:
+                    raise Exception('there should be only one downloaded *archive*')
+                if not self.new_archive_local_path.exists():
+                    raise Exception('the new archive file does not exist')
+            else:
+                # reconstruct full archive from patch(es)
+                if not all(
+                    target.is_patch for target in self.downloaded_target_files.keys()
+                ):
+                    raise Exception('all downloaded targets must be patches')
+                Patcher.patch_and_verify(
+                    src_path=self.current_archive_local_path,
+                    dst_path=self.new_archive_local_path,
+                    patch_targets=self.downloaded_target_files,
+                )
         except Exception as e:
-            if target and file_path and file_path.exists():
+            # rename failed archive or patches in order to skip them on the next run
+            for target, file_path in self.downloaded_target_files.items():
                 renamed_path = file_path.replace(
                     file_path.with_suffix(file_path.suffix + SUFFIX_FAILED)
                 )

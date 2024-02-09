@@ -3,7 +3,7 @@ import hashlib
 import logging
 import pathlib
 import re
-from typing import List, Optional, Union
+from typing import Dict, Optional, Tuple, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
@@ -160,23 +160,44 @@ class Patcher(object):
     DEFAULT_HASH_ALGORITHM = 'sha256'
 
     @staticmethod
-    def get_size_and_hash(
-        archive_path: pathlib.Path, algorithm: str = DEFAULT_HASH_ALGORITHM
+    def get_tar_size_and_hash(
+        tar_content: Optional[bytes] = None,
+        gztar_path: Optional[pathlib.Path] = None,
+        algorithm: str = DEFAULT_HASH_ALGORITHM,
     ) -> dict:
         """
-        note we could also use tuf.api.metadata.TargetFile for this, but that we'll
-        keep this part independent from tuf, for clarity and flexibility
+        Determines the size and hash of the specified data.
+
+        Accepts either raw .tar bytes or a path to a .tar.gz file.
+
+        Note we could also use tuf.api.metadata.TargetFile for this, but that we'll
+        keep this part independent from python-tuf, for clarity and flexibility.
         """
         hash_obj = getattr(hashlib, algorithm)()
-        with gzip.open(archive_path, mode='rb') as archive_file:
-            tar_bytes = archive_file.read()
-        hash_obj.update(tar_bytes)
+        if gztar_path:
+            with gzip.open(gztar_path, mode='rb') as tar_file:
+                tar_content = tar_file.read()
+        hash_obj.update(tar_content)
         # hexdigest returns digest as string
-        return dict(size=len(tar_bytes), hash=[algorithm, hash_obj.hexdigest()])
+        return dict(
+            tar_size=len(tar_content),
+            tar_hash=hash_obj.hexdigest(),
+            tar_hash_algorithm=algorithm,
+        )
 
-    @staticmethod
-    def verify_size_and_hash():
-        ...
+    @classmethod
+    def verify_tar_size_and_hash(cls, tar_content: bytes, expected: dict):
+        """
+        Verifies that size and hash of data match the expected values.
+
+        Raises an exception if this is not the case.
+        """
+        result = cls.get_tar_size_and_hash(
+            tar_content=tar_content, algorithm=expected['tar_hash_algorithm']
+        )
+        for key in ['tar_size', 'tar_hash']:
+            if result[key] != expected[key]:
+                raise Exception(f'verification failed: {key} mismatch')
 
     @staticmethod
     def diff(
@@ -195,25 +216,37 @@ class Patcher(object):
                 bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_file.read())
             )
 
-    @staticmethod
-    def patch(
-        src_path: pathlib.Path, dst_path: pathlib.Path, patch_paths: List[pathlib.Path]
+    @classmethod
+    def patch_and_verify(
+        cls,
+        src_path: pathlib.Path,
+        dst_path: pathlib.Path,
+        patch_targets: Dict[TargetMeta, pathlib.Path],
     ) -> None:
         """
         Apply one or more binary patch files to source file to create destination file.
 
-        Patch paths *must* be sorted by version (ascending).
-
         Source file and destination file are gzip-compressed tar archives, but the
-        patches are applied to the *uncompressed* tar archives.
+        patches are applied to the *uncompressed* tar archives. The reason is that
+        small changes in uncompressed data can cause (very) large differences in
+        gzip compressed data, leading to excessively large patch files (see #69).
+
+        The integrity of the patched .tar archive is verified using expected length
+        and hash (from custom tuf metadata), similar to python-tuf's download
+        verification.
         """
         # decompress .tar data from source .tar.gz file
         with gzip.open(src_path, mode='rb') as src_file:
             tar_bytes = src_file.read()
-        # apply cumulative patches
-        for patch_path in patch_paths:
+        # apply cumulative patches (sorted by version, in ascending order)
+        for patch_meta, patch_path in sorted(patch_targets.items()):
+            logger.info(f'applying patch: {patch_meta.name}')
             tar_bytes = bsdiff4.patch(
                 src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
+            )
+            # verify integrity (raises exception on failure)
+            cls.verify_tar_size_and_hash(
+                tar_content=tar_bytes, expected=patch_meta.custom
             )
         # compress .tar data into destination .tar.gz file
         with gzip.open(dst_path, mode='wb') as dst_file:
