@@ -233,8 +233,11 @@ class Patcher(object):
 
         The integrity of the patched .tar archive is verified using expected length
         and hash (from custom tuf metadata), similar to python-tuf's download
-        verification.
+        verification. If the patched archive fails this check, the destination file
+        is not written.
         """
+        if not patch_targets:
+            raise ValueError('no patch targets')
         # decompress .tar data from source .tar.gz file
         with gzip.open(src_path, mode='rb') as src_file:
             tar_bytes = src_file.read()
@@ -244,10 +247,10 @@ class Patcher(object):
             tar_bytes = bsdiff4.patch(
                 src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
             )
-            # verify integrity (raises exception on failure)
-            cls.verify_tar_size_and_hash(
-                tar_content=tar_bytes, expected=patch_meta.custom
-            )
+        # verify integrity of the final result (raises exception on failure)
+        cls.verify_tar_size_and_hash(
+            tar_content=tar_bytes, expected=patch_meta.custom  # noqa
+        )
         # compress .tar data into destination .tar.gz file
         with gzip.open(dst_path, mode='wb') as dst_file:
             dst_file.write(tar_bytes)

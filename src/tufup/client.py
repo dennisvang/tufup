@@ -256,22 +256,23 @@ class Client(tuf.ngclient.Updater):
             if next(iter(self.downloaded_target_files.keys())).is_archive:
                 # full archive is available
                 if len(self.downloaded_target_files) != 1:
-                    raise Exception('there should be only one downloaded *archive*')
+                    raise ValueError('there should be only one downloaded *archive*')
                 if not self.new_archive_local_path.exists():
-                    raise Exception('the new archive file does not exist')
+                    raise FileNotFoundError('the new archive file does not exist')
             else:
                 # reconstruct full archive from patch(es)
                 if not all(
                     target.is_patch for target in self.downloaded_target_files.keys()
                 ):
-                    raise Exception('all downloaded targets must be patches')
+                    raise ValueError('all downloaded targets must be patches')
                 Patcher.patch_and_verify(
                     src_path=self.current_archive_local_path,
                     dst_path=self.new_archive_local_path,
                     patch_targets=self.downloaded_target_files,
                 )
         except Exception as e:
-            # rename failed archive or patches in order to skip them on the next run
+            # rename all failed targets in order to skip them (patches) or retry
+            # them (archive) on the next run
             for target, file_path in self.downloaded_target_files.items():
                 renamed_path = file_path.replace(
                     file_path.with_suffix(file_path.suffix + SUFFIX_FAILED)
