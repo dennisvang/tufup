@@ -161,22 +161,15 @@ class Patcher(object):
 
     @staticmethod
     def get_tar_size_and_hash(
-        tar_content: Optional[bytes] = None,
-        gztar_path: Optional[pathlib.Path] = None,
-        algorithm: str = DEFAULT_HASH_ALGORITHM,
+        tar_content: Optional[bytes] = None, algorithm: str = DEFAULT_HASH_ALGORITHM
     ) -> dict:
         """
         Determines the size and hash of the specified data.
-
-        Accepts either raw .tar bytes or a path to a .tar.gz file.
 
         Note we could also use tuf.api.metadata.TargetFile for this, but that we'll
         keep this part independent from python-tuf, for clarity and flexibility.
         """
         hash_obj = getattr(hashlib, algorithm)()
-        if gztar_path:
-            with gzip.open(gztar_path, mode='rb') as tar_file:
-                tar_content = tar_file.read()
         hash_obj.update(tar_content)
         # hexdigest returns digest as string
         return dict(
@@ -199,22 +192,26 @@ class Patcher(object):
             if result[key] != expected[key]:
                 raise Exception(f'verification failed: {key} mismatch')
 
-    @staticmethod
-    def diff(
-        src_path: pathlib.Path, dst_path: pathlib.Path, patch_path: pathlib.Path
-    ) -> None:
+    @classmethod
+    def diff_and_hash(
+        cls, src_path: pathlib.Path, dst_path: pathlib.Path, patch_path: pathlib.Path
+    ) -> dict:
         """
-        Create a patch file from the binary difference between source and destination
+        Creates a patch file from the binary difference between source and destination
         .tar archives. The source and destination files are expected to be
-        gzip-compressed (.tar.gz).
+        gzip-compressed tar archives (.tar.gz).
+
+        Returns a dict with size and hash of the *uncompressed* destination archive.
         """
         with (
             gzip.open(src_path, mode='rb') as src_file,
             gzip.open(dst_path, mode='rb') as dst_file,
         ):
+            dst_tar_content = dst_file.read()
             patch_path.write_bytes(
-                bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_file.read())
+                bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
             )
+        return cls.get_tar_size_and_hash(tar_content=dst_tar_content)
 
     @classmethod
     def patch_and_verify(
@@ -224,7 +221,8 @@ class Patcher(object):
         patch_targets: Dict[TargetMeta, pathlib.Path],
     ) -> None:
         """
-        Apply one or more binary patch files to source file to create destination file.
+        Applies one or more binary patch files to a source file in order to
+        reconstruct a destination file.
 
         Source file and destination file are gzip-compressed tar archives, but the
         patches are applied to the *uncompressed* tar archives. The reason is that
