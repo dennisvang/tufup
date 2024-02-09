@@ -7,7 +7,6 @@ import tempfile
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
-import bsdiff4
 import requests
 from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError

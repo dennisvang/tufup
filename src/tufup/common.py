@@ -3,7 +3,7 @@ import hashlib
 import logging
 import pathlib
 import re
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
@@ -247,7 +247,8 @@ class Patcher(object):
             )
         # verify integrity of the final result (raises exception on failure)
         cls._verify_tar_size_and_hash(
-            tar_content=tar_bytes, expected=patch_meta.custom  # noqa
+            tar_content=tar_bytes,
+            expected=patch_meta.custom,  # noqa
         )
         # compress .tar data into destination .tar.gz file
         with gzip.open(dst_path, mode='wb') as dst_file:
