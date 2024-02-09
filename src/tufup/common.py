@@ -160,7 +160,7 @@ class Patcher(object):
     DEFAULT_HASH_ALGORITHM = 'sha256'
 
     @staticmethod
-    def get_tar_size_and_hash(
+    def _get_tar_size_and_hash(
         tar_content: Optional[bytes] = None, algorithm: str = DEFAULT_HASH_ALGORITHM
     ) -> dict:
         """
@@ -179,13 +179,13 @@ class Patcher(object):
         )
 
     @classmethod
-    def verify_tar_size_and_hash(cls, tar_content: bytes, expected: dict):
+    def _verify_tar_size_and_hash(cls, tar_content: bytes, expected: dict):
         """
         Verifies that size and hash of data match the expected values.
 
         Raises an exception if this is not the case.
         """
-        result = cls.get_tar_size_and_hash(
+        result = cls._get_tar_size_and_hash(
             tar_content=tar_content, algorithm=expected['tar_hash_algorithm']
         )
         for key in ['tar_size', 'tar_hash']:
@@ -211,7 +211,7 @@ class Patcher(object):
             patch_path.write_bytes(
                 bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
             )
-        return cls.get_tar_size_and_hash(tar_content=dst_tar_content)
+        return cls._get_tar_size_and_hash(tar_content=dst_tar_content)
 
     @classmethod
     def patch_and_verify(
@@ -246,7 +246,7 @@ class Patcher(object):
                 src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
             )
         # verify integrity of the final result (raises exception on failure)
-        cls.verify_tar_size_and_hash(
+        cls._verify_tar_size_and_hash(
             tar_content=tar_bytes, expected=patch_meta.custom  # noqa
         )
         # compress .tar data into destination .tar.gz file
