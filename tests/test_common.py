@@ -218,6 +218,7 @@ class PatcherTests(TempDirTestCase):
             patch_meta = TargetMeta(
                 target_path=patch_path, custom=self.tar_fingerprints[key]
             )
+            self.assertTrue(patch_meta.is_patch)  # just to be sure
             patch_targets[patch_meta] = patch_path
         # verify that we're applying two patches cumulatively
         self.assertEqual(2, len(patch_targets))
