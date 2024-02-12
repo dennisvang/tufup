@@ -105,9 +105,10 @@ def make_gztar_archive(
         if input(f'Found existing archive: {archive_path}.\nOverwrite? [n]/y') != 'y':
             print('Using existing archive.')
             return TargetMeta(archive_path)
-    # make gzipped tar archive
+    # Make gzipped tar archive. Note that TarFile.add() sorts members by filename, see:
+    # https://github.com/python/cpython/blob/64c9fcc8930f927f5fa903b9d6d442af85a101d1/Lib/tarfile.py#L2162
     with tarfile.open(archive_path, mode='w:gz', format=tar_format) as tar:
-        # filter could be used in future versions to modify the tarinfo objects
+        # the filter arg could be used in future versions to modify the tarinfo objects
         tar.add(name=src_dir, arcname='.', recursive=True, filter=None)
     return TargetMeta(target_path=archive_path)
 
