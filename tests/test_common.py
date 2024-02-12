@@ -232,8 +232,6 @@ class PatcherTests(TempDirTestCase):
         self.assertTrue(dst_path.exists())
         # note that gzip compressed files are not reproducible by default (even when
         # using identical uncompressed data), so we must compare the uncompressed data
-        with (
-            gzip.open(self.targz_paths[dst], mode='rb') as original_tar,
-            gzip.open(dst_path, mode='rb') as reconstructed_tar,
-        ):
-            self.assertEqual(original_tar.read(), reconstructed_tar.read())
+        with gzip.open(self.targz_paths[dst], mode='rb') as original_tar:
+            with gzip.open(dst_path, mode='rb') as reconstructed_tar:
+                self.assertEqual(original_tar.read(), reconstructed_tar.read())

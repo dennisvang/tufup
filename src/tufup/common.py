@@ -203,14 +203,12 @@ class Patcher(object):
 
         Returns a dict with size and hash of the *uncompressed* destination archive.
         """
-        with (
-            gzip.open(src_path, mode='rb') as src_file,
-            gzip.open(dst_path, mode='rb') as dst_file,
-        ):
-            dst_tar_content = dst_file.read()
-            patch_path.write_bytes(
-                bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
-            )
+        with gzip.open(src_path, mode='rb') as src_file:
+            with gzip.open(dst_path, mode='rb') as dst_file:
+                dst_tar_content = dst_file.read()
+                patch_path.write_bytes(
+                    bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
+                )
         return cls._get_tar_size_and_hash(tar_content=dst_tar_content)
 
     @classmethod
