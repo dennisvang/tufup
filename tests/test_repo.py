@@ -1,4 +1,5 @@
 import copy
+import tarfile
 from datetime import date, datetime, timedelta
 import json
 import logging
@@ -96,8 +97,7 @@ class ModuleTests(TempDirTestCase):
                     dst_dir=self.temp_dir_path,
                     app_name=app_name,
                     version=version,
-                    base_dir='.',  # this kwarg is allowed
-                    root_dir='some path',  # this kwarg is removed
+                    tar_format=tarfile.USTAR_FORMAT,
                 )
             self.assertIsInstance(archive, TargetMeta)
             self.assertEqual(exists, mock_input_no.called)

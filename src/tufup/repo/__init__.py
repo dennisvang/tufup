@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from datetime import datetime, timedelta
 import inspect
@@ -11,6 +12,9 @@ try:
 except AssertionError:
     pass  # assuming we are on the client side...
 import shutil
+import subprocess
+import tarfile
+import time
 from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 
 from securesystemslib.exceptions import CryptoError
@@ -79,12 +83,19 @@ def make_gztar_archive(
     dst_dir: Union[pathlib.Path, str],
     app_name: str,
     version: str,
-    **kwargs,  # allowed kwargs are passed on to shutil.make_archive
+    tar_format: int = tarfile.PAX_FORMAT,
 ) -> Optional[TargetMeta]:
-    # remove disallowed kwargs
-    for key in ['base_name', 'root_dir', 'format']:
-        if kwargs.pop(key, None):
-            logger.warning(f'{key} ignored: using default')
+    """
+    Create a gzipped tar archive in the dst_dir, based on content of src_dir.
+
+    The PAX_FORMAT is currently the default tar format [1] used by the tarfile
+    module. For improved portability [2] and reproducibility [3], this can be changed
+    e.g. to USTAR_FORMAT.
+
+    [1]: https://www.gnu.org/software/tar/manual/html_node/Formats.html#Formats
+    [2]: https://www.gnu.org/software/tar/manual/html_node/Portability.html#Portability
+    [3]: https://www.gnu.org/software/tar/manual/html_node/Reproducibility.html#Reproducibility
+    """
     # ensure paths
     src_dir = pathlib.Path(src_dir)
     dst_dir = pathlib.Path(dst_dir)
@@ -97,15 +108,11 @@ def make_gztar_archive(
         if input(f'Found existing archive: {archive_path}.\nOverwrite? [n]/y') != 'y':
             print('Using existing archive.')
             return TargetMeta(archive_path)
-    # make archive
-    base_name = str(dst_dir / archive_filename.replace(SUFFIX_ARCHIVE, ''))
-    archive_path_str = shutil.make_archive(
-        base_name=base_name,  # archive file path, no suffix
-        root_dir=str(src_dir),  # paths in archive will be relative to root_dir
-        format='gztar',
-        **kwargs,
-    )
-    return TargetMeta(target_path=archive_path_str)
+    # make gzipped tar archive
+    with tarfile.open(archive_path, mode='w:gz', format=tar_format) as tar:
+        # filter could be used in future versions to modify the tarinfo objects
+        tar.add(name=src_dir, arcname='.', recursive=True, filter=None)
+    return TargetMeta(target_path=archive_path)
 
 
 class RolesDict(TypedDict):
