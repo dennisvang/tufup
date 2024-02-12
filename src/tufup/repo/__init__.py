@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from datetime import datetime, timedelta
 import inspect
@@ -12,9 +11,7 @@ try:
 except AssertionError:
     pass  # assuming we are on the client side...
 import shutil
-import subprocess
 import tarfile
-import time
 from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union
 
 from securesystemslib.exceptions import CryptoError
@@ -41,7 +38,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from tufup.common import Patcher, SUFFIX_ARCHIVE, SUFFIX_PATCH, TargetMeta
+from tufup.common import Patcher, SUFFIX_PATCH, TargetMeta
 from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
