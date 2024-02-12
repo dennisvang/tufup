@@ -9,10 +9,10 @@ from unittest.mock import Mock, patch
 import packaging.version
 from requests.auth import HTTPBasicAuth
 import tuf.api.exceptions
-from tuf.api.exceptions import LengthOrHashMismatchError
 from tuf.ngclient import TargetFile
 
 from tests import TempDirTestCase, TEST_REPO_DIR
+import tufup.client
 from tufup.client import AuthRequestsFetcher, Client, SUFFIX_FAILED
 from tufup.common import TargetMeta
 
@@ -98,15 +98,19 @@ class ClientTests(TempDirTestCase):
     def test_trusted_target_metas(self):
         client = self.get_refreshed_client()
         self.assertTrue(client.trusted_target_metas)
-        # in the test data, only the archives have custom metadata, as defined in
-        # the repo_workflow_example.py script
+        # The archives have custom metadata from the user, as defined in the
+        # repo_workflow_example.py script. The patches have custom metadata for .tar
+        # integrity check (internal).
         for meta in client.trusted_target_metas:
             with self.subTest(msg=meta):
-                if meta.is_archive and str(meta.version) != '1.0':
-                    self.assertTrue(meta.custom)
-                    self.assertIsInstance(meta.custom, dict)
-                else:
-                    self.assertIsNone(meta.custom)
+                if str(meta.version) != '1.0':
+                    if meta.is_archive:
+                        self.assertTrue(meta.custom)
+                        example_key = 'changes'  # see repo workflow example
+                        self.assertIn(example_key, meta.custom)
+                    else:
+                        # patches must have tar hash information
+                        self.assertIn('tar_hash', meta.custom)
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()
@@ -254,9 +258,9 @@ class ClientTests(TempDirTestCase):
         with self.subTest(msg='patch failure due to mismatch'):
             mock_install = Mock()
             with patch.object(
-                client.new_archive_info,
-                'verify_length_and_hashes',
-                Mock(side_effect=LengthOrHashMismatchError()),
+                tufup.client.Patcher,
+                '_verify_tar_size_and_hash',
+                Mock(side_effect=Exception()),
             ):
                 client._apply_updates(install=mock_install, skip_confirmation=True)
             mock_install.assert_not_called()

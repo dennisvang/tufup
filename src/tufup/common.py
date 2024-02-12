@@ -1,7 +1,9 @@
+import gzip
+import hashlib
 import logging
 import pathlib
 import re
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
@@ -155,27 +157,97 @@ class TargetMeta(object):
 
 
 class Patcher(object):
+    DEFAULT_HASH_ALGORITHM = 'sha256'
+
+    @staticmethod
+    def _get_tar_size_and_hash(
+        tar_content: Optional[bytes] = None, algorithm: str = DEFAULT_HASH_ALGORITHM
+    ) -> dict:
+        """
+        Determines the size and hash of the specified data.
+
+        Note we could also use tuf.api.metadata.TargetFile for this, but that we'll
+        keep this part independent from python-tuf, for clarity and flexibility.
+        """
+        hash_obj = getattr(hashlib, algorithm)()
+        hash_obj.update(tar_content)
+        # hexdigest returns digest as string
+        return dict(
+            tar_size=len(tar_content),
+            tar_hash=hash_obj.hexdigest(),
+            tar_hash_algorithm=algorithm,
+        )
+
     @classmethod
-    def create_patch(
-        cls, src_path: pathlib.Path, dst_path: pathlib.Path
-    ) -> pathlib.Path:
+    def _verify_tar_size_and_hash(cls, tar_content: bytes, expected: dict):
         """
-        Create a binary patch file based on source and destination files.
+        Verifies that size and hash of data match the expected values.
 
-        Patch file path matches destination file path, except for suffix.
+        Raises an exception if this is not the case.
         """
-        # replace suffix twice, in case we have a .tar.gz
-        patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
-        bsdiff4.file_diff(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
-        return patch_path
+        result = cls._get_tar_size_and_hash(
+            tar_content=tar_content, algorithm=expected['tar_hash_algorithm']
+        )
+        for key in ['tar_size', 'tar_hash']:
+            if result[key] != expected[key]:
+                raise Exception(f'verification failed: {key} mismatch')
 
     @classmethod
-    def apply_patch(cls, src_path: pathlib.Path, patch_path: pathlib.Path):
+    def diff_and_hash(
+        cls, src_path: pathlib.Path, dst_path: pathlib.Path, patch_path: pathlib.Path
+    ) -> dict:
         """
-        Apply binary patch file to source file to create destination file.
+        Creates a patch file from the binary difference between source and destination
+        .tar archives. The source and destination files are expected to be
+        gzip-compressed tar archives (.tar.gz).
 
-        Destination file path matches patch file path, except for suffix.
+        Returns a dict with size and hash of the *uncompressed* destination archive.
         """
-        dst_path = patch_path.with_suffix(SUFFIX_ARCHIVE)
-        bsdiff4.file_patch(src_path=src_path, dst_path=dst_path, patch_path=patch_path)
-        return dst_path
+        with gzip.open(src_path, mode='rb') as src_file:
+            with gzip.open(dst_path, mode='rb') as dst_file:
+                dst_tar_content = dst_file.read()
+                patch_path.write_bytes(
+                    bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
+                )
+        return cls._get_tar_size_and_hash(tar_content=dst_tar_content)
+
+    @classmethod
+    def patch_and_verify(
+        cls,
+        src_path: pathlib.Path,
+        dst_path: pathlib.Path,
+        patch_targets: Dict[TargetMeta, pathlib.Path],
+    ) -> None:
+        """
+        Applies one or more binary patch files to a source file in order to
+        reconstruct a destination file.
+
+        Source file and destination file are gzip-compressed tar archives, but the
+        patches are applied to the *uncompressed* tar archives. The reason is that
+        small changes in uncompressed data can cause (very) large differences in
+        gzip compressed data, leading to excessively large patch files (see #69).
+
+        The integrity of the patched .tar archive is verified using expected length
+        and hash (from custom tuf metadata), similar to python-tuf's download
+        verification. If the patched archive fails this check, the destination file
+        is not written.
+        """
+        if not patch_targets:
+            raise ValueError('no patch targets')
+        # decompress .tar data from source .tar.gz file
+        with gzip.open(src_path, mode='rb') as src_file:
+            tar_bytes = src_file.read()
+        # apply cumulative patches (sorted by version, in ascending order)
+        for patch_meta, patch_path in sorted(patch_targets.items()):
+            logger.info(f'applying patch: {patch_meta.name}')
+            tar_bytes = bsdiff4.patch(
+                src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
+            )
+        # verify integrity of the final result (raises exception on failure)
+        cls._verify_tar_size_and_hash(
+            tar_content=tar_bytes,
+            expected=patch_meta.custom,  # noqa
+        )
+        # compress .tar data into destination .tar.gz file
+        with gzip.open(dst_path, mode='wb') as dst_file:
+            dst_file.write(tar_bytes)

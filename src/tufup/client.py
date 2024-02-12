@@ -7,19 +7,20 @@ import tempfile
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib import parse
 
-import bsdiff4
 import requests
 from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
-from tufup.common import TargetMeta
+from tufup.common import Patcher, TargetMeta
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_EXTRACT_DIR = pathlib.Path(tempfile.gettempdir()) / 'tufup'
 SUFFIX_FAILED = '.failed'
+# do full update if patch-size/full-size > MAX_SIZE_RATIO
+MAX_SIZE_RATIO = 0.8
 
 
 class Client(tuf.ngclient.Updater):
@@ -209,7 +210,9 @@ class Client(tuf.ngclient.Updater):
             # is not available, we must do a full update)
             self.new_targets = new_patches
             no_patches = total_patch_size == 0
-            patch_too_big = total_patch_size > self.new_archive_info.length
+            patch_too_big = (
+                total_patch_size / self.new_archive_info.length > MAX_SIZE_RATIO
+            )
             no_archive = not self.current_archive_local_path.exists()
             if not patch or no_patches or patch_too_big or no_archive or abort_patch:
                 # fall back on full update
@@ -251,29 +254,29 @@ class Client(tuf.ngclient.Updater):
         Note this has a side-effect: if self.extract_dir is not specified,
         an extract_dir is created in a platform-specific temporary location.
         """
-        # patch current archive (if we have patches) or use new full archive
-        archive_bytes = None
-        file_path = None
-        target = None
+        # either patch the current archive (if we have patches) or use new full archive
         try:
-            for target, file_path in sorted(self.downloaded_target_files.items()):
-                if target.is_archive:
-                    # just ensure the full archive file is available
-                    assert len(self.downloaded_target_files) == 1, 'too many targets'
-                    assert self.new_archive_local_path.exists(), 'new archive missing'
-                elif target.is_patch:
-                    # create new archive by patching current archive (patches
-                    # must be sorted by increasing version)
-                    if archive_bytes is None:
-                        archive_bytes = self.current_archive_local_path.read_bytes()
-                    archive_bytes = bsdiff4.patch(archive_bytes, file_path.read_bytes())
-            if archive_bytes:
-                # verify the patched archive length and hash
-                self.new_archive_info.verify_length_and_hashes(data=archive_bytes)
-                # write the patched new archive
-                self.new_archive_local_path.write_bytes(archive_bytes)
+            if next(iter(self.downloaded_target_files.keys())).is_archive:
+                # full archive is available
+                if len(self.downloaded_target_files) != 1:
+                    raise ValueError('there should be only one downloaded *archive*')
+                if not self.new_archive_local_path.exists():
+                    raise FileNotFoundError('the new archive file does not exist')
+            else:
+                # reconstruct full archive from patch(es)
+                if not all(
+                    target.is_patch for target in self.downloaded_target_files.keys()
+                ):
+                    raise ValueError('all downloaded targets must be patches')
+                Patcher.patch_and_verify(
+                    src_path=self.current_archive_local_path,
+                    dst_path=self.new_archive_local_path,
+                    patch_targets=self.downloaded_target_files,
+                )
         except Exception as e:
-            if target and file_path and file_path.exists():
+            # rename all failed targets in order to skip them (patches) or retry
+            # them (archive) on the next run
+            for target, file_path in self.downloaded_target_files.items():
                 renamed_path = file_path.replace(
                     file_path.with_suffix(file_path.suffix + SUFFIX_FAILED)
                 )

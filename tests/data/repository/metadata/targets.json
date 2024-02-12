@@ -2,12 +2,12 @@
  "signatures": [
   {
    "keyid": "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5",
-   "sig": "dbcc91a73275a2478489e491b3054328659ce5e7cdeeb7623fe41e745cbe585a0dc874e05d80a291c5658138549051a24d81f3fb61093b6133b5d3e8927e9e01"
+   "sig": "344b1c779103db5c8462508d7a5e72ef9ae8dea0c5fd303d55cace03a87fd67312ff5ca01fc2e377d7d0dcbbbf3f4dff378f5c9759801590340c0b9e3d23bc07"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2051-06-25T13:08:48Z",
+  "expires": "2051-06-27T21:21:13Z",
   "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
@@ -17,10 +17,15 @@
     "length": 101613
    },
    "example_app-2.0.patch": {
-    "hashes": {
-     "sha256": "f7ee90e00fa69d5832eeee193f9b6bb2d32ff028c413f47fbaf853b3d2add27f"
+    "custom": {
+     "tar_hash": "855c631eb1a8d756bbad8441b76b5452505d292a162b3d497a60877fee2140b5",
+     "tar_hash_algorithm": "sha256",
+     "tar_size": 112640
     },
-    "length": 18709
+    "hashes": {
+     "sha256": "f2be4504e464bd23c022772c7f3c011e0082295775a24e3fc986bb2504df0f53"
+    },
+    "length": 318
    },
    "example_app-2.0.tar.gz": {
     "custom": {
@@ -36,10 +41,15 @@
     "length": 101744
    },
    "example_app-3.0rc0.patch": {
-    "hashes": {
-     "sha256": "dcf2ce8ca9fc0ccc0e541fb0fca97a7772374177197a41fa4cf17653ef850956"
+    "custom": {
+     "tar_hash": "3cd260c121d05f4c6ed55b6e87569d3710e539e0a86e6fce98189ddca20c99f5",
+     "tar_hash_algorithm": "sha256",
+     "tar_size": 112640
     },
-    "length": 6458
+    "hashes": {
+     "sha256": "01fa6f30ac54fd405dfb5bd6e39f71af572c8e341675f5b2822b35ec341ce6f9"
+    },
+    "length": 323
    },
    "example_app-3.0rc0.tar.gz": {
     "custom": {
@@ -55,10 +65,15 @@
     "length": 101841
    },
    "example_app-4.0a0.patch": {
-    "hashes": {
-     "sha256": "0fc6918d6d0757e234fe550e26bca659503166da3d3f493ec6bdbb5281b356ce"
+    "custom": {
+     "tar_hash": "3d3efe43388f3bbae910af39232526ef624d1540cfbb69cf0d4c66b7d5dc4b45",
+     "tar_hash_algorithm": "sha256",
+     "tar_size": 112640
     },
-    "length": 102567
+    "hashes": {
+     "sha256": "e19ccd94e60d1d817dcc44c481f4fb48f54fa335cc0bd7a7e60377a4f6ccf2ea"
+    },
+    "length": 100988
    },
    "example_app-4.0a0.tar.gz": {
     "custom": {
