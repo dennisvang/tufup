@@ -115,7 +115,12 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
         None,  # working directory (default is cwd)
         1,  # show window normally
     )
-    return result > 32
+    success = result > 32
+    if not success:
+        logger.error(
+            f'failed to run batch script as admin (ShellExecuteW returned {result})'
+        )
+    return success
 
 
 def _install_update_win(
