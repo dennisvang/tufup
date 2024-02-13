@@ -111,7 +111,7 @@ def run_bat_as_admin(file_path: Union[pathlib.Path, str]):
         None,  # handle to parent window
         'runas',  # verb
         'cmd.exe',  # file on which verb acts
-        ' '.join(['/c', str(file_path)]),  # parameters
+        ' '.join(['/c', f'"{file_path}"']),  # parameters
         None,  # working directory (default is cwd)
         1,  # show window normally
     )
@@ -217,6 +217,7 @@ def _install_update_win(
     logger.debug(f'starting script in new console: {script_path}')
     # start the script in a separate process, non-blocking
     if as_admin:
+        logger.debug('as admin')
         run_bat_as_admin(file_path=script_path)
     else:
         # by default we create a new console with window, but user can override this
