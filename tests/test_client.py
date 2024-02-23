@@ -1,3 +1,5 @@
+import filecmp
+import gzip
 import logging
 import os
 import pathlib
@@ -207,6 +209,40 @@ class ClientTests(TempDirTestCase):
                 target_meta = next(iter(client.new_targets.keys()))
             self.assertTrue(target_meta.is_archive)
             self.assertIn('aborting', ''.join(logs.output))
+
+    def test_check_for_updates_after_patch(self):
+        """
+        Our patching process ensures that the reconstructed uncompressed .tar archive
+        is identical to the uncompressed original. However, the gzip compressed
+        archives are likely to be different (gzip output is not guaranteed to be
+        identical, between implementations, even for identical input). This means the
+        hash of a *reconstructed* .tar.gz file most likely does not match the hash of
+        the original .tar.gz file (as found in the tuf metadata). This test verifies
+        that the tuf target hash mismatch does not impede the patch update process.
+        """
+        client = self.get_refreshed_client()
+        # copy current compressed archive for reference
+        original_gz = client.current_archive_local_path.with_name('original.tar.gz')
+        shutil.copy(src=client.current_archive_local_path, dst=original_gz)
+        # decompress and recompress archive, as if it were reconstructed from patch
+        with gzip.open(original_gz, 'rb') as src:
+            with gzip.open(client.current_archive_local_path, 'wb') as dst:
+                dst.write(src.read())
+        # verify that the two .tar.gz files are indeed different (even though the
+        # uncompressed .tar content is identical)
+        self.assertFalse(
+            filecmp.cmp(original_gz, client.current_archive_local_path, shallow=False)
+        )
+        # test: even though the .tar.gz hash does not match the one in the tuf
+        # metadata, a patch update should be scheduled
+        with patch.object(client, 'refresh', Mock()):
+            archive_meta = client.check_for_updates()
+            # check_for_updates always returns *archive* meta (or None), even if the
+            # actual update is a *patch*
+            self.assertTrue(archive_meta)
+            # verify that the update is a *patch*
+            target_meta = next(iter(client.new_targets.keys()))
+            self.assertTrue(target_meta.is_patch)
 
     def test__download_updates(self):
         client = Client(**self.client_kwargs)
