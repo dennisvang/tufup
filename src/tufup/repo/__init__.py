@@ -38,7 +38,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from tufup.common import Patcher, SUFFIX_PATCH, TargetMeta
+from tufup.common import KEY_REQUIRED, Patcher, SUFFIX_PATCH, TargetMeta
 from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
@@ -735,6 +735,7 @@ class Repository(object):
         new_version: Optional[str] = None,
         skip_patch: bool = False,
         custom_metadata: Optional[dict] = None,  # archive only
+        required: bool = False,
     ):
         """
         Adds a new application bundle to the local repository.
@@ -744,9 +745,22 @@ class Repository(object):
         a patch file is also created and added to the repository, unless
         `skip_patch` is True.
 
+        If `required=True` (default is `False`), this release will always be
+        installed, even if newer releases are available. For example, suppose
+        an app is running at version 1.0, and version 2.0 is required, but version
+        3.0 is also available, then tufup will first update to version 2.0,
+        before updating to 3.0 on the next run.
+
         Note the changes are not published yet: call `publish_changes()` for
         that.
         """
+        if custom_metadata is None:
+            custom_metadata = dict()
+        if required:
+            # todo: probably better to separate tufup's internal custom metadata from
+            #  user-specified custom_metadata, e.g. using nested dicts, as in
+            #  unrecognized_fields['custom'] = {'tufup': {...}, 'user': custom_metadata}
+            custom_metadata[KEY_REQUIRED] = True
         # enforce path object
         new_bundle_dir = pathlib.Path(new_bundle_dir)
         # determine new version

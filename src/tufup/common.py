@@ -10,7 +10,7 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
-KEY_REQUIRED = 'required'
+KEY_REQUIRED = '_tufup_flag_required'  # unlikely to be identical to user-specified key
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
