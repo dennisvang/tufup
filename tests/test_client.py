@@ -156,10 +156,12 @@ class ClientTests(TempDirTestCase):
         # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
         client = self.get_refreshed_client()
         with patch.object(client, 'refresh', Mock()):
-            for pre, expected in [(None, 1), ('a', 1), ('b', 2), ('rc', 2)]:
+            for pre, expected in [
+                (None, 1), ('a', 1), ('b', 2), ('rc', 2), ('invalid', None)
+            ]:
                 with self.subTest(msg=pre):
                     target_meta = client.check_for_updates(pre=pre)
-                    self.assertTrue(target_meta)
+                    self.assertTrue(expected and target_meta)
                     self.assertEqual(expected, len(client.new_targets))
                     if pre == 'a':
                         self.assertTrue(
