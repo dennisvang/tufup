@@ -12,7 +12,7 @@ from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
-from tufup.common import Patcher, TargetMeta
+from tufup.common import KEY_REQUIRED, Patcher, TargetMeta
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,10 @@ class Client(tuf.ngclient.Updater):
             )
 
     def check_for_updates(
-        self, pre: Optional[str] = None, patch: bool = True
+        self,
+        pre: Optional[str] = None,
+        patch: bool = True,
+        ignore_required: bool = False,
     ) -> Optional[TargetMeta]:
         """
         Check if any updates are available, based on current app version.
@@ -152,6 +155,14 @@ class Client(tuf.ngclient.Updater):
         candidate, respectively.
 
         If `patch` is `False`, a full update is enforced.
+
+        If a new release is marked as "required" (in its custom metadata) this
+        release will take precedence over any non-required releases, *even* if the
+        latter are newer. This may be useful e.g. in case of a configuration change.
+        These "required" releases should be rare, and should preferably be avoided.
+        However, in the exceedingly rare event that there *are* "required" updates,
+        yet the user wants to treat them as non-required, they can specify
+        `ignore_required=True`.
         """
         # invalid pre-release specifiers are ignored, with a warning
         pre_map = dict(a='abrc', b='brc', rc='rc')
@@ -186,7 +197,16 @@ class Client(tuf.ngclient.Updater):
         new_archive_meta = None
         if new_archives:
             logger.debug(f'{len(new_archives)} new *archives* found')
-            new_archive_meta, self.new_archive_info = sorted(new_archives.items())[-1]
+            # the "latest" archive is typically just the last one in the sorted list
+            # of new archives, except when there are new "required" archives,
+            # in which case we must update to the first "required" archive encountered
+            for archive_meta, archive_info in sorted(new_archives.items()):
+                if not ignore_required:
+                    if archive_meta.custom and KEY_REQUIRED in archive_meta.custom:
+                        logger.debug(f'required update found: {archive_meta.version}')
+                        break
+            new_archive_meta = archive_meta  # noqa
+            self.new_archive_info = archive_info  # noqa
             self.new_archive_local_path = pathlib.Path(
                 self.target_dir, new_archive_meta.path.name
             )

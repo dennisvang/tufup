@@ -153,6 +153,9 @@ class TargetMetaTests(TempDirTestCase):
         )
         self.assertEqual('app-1.0.tar.gz', filename)
 
+    def test_custom(self):
+        self.assertIsNone(TargetMeta().custom)
+
 
 class PatcherTests(TempDirTestCase):
     def setUp(self) -> None:

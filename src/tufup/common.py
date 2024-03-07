@@ -10,6 +10,7 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
+KEY_REQUIRED = 'required'
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
