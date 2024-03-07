@@ -153,7 +153,11 @@ class Client(tuf.ngclient.Updater):
 
         If `patch` is `False`, a full update is enforced.
         """
-        included = {None: '', '': '', 'a': 'abrc', 'b': 'brc', 'rc': 'rc'}
+        # invalid pre-release specifiers are ignored, with a warning
+        pre_map = dict(a='abrc', b='brc', rc='rc')
+        prereleases = pre_map.get(pre, '')
+        if pre and not prereleases:
+            logger.warning(f'ignoring invalid pre-release specifier: "{pre}"')
         # refresh top-level metadata (root -> timestamp -> snapshot -> targets)
         try:
             self.refresh()
@@ -177,7 +181,7 @@ class Client(tuf.ngclient.Updater):
             item
             for item in all_new_targets.items()
             if item[0].is_archive
-            and (not item[0].version.pre or item[0].version.pre[0] in included[pre])
+            and (not item[0].version.pre or item[0].version.pre[0] in prereleases)
         )
         new_archive_meta = None
         if new_archives:

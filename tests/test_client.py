@@ -150,14 +150,14 @@ class ClientTests(TempDirTestCase):
 
     def test_check_for_updates(self):
         # expectations (based on targets in tests/data/repository):
-        # - pre=None: only full releases are included, so finds 2.0 patch
+        # - pre=None, '', or 'invalid': only full releases are included, finds 2.0 patch
         # - pre='a': finds all, but total patch size exceeds archive size
         # - pre='b': there is no 'b' release, so this finds same as 'rc'
         # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
         client = self.get_refreshed_client()
         with patch.object(client, 'refresh', Mock()):
             for pre, expected in [
-                (None, 1), ('a', 1), ('b', 2), ('rc', 2), ('invalid', None)
+                (None, 1), ('', 1), ('a', 1), ('b', 2), ('rc', 2), ('invalid', 1)
             ]:
                 with self.subTest(msg=pre):
                     target_meta = client.check_for_updates(pre=pre)
