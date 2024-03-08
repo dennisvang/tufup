@@ -39,7 +39,11 @@ from tuf.api.metadata import (
 from tuf.api.serialization.json import JSONSerializer
 
 from tufup.common import (
-    CustomMetadataDict, KEY_REQUIRED, Patcher, SUFFIX_PATCH, TargetMeta
+    CustomMetadataDict,
+    KEY_REQUIRED,
+    Patcher,
+    SUFFIX_PATCH,
+    TargetMeta,
 )
 from tufup.utils.platform_specific import _patched_resolve
 

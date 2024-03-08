@@ -20,6 +20,7 @@ class CustomMetadataDict(TypedDict):
     explicitly separate custom metadata into user-specified metadata and metadata
     used by tufup internally
     """
+
     user: Optional[dict]
     tufup: Optional[dict]
 

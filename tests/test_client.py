@@ -159,7 +159,12 @@ class ClientTests(TempDirTestCase):
             # - pre='b': there is no 'b' release, so this finds same as 'rc'
             # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
             for pre, expected in [
-                (None, 1), ('', 1), ('a', 1), ('b', 2), ('rc', 2), ('invalid', 1)
+                (None, 1),
+                ('', 1),
+                ('a', 1),
+                ('b', 2),
+                ('rc', 2),
+                ('invalid', 1),
             ]:
                 with self.subTest(msg=pre):
                     # verify that we always find the required release, unless we
