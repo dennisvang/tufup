@@ -2,15 +2,19 @@
  "signatures": [
   {
    "keyid": "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5",
-   "sig": "344b1c779103db5c8462508d7a5e72ef9ae8dea0c5fd303d55cace03a87fd67312ff5ca01fc2e377d7d0dcbbbf3f4dff378f5c9759801590340c0b9e3d23bc07"
+   "sig": "ba92827c2fbe262ca8dc28dfc6b2629a4ce0c8af747d666b00e1104ccba004e3727a85eb00e957edeadae2a430972210c949723f4091e9f01f676025868bef03"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2051-06-27T21:21:13Z",
+  "expires": "2051-07-25T14:59:52Z",
   "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
+    "custom": {
+     "tufup": null,
+     "user": null
+    },
     "hashes": {
      "sha256": "223dfd468edbe36256dc119f8477ac4025279ae3705dec04a32002e81b10fd16"
     },
@@ -18,9 +22,12 @@
    },
    "example_app-2.0.patch": {
     "custom": {
-     "tar_hash": "855c631eb1a8d756bbad8441b76b5452505d292a162b3d497a60877fee2140b5",
-     "tar_hash_algorithm": "sha256",
-     "tar_size": 112640
+     "tufup": {
+      "tar_hash": "855c631eb1a8d756bbad8441b76b5452505d292a162b3d497a60877fee2140b5",
+      "tar_hash_algorithm": "sha256",
+      "tar_size": 112640
+     },
+     "user": null
     },
     "hashes": {
      "sha256": "f2be4504e464bd23c022772c7f3c011e0082295775a24e3fc986bb2504df0f53"
@@ -29,11 +36,14 @@
    },
    "example_app-2.0.tar.gz": {
     "custom": {
-     "changes": [
-      "this has changed",
-      "that has changed",
-      "..."
-     ]
+     "tufup": null,
+     "user": {
+      "changes": [
+       "this has changed",
+       "that has changed",
+       "..."
+      ]
+     }
     },
     "hashes": {
      "sha256": "d85f423a56427e522ac4d093a6ce94abcc2cc32f99b80a39b87832d8e4ba9ad8"
@@ -42,9 +52,12 @@
    },
    "example_app-3.0rc0.patch": {
     "custom": {
-     "tar_hash": "3cd260c121d05f4c6ed55b6e87569d3710e539e0a86e6fce98189ddca20c99f5",
-     "tar_hash_algorithm": "sha256",
-     "tar_size": 112640
+     "tufup": {
+      "tar_hash": "3cd260c121d05f4c6ed55b6e87569d3710e539e0a86e6fce98189ddca20c99f5",
+      "tar_hash_algorithm": "sha256",
+      "tar_size": 112640
+     },
+     "user": null
     },
     "hashes": {
      "sha256": "01fa6f30ac54fd405dfb5bd6e39f71af572c8e341675f5b2822b35ec341ce6f9"
@@ -53,11 +66,14 @@
    },
    "example_app-3.0rc0.tar.gz": {
     "custom": {
-     "changes": [
-      "this has changed",
-      "that has changed",
-      "..."
-     ]
+     "tufup": null,
+     "user": {
+      "changes": [
+       "this has changed",
+       "that has changed",
+       "..."
+      ]
+     }
     },
     "hashes": {
      "sha256": "d7fa6ddd397282e8fa81924a31f340ebbcb8c082604c0549a38f5882cd3716c6"
@@ -66,9 +82,12 @@
    },
    "example_app-4.0a0.patch": {
     "custom": {
-     "tar_hash": "3d3efe43388f3bbae910af39232526ef624d1540cfbb69cf0d4c66b7d5dc4b45",
-     "tar_hash_algorithm": "sha256",
-     "tar_size": 112640
+     "tufup": {
+      "tar_hash": "3d3efe43388f3bbae910af39232526ef624d1540cfbb69cf0d4c66b7d5dc4b45",
+      "tar_hash_algorithm": "sha256",
+      "tar_size": 112640
+     },
+     "user": null
     },
     "hashes": {
      "sha256": "e19ccd94e60d1d817dcc44c481f4fb48f54fa335cc0bd7a7e60377a4f6ccf2ea"
@@ -77,11 +96,14 @@
    },
    "example_app-4.0a0.tar.gz": {
     "custom": {
-     "changes": [
-      "this has changed",
-      "that has changed",
-      "..."
-     ]
+     "tufup": null,
+     "user": {
+      "changes": [
+       "this has changed",
+       "that has changed",
+       "..."
+      ]
+     }
     },
     "hashes": {
      "sha256": "05304765a0cb4e40cbd7ca2587aeb5f0db36cd9b617921e0d141bb91d3304e2c"
