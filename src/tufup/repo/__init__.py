@@ -38,7 +38,7 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from tufup.common import Patcher, SUFFIX_PATCH, TargetMeta
+from tufup.common import CustomMetadataDict, Patcher, SUFFIX_PATCH, TargetMeta
 from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
@@ -375,7 +375,7 @@ class Roles(Base):
         self,
         local_path: Union[pathlib.Path, str],
         url_path_segments: Optional[List[str]] = None,
-        custom: Optional[dict] = None,
+        custom: Optional[CustomMetadataDict] = None,
     ):
         # based on python-tuf basic_repo.py
         local_path = pathlib.Path(local_path)
@@ -767,7 +767,9 @@ class Repository(object):
         if not latest_archive or latest_archive.version < new_archive.version:
             # register new archive
             self.roles.add_or_update_target(
-                local_path=new_archive.path, custom=custom_metadata
+                local_path=new_archive.path,
+                # separate user-specified metadata from tufup-internal metadata
+                custom=dict(user=custom_metadata, tufup=None),
             )
             # create patch, if possible, and register that too
             if latest_archive and not skip_patch:
@@ -781,7 +783,8 @@ class Repository(object):
                 # register patch (size and hash are used by the client to verify the
                 # integrity of the patched archive)
                 self.roles.add_or_update_target(
-                    local_path=patch_path, custom=dst_size_and_hash
+                    local_path=patch_path,
+                    custom=dict(user=None, tufup=dst_size_and_hash),
                 )
 
     def remove_latest_bundle(self):

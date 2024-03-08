@@ -3,7 +3,7 @@ import hashlib
 import logging
 import pathlib
 import re
-from typing import Dict, Optional, Union
+from typing import Dict, get_type_hints, Optional, TypedDict, Union
 
 import bsdiff4
 from packaging.version import Version, InvalidVersion
@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
+
+
+class CustomMetadataDict(TypedDict):
+    """
+    explicitly separate custom metadata into user-specified metadata and metadata
+    used by tufup internally
+    """
+    user: Optional[dict]
+    tufup: Optional[dict]
 
 
 def _immutable(value):
@@ -49,7 +58,7 @@ class TargetMeta(object):
         name: Optional[str] = None,
         version: Optional[str] = None,
         is_archive: Optional[bool] = True,
-        custom: Optional[dict] = None,
+        custom: Optional[CustomMetadataDict] = None,
     ):
         """
         Initialize either with target_path, or with name, version, archive.
@@ -68,7 +77,28 @@ class TargetMeta(object):
             logger.critical(
                 f'invalid filename "{self.filename}": whitespace not allowed'
             )
-        self.custom = custom
+        self._custom = custom
+
+    @property
+    def custom(self) -> Optional[dict]:
+        """returns user-specified custom metadata"""
+        return self._get_custom_metadata('user')
+
+    @property
+    def custom_internal(self) -> Optional[dict]:
+        """returns tufup-internal custom metadata"""
+        return self._get_custom_metadata('tufup')
+
+    def _get_custom_metadata(self, key: str) -> Optional[dict]:
+        """
+        get custom metadata in a backward-compatible manner (older versions did not
+        distinguish between user-specified and internal metadata)
+        """
+        if isinstance(self._custom, dict):
+            # check dict keys for backward compatibility
+            if get_type_hints(CustomMetadataDict).keys() != self._custom.keys():
+                return self._custom
+            return self._custom.get(key)
 
     def __str__(self):
         return str(self.target_path_str)
@@ -246,7 +276,7 @@ class Patcher(object):
         # verify integrity of the final result (raises exception on failure)
         cls._verify_tar_size_and_hash(
             tar_content=tar_bytes,
-            expected=patch_meta.custom,  # noqa
+            expected=patch_meta.custom_internal,  # noqa
         )
         # compress .tar data into destination .tar.gz file
         with gzip.open(dst_path, mode='wb') as dst_file:
