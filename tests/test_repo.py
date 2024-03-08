@@ -758,8 +758,8 @@ class RepositoryTests(TempDirTestCase):
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
         target_name = f'{app_name}-{version}.tar.gz'
         self.assertTrue(repo.roles.targets.signed.targets[target_name].custom)
-        self.assertIn(
-            KEY_REQUIRED, repo.roles.targets.signed.targets[target_name].custom
+        self.assertTrue(
+            repo.roles.targets.signed.targets[target_name].custom['tufup'][KEY_REQUIRED]
         )
 
     def test_add_bundle_no_patch(self):

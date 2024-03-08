@@ -201,8 +201,8 @@ class Client(tuf.ngclient.Updater):
             # of new archives, except when there are new "required" archives,
             # in which case we must update to the first "required" archive encountered
             for archive_meta, archive_info in sorted(new_archives.items()):
-                if not ignore_required:
-                    if archive_meta.custom and KEY_REQUIRED in archive_meta.custom:
+                if not ignore_required and archive_meta.custom_internal:
+                    if archive_meta.custom_internal.get(KEY_REQUIRED):
                         logger.debug(f'required update found: {archive_meta.version}')
                         break
             new_archive_meta = archive_meta  # noqa

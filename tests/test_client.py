@@ -112,7 +112,7 @@ class ClientTests(TempDirTestCase):
                         self.assertIn(example_key, meta.custom)
                     else:
                         # patches must have tar hash information
-                        self.assertIn('tar_hash', meta.custom)
+                        self.assertIn('tar_hash', meta.custom_internal)
 
     def test_get_targetinfo(self):
         client = self.get_refreshed_client()

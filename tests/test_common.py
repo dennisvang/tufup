@@ -153,8 +153,26 @@ class TargetMetaTests(TempDirTestCase):
         )
         self.assertEqual('app-1.0.tar.gz', filename)
 
-    def test_custom(self):
-        self.assertIsNone(TargetMeta().custom)
+    def test_custom_metadata(self):
+        user_metadata = dict(foo='bar')
+        internal_metadata = dict(something=True)
+        target_meta = TargetMeta(
+            custom=dict(user=user_metadata, tufup=internal_metadata)
+        )
+        self.assertEqual(user_metadata, target_meta.custom)
+        self.assertEqual(internal_metadata, target_meta.custom_internal)
+
+    def test_custom_metadata_backward_compatibility(self):
+        # older versions of tufup did not distinguish between user and internal metadata
+        custom_metadata = dict(foo='bar')
+        target_meta = TargetMeta(custom=custom_metadata)  # noqa
+        self.assertEqual(custom_metadata, target_meta.custom)
+        self.assertEqual(custom_metadata, target_meta.custom_internal)
+
+    def test_custom_metadata_not_specified(self):
+        target_meta = TargetMeta()
+        self.assertIsNone(target_meta.custom)
+        self.assertIsNone(target_meta.custom_internal)
 
 
 class PatcherTests(TempDirTestCase):
