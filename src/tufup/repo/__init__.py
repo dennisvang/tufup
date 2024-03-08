@@ -797,6 +797,11 @@ class Repository(object):
                 self.roles.add_or_update_target(
                     local_path=patch_path, custom=dst_size_and_hash
                 )
+        else:
+            logger.warning(
+                f'bundle not added: version {new_archive.version} must be greater than'
+                f'that of latest archive ({latest_archive.version})'
+            )
 
     def remove_latest_bundle(self):
         """
