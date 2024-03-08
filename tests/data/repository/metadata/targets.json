@@ -2,12 +2,12 @@
  "signatures": [
   {
    "keyid": "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5",
-   "sig": "344b1c779103db5c8462508d7a5e72ef9ae8dea0c5fd303d55cace03a87fd67312ff5ca01fc2e377d7d0dcbbbf3f4dff378f5c9759801590340c0b9e3d23bc07"
+   "sig": "61b235261b5b9627c6f5bdf155dc2f49ead5deb67c8ee7d5696c92c62c17dbc219ffef3ce35ba48327cf46362f8ec427b37dd6965001a220790e5c41b094790b"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2051-06-27T21:21:13Z",
+  "expires": "2051-07-25T11:55:10Z",
   "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
@@ -29,6 +29,7 @@
    },
    "example_app-2.0.tar.gz": {
     "custom": {
+     "_tufup_flag_required": true,
      "changes": [
       "this has changed",
       "that has changed",
