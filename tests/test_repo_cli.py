@@ -1,4 +1,5 @@
 import argparse
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -33,9 +34,10 @@ class ParserTests(unittest.TestCase):
                 args = cmd.split()
                 options = parser.parse_args(args)
                 expected_func_name = '_cmd_' + args[0]
-                self.assertEqual(
-                    args[0] in ['targets', 'keys'], hasattr(options, 'subcommand')
-                )
+                if args[0] in ['targets', 'keys']:
+                    self.assertTrue(hasattr(options, 'subcommand'))
+                if args[:2] == ['targets', 'add']:
+                    self.assertTrue(hasattr(options, 'meta'))
                 self.assertEqual(expected_func_name, options.func.__name__)
 
     def test_get_parser_incomplete_commands(self):
@@ -53,6 +55,22 @@ class ParserTests(unittest.TestCase):
                 args = cmd.split()
                 with self.assertRaises(SystemExit):
                     parser.parse_args(args)
+
+    def test_get_parser_meta_json(self):
+        parser = tufup.repo.cli.get_parser()
+        args = 'targets add 1.0 c:\\my_bundle_dir c:\\private_keys'.split()
+        with self.subTest(msg='no metadata'):
+            self.assertIsNone(parser.parse_args(args).meta)
+        json_object = '{"changes": ["line 1", "line2"]}'
+        with self.subTest(msg='valid json object'):
+            options = parser.parse_args(args + ['-m', json_object])
+            self.assertEqual(json.loads(json_object), options.meta)
+        with self.subTest(msg='invalid json'):
+            with self.assertRaises(SystemExit):
+                parser.parse_args(args + ['-m', '{'])
+        with self.subTest(msg='valid json but not an object'):
+            with self.assertRaises(SystemExit):
+                parser.parse_args(args + ['-m', '["item 1", "item 2"]'])
 
 
 class CommandTests(TempDirTestCase):
@@ -142,6 +160,7 @@ class CommandTests(TempDirTestCase):
             key_dirs=['c:\\my_private_keys'],
             skip_patch=True,
             required=False,
+            meta=dict(),
         )
         options = argparse.Namespace(**kwargs)
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
@@ -151,6 +170,7 @@ class CommandTests(TempDirTestCase):
             new_bundle_dir=kwargs['bundle_dir'],
             skip_patch=kwargs['skip_patch'],
             required=kwargs['required'],
+            custom_metadata=kwargs['meta'],
         )
         self.mock_repo.publish_changes.assert_called_with(
             private_key_dirs=kwargs['key_dirs']
