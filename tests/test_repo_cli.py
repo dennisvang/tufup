@@ -16,8 +16,10 @@ class ParserTests(unittest.TestCase):
             'init --debug',
             'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets -d add 1.0 c:\\my_bundle_dir c:\\private_keys',
+            'targets -d add -r 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets -d add -s 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets remove-latest c:\\private_keys',
+            'keys my-key-name',  # todo: doesn't do anything... use subcommand?
             'keys my-key-name -c -e',
             'keys my-key-name add root c:\\private_keys d:\\more_private_keys',
             'keys my-key-name -c -e add root c:\\private_keys',
@@ -31,7 +33,26 @@ class ParserTests(unittest.TestCase):
                 args = cmd.split()
                 options = parser.parse_args(args)
                 expected_func_name = '_cmd_' + args[0]
+                self.assertEqual(
+                    args[0] in ['targets', 'keys'], hasattr(options, 'subcommand')
+                )
                 self.assertEqual(expected_func_name, options.func.__name__)
+
+    def test_get_parser_incomplete_commands(self):
+        parser = tufup.repo.cli.get_parser()
+        for cmd in [
+            'targets',
+            'targets add',
+            'targets remove-latest',
+            'keys',
+            'keys my-key-name add',
+            'keys my-key-name replace',
+            'sign',
+        ]:
+            with self.subTest(msg=cmd):
+                args = cmd.split()
+                with self.assertRaises(SystemExit):
+                    parser.parse_args(args)
 
 
 class CommandTests(TempDirTestCase):
@@ -76,13 +97,16 @@ class CommandTests(TempDirTestCase):
         self.mock_repo.initialize.assert_called()
 
     def test__cmd_keys_create(self):
-        options = argparse.Namespace(new_key_name='test', encrypted=True, create=True)
+        options = argparse.Namespace(
+            subcommand=None, new_key_name='test', encrypted=True, create=True
+        )
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_keys(options=options)
         self.mock_repo.keys.create_key_pair.assert_called()
 
     def test__cmd_keys_create_and_add_key(self):
         options = argparse.Namespace(
+            subcommand='add',
             create=True,
             encrypted=True,
             key_dirs=['c:\\my_private_keys'],
@@ -97,6 +121,7 @@ class CommandTests(TempDirTestCase):
 
     def test__cmd_keys_replace_key(self):
         options = argparse.Namespace(
+            subcommand='replace',
             create=True,
             encrypted=False,
             key_dirs=['c:\\my_private_keys'],
@@ -110,28 +135,30 @@ class CommandTests(TempDirTestCase):
         self.mock_repo.publish_changes.assert_called()
 
     def test__cmd_targets_add(self):
-        version = '1.0'
-        bundle_dir = 'dummy'
-        key_dirs = ['c:\\my_private_keys']
-        skip_patch = True
-        options = argparse.Namespace(
-            app_version=version,
-            bundle_dir=bundle_dir,
-            key_dirs=key_dirs,
-            skip_patch=skip_patch,
+        kwargs = dict(
+            subcommand='add',
+            app_version='1.0',
+            bundle_dir='dummy',
+            key_dirs=['c:\\my_private_keys'],
+            skip_patch=True,
+            required=False,
         )
+        options = argparse.Namespace(**kwargs)
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.add_bundle.assert_called_with(
-            new_version=version,
-            new_bundle_dir=bundle_dir,
-            skip_patch=skip_patch,
+            new_version=kwargs['app_version'],
+            new_bundle_dir=kwargs['bundle_dir'],
+            skip_patch=kwargs['skip_patch'],
+            required=kwargs['required'],
         )
-        self.mock_repo.publish_changes.assert_called_with(private_key_dirs=key_dirs)
+        self.mock_repo.publish_changes.assert_called_with(
+            private_key_dirs=kwargs['key_dirs']
+        )
 
     def test__cmd_targets_remove_latest(self):
-        key_dirs = ['c:\\my_private_keys']
-        options = argparse.Namespace(key_dirs=key_dirs)
+        kwargs = dict(subcommand='remove-latest', key_dirs=['c:\\my_private_keys'])
+        options = argparse.Namespace(**kwargs)
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
             tufup.repo.cli._cmd_targets(options=options)
         self.mock_repo.remove_latest_bundle.assert_called()

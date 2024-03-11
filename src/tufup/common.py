@@ -10,6 +10,7 @@ from packaging.version import Version, InvalidVersion
 
 logger = logging.getLogger(__name__)
 
+KEY_REQUIRED = 'required'  # unlikely to be identical to user-specified key
 SUFFIX_ARCHIVE = '.tar.gz'
 SUFFIX_PATCH = '.patch'
 
@@ -19,6 +20,7 @@ class CustomMetadataDict(TypedDict):
     explicitly separate custom metadata into user-specified metadata and metadata
     used by tufup internally
     """
+
     user: Optional[dict]
     tufup: Optional[dict]
 

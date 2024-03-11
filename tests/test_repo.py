@@ -25,7 +25,7 @@ from tuf.api.metadata import (
 )
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.common import TargetMeta
+from tufup.common import KEY_REQUIRED, TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
     Base,
@@ -753,10 +753,14 @@ class RepositoryTests(TempDirTestCase):
             new_version=version,
             new_bundle_dir=bundle_dir,
             custom_metadata=dict(whatever='something'),
+            required=True,
         )
         self.assertTrue((repo.metadata_dir / 'targets.json').exists())
         target_name = f'{app_name}-{version}.tar.gz'
         self.assertTrue(repo.roles.targets.signed.targets[target_name].custom)
+        self.assertTrue(
+            repo.roles.targets.signed.targets[target_name].custom['tufup'][KEY_REQUIRED]
+        )
 
     def test_add_bundle_no_patch(self):
         # prepare

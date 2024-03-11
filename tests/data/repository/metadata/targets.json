@@ -2,17 +2,19 @@
  "signatures": [
   {
    "keyid": "cd9930c92ac25c02a2f92ae3128b50459b53d7532ef9c0f364e78f388d5808a5",
-   "sig": "ba92827c2fbe262ca8dc28dfc6b2629a4ce0c8af747d666b00e1104ccba004e3727a85eb00e957edeadae2a430972210c949723f4091e9f01f676025868bef03"
+   "sig": "af58034e8d5e5d525da096ad8946b44a2e82882d5a2f400b84e9ce956412d42c31f75a274b566dfe0f13117988a3fe605512e0924c4e9bd06bc33002b1b0c606"
   }
  ],
  "signed": {
   "_type": "targets",
-  "expires": "2051-07-25T14:59:52Z",
+  "expires": "2051-07-25T16:49:51Z",
   "spec_version": "1.0.31",
   "targets": {
    "example_app-1.0.tar.gz": {
     "custom": {
-     "tufup": null,
+     "tufup": {
+      "required": false
+     },
      "user": null
     },
     "hashes": {
@@ -36,7 +38,9 @@
    },
    "example_app-2.0.tar.gz": {
     "custom": {
-     "tufup": null,
+     "tufup": {
+      "required": true
+     },
      "user": {
       "changes": [
        "this has changed",
@@ -66,7 +70,9 @@
    },
    "example_app-3.0rc0.tar.gz": {
     "custom": {
-     "tufup": null,
+     "tufup": {
+      "required": false
+     },
      "user": {
       "changes": [
        "this has changed",
@@ -96,7 +102,9 @@
    },
    "example_app-4.0a0.tar.gz": {
     "custom": {
-     "tufup": null,
+     "tufup": {
+      "required": false
+     },
      "user": {
       "changes": [
        "this has changed",

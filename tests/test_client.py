@@ -149,28 +149,41 @@ class ClientTests(TempDirTestCase):
         self.assertIn(mock_install, mock_apply.call_args.kwargs.values())
 
     def test_check_for_updates(self):
-        # expectations (based on targets in tests/data/repository):
-        # - pre=None, '', or 'invalid': only full releases are included, finds 2.0 patch
-        # - pre='a': finds all, but total patch size exceeds archive size
-        # - pre='b': there is no 'b' release, so this finds same as 'rc'
-        # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
         client = self.get_refreshed_client()
         with patch.object(client, 'refresh', Mock()):
+            # expectations (based on targets in tests/data/repository, but ignoring
+            # required releases):
+            # - pre=None, '', or 'invalid':
+            #     only full releases are included, so this finds 2.0 (patch)
+            # - pre='a': finds all, but total patch size exceeds archive size
+            # - pre='b': there is no 'b' release, so this finds same as 'rc'
+            # - pre='rc': finds 2.0 and 3.0rc0, total patch size smaller than archive
             for pre, expected in [
-                (None, 1), ('', 1), ('a', 1), ('b', 2), ('rc', 2), ('invalid', 1)
+                (None, 1),
+                ('', 1),
+                ('a', 1),
+                ('b', 2),
+                ('rc', 2),
+                ('invalid', 1),
             ]:
                 with self.subTest(msg=pre):
+                    # verify that we always find the required release, unless we
+                    # explicitly set ignore_required=True
+                    required_version = '2.0'
                     target_meta = client.check_for_updates(pre=pre)
+                    self.assertEqual(required_version, str(target_meta.version))
+                    # for the actual test we want to treat all versions as not-required
+                    target_meta = client.check_for_updates(
+                        pre=pre, ignore_required=True
+                    )
                     self.assertTrue(expected and target_meta)
                     self.assertEqual(expected, len(client.new_targets))
-                    if pre == 'a':
-                        self.assertTrue(
-                            all(item.is_archive for item in client.new_targets.keys())
+                    self.assertTrue(
+                        all(
+                            getattr(item, 'is_archive' if pre == 'a' else 'is_patch')
+                            for item in client.new_targets.keys()
                         )
-                    else:
-                        self.assertTrue(
-                            all(item.is_patch for item in client.new_targets.keys())
-                        )
+                    )
                     # verify that we can access custom metadata where needed
                     if target_meta.is_patch:
                         self.assertTrue(target_meta.custom)

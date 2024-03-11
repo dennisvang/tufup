@@ -18,6 +18,7 @@ HELP = dict(
     targets_add_app_version='Application version (PEP440 compliant)',
     targets_add_bundle_dir='Directory containing application bundle.',
     targets_add_skip_patch='Skip patch creation.',
+    targets_add_required='Mark release as "required".',
     targets_remove_latest='Remove latest app bundle from the repository.',
     keys_subcommands='Optional commands to add or replace keys.',
     keys_new_key_name='Name of new private key (public key gets .pub suffix).',
@@ -63,7 +64,9 @@ def get_parser() -> argparse.ArgumentParser:
     subparser_targets = subparsers.add_parser('targets', parents=[debug_parser])
     subparser_targets.set_defaults(func=_cmd_targets)
     # we use nested subparsers to deal with mutually dependent arguments
-    targets_subparsers = subparser_targets.add_subparsers()
+    targets_subparsers = subparser_targets.add_subparsers(
+        dest='subcommand', required=True
+    )
     subparser_targets_add = targets_subparsers.add_parser(
         'add', help=HELP['targets_add']
     )
@@ -82,6 +85,13 @@ def get_parser() -> argparse.ArgumentParser:
         required=False,
         help=HELP['targets_add_skip_patch'],
     )
+    subparser_targets_add.add_argument(
+        '-r',
+        '--required',
+        action='store_true',
+        required=False,
+        help=HELP['targets_add_required'],
+    )
     subparser_targets_remove = targets_subparsers.add_parser(
         'remove-latest', help=HELP['targets_remove_latest']
     )
@@ -98,7 +108,9 @@ def get_parser() -> argparse.ArgumentParser:
         '-e', '--encrypted', action='store_true', help=HELP['keys_encrypted']
     )
     # we use nested subparsers to deal with mutually dependent arguments
-    keys_subparsers = subparser_keys.add_subparsers(help=HELP['keys_subcommands'])
+    keys_subparsers = subparser_keys.add_subparsers(
+        dest='subcommand', help=HELP['keys_subcommands']
+    )
     subparser_keys_add = keys_subparsers.add_parser('add')
     subparser_keys_add.add_argument(
         'role_name', choices=TOP_LEVEL_ROLE_NAMES, help=HELP['keys_role_name']
@@ -237,9 +249,7 @@ def _cmd_keys(options: argparse.Namespace):
             private_key_path=private_key_path, encrypted=options.encrypted
         )
         _print_info('Key pair created.')
-    replace = hasattr(options, 'old_key_name')
-    add = hasattr(options, 'role_name')
-    if replace:
+    if options.subcommand == 'replace':
         _print_info(
             f'Replacing key {options.old_key_name} by {options.new_key_name}...'
         )
@@ -248,14 +258,14 @@ def _cmd_keys(options: argparse.Namespace):
             new_public_key_path=public_key_path,
             new_private_key_encrypted=options.encrypted,
         )
-    elif add:
+    elif options.subcommand == 'add':
         _print_info(f'Adding key {options.new_key_name}...')
         repository.add_key(
             role_name=options.role_name,
             public_key_path=public_key_path,
             encrypted=options.encrypted,
         )
-    if replace or add:
+    if options.subcommand in ['add', 'replace']:
         _print_info('Publishing changes...')
         repository.publish_changes(private_key_dirs=options.key_dirs)
     _print_info('Done.')
@@ -264,14 +274,15 @@ def _cmd_keys(options: argparse.Namespace):
 def _cmd_targets(options: argparse.Namespace):
     logger.debug(f'command targets: {vars(options)}')
     repository = _get_repo()
-    if hasattr(options, 'app_version') and hasattr(options, 'bundle_dir'):
+    if options.subcommand == 'add':
         _print_info('Adding bundle...')
         repository.add_bundle(
             new_version=options.app_version,
             new_bundle_dir=options.bundle_dir,
             skip_patch=options.skip_patch,
+            required=options.required,
         )
-    else:
+    elif options.subcommand == 'remove-latest':
         _print_info('Removing latest bundle...')
         repository.remove_latest_bundle()
     _print_info('Publishing changes...')

@@ -38,7 +38,13 @@ from tuf.api.metadata import (
 )
 from tuf.api.serialization.json import JSONSerializer
 
-from tufup.common import CustomMetadataDict, Patcher, SUFFIX_PATCH, TargetMeta
+from tufup.common import (
+    CustomMetadataDict,
+    KEY_REQUIRED,
+    Patcher,
+    SUFFIX_PATCH,
+    TargetMeta,
+)
 from tufup.utils.platform_specific import _patched_resolve
 
 logger = logging.getLogger(__name__)
@@ -735,6 +741,7 @@ class Repository(object):
         new_version: Optional[str] = None,
         skip_patch: bool = False,
         custom_metadata: Optional[dict] = None,  # archive only
+        required: bool = False,
     ):
         """
         Adds a new application bundle to the local repository.
@@ -743,6 +750,12 @@ class Repository(object):
         added to the tuf repository. If a previous archive version is found,
         a patch file is also created and added to the repository, unless
         `skip_patch` is True.
+
+        If `required=True` (default is `False`), this release will always be
+        installed, even if newer releases are available. For example, suppose
+        an app is running at version 1.0, and version 2.0 is required, but version
+        3.0 is also available, then tufup will first update to version 2.0,
+        before updating to 3.0 on the next run.
 
         Note the changes are not published yet: call `publish_changes()` for
         that.
@@ -769,7 +782,7 @@ class Repository(object):
             self.roles.add_or_update_target(
                 local_path=new_archive.path,
                 # separate user-specified metadata from tufup-internal metadata
-                custom=dict(user=custom_metadata, tufup=None),
+                custom=dict(user=custom_metadata, tufup={KEY_REQUIRED: required}),
             )
             # create patch, if possible, and register that too
             if latest_archive and not skip_patch:
@@ -786,6 +799,11 @@ class Repository(object):
                     local_path=patch_path,
                     custom=dict(user=None, tufup=dst_size_and_hash),
                 )
+        else:
+            logger.warning(
+                f'bundle not added: version {new_archive.version} must be greater than'
+                f'that of latest archive ({latest_archive.version})'
+            )
 
     def remove_latest_bundle(self):
         """

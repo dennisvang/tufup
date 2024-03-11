@@ -90,7 +90,7 @@ KEY_MAP = copy.deepcopy(DEFAULT_KEY_MAP)
 KEY_MAP['root'].append('root_two')  # use two keys for root
 ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
 
-# Custom metadata
+# Custom metadata (for example, a list of changes)
 DUMMY_METADATA = dict(changes=['this has changed', 'that has changed', '...'])
 
 # Create repository instance
@@ -169,7 +169,11 @@ for new_version in new_versions:
     repo.add_bundle(
         new_version=new_version,
         new_bundle_dir=dummy_bundle_dir,
-        custom_metadata=DUMMY_METADATA,  # just to point out the option
+        # example of optional custom metadata
+        custom_metadata=DUMMY_METADATA.copy(),
+        # "required" updates are exceptional and should be avoided if possible,
+        # but we include one here just for completeness
+        required=new_version == '2.0',
     )
     repo.publish_changes(private_key_dirs=[OFFLINE_DIR_1, OFFLINE_DIR_2, ONLINE_DIR])
 
