@@ -16,6 +16,7 @@ class ParserTests(unittest.TestCase):
             'init --debug',
             'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets -d add 1.0 c:\\my_bundle_dir c:\\private_keys',
+            'targets -d add -r 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets -d add -s 1.0 c:\\my_bundle_dir c:\\private_keys',
             'targets remove-latest c:\\private_keys',
             'keys my-key-name',  # todo: doesn't do anything... use subcommand?
@@ -140,6 +141,7 @@ class CommandTests(TempDirTestCase):
             bundle_dir='dummy',
             key_dirs=['c:\\my_private_keys'],
             skip_patch=True,
+            required=False,
         )
         options = argparse.Namespace(**kwargs)
         with patch('tufup.repo.cli.Repository', self.mock_repo_class):
@@ -148,6 +150,7 @@ class CommandTests(TempDirTestCase):
             new_version=kwargs['app_version'],
             new_bundle_dir=kwargs['bundle_dir'],
             skip_patch=kwargs['skip_patch'],
+            required=kwargs['required'],
         )
         self.mock_repo.publish_changes.assert_called_with(
             private_key_dirs=kwargs['key_dirs']
