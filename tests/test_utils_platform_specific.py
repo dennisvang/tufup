@@ -97,7 +97,10 @@ class UtilsTests(TempDirTestCase):
     def test_install_update_no_purge(self):
         extra_kwargs_strings = []
         if ON_WINDOWS:
-            extra_kwargs_strings.extend(['as_admin=False', 'log_file_name=None'])
+            extra_kwargs_strings.extend(
+                # unknown_kwarg reproduces issue #126
+                ['as_admin=False', 'log_file_name=None', 'unknown_kwarg=True']
+            )
         # run the dummy app in a separate process
         self.run_dummy_app(extra_kwargs_strings=extra_kwargs_strings)
         # ensure file has been moved from src to dst

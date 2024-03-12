@@ -134,6 +134,7 @@ def _install_update_win(
     log_file_name: Optional[str] = None,
     robocopy_options_override: Optional[List[str]] = None,
     process_creation_flags=None,
+    **kwargs,  # noqa
 ):
     """
     Create a batch script that moves files from src to dst, then run the
