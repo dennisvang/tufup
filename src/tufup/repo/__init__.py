@@ -751,6 +751,8 @@ class Repository(object):
         a patch file is also created and added to the repository, unless
         `skip_patch` is True.
 
+        Optional `custom_metadata` can be specified as a dictionary.
+
         If `required=True` (default is `False`), this release will always be
         installed, even if newer releases are available. For example, suppose
         an app is running at version 1.0, and version 2.0 is required, but version

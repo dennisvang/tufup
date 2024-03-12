@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 
 import packaging.version
@@ -19,6 +20,7 @@ HELP = dict(
     targets_add_bundle_dir='Directory containing application bundle.',
     targets_add_skip_patch='Skip patch creation.',
     targets_add_required='Mark release as "required".',
+    targets_add_meta='Specify custom metadata as a JSON object.',
     targets_remove_latest='Remove latest app bundle from the repository.',
     keys_subcommands='Optional commands to add or replace keys.',
     keys_new_key_name='Name of new private key (public key gets .pub suffix).',
@@ -32,6 +34,15 @@ HELP = dict(
         'and expiration date for dependent roles will also be updated.'
     ),
 )
+
+
+def json_object(arg: str) -> dict:
+    """decodes a JSON object"""
+    value = json.loads(arg)
+    if not isinstance(value, dict):
+        # arg must represent a JSON object, which corresponds with a python dict
+        raise ValueError
+    return value
 
 
 def _print_info(message: str):
@@ -91,6 +102,14 @@ def get_parser() -> argparse.ArgumentParser:
         action='store_true',
         required=False,
         help=HELP['targets_add_required'],
+    )
+    subparser_targets_add.add_argument(
+        '-m',
+        '--meta',
+        action='store',
+        type=json_object,
+        required=False,
+        help=HELP['targets_add_meta'],
     )
     subparser_targets_remove = targets_subparsers.add_parser(
         'remove-latest', help=HELP['targets_remove_latest']
@@ -281,6 +300,7 @@ def _cmd_targets(options: argparse.Namespace):
             new_bundle_dir=options.bundle_dir,
             skip_patch=options.skip_patch,
             required=options.required,
+            custom_metadata=options.meta,
         )
     elif options.subcommand == 'remove-latest':
         _print_info('Removing latest bundle...')
