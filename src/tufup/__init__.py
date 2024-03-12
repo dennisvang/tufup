@@ -11,13 +11,19 @@ logger = logging.getLogger(__name__)
 
 
 def main(args=None):
-    print(f'tufup version: {__version__}')
+    # show version before anything else
+    print(f'tufup {__version__}')
+
     # default to --help
     if args is None:
         args = sys.argv[1:] or ['--help']
 
     # parse command line arguments
     options = cli.get_parser().parse_args(args=args)
+
+    # exit if version is requested (printed above)
+    if options.version:
+        return
 
     # cli debugging
     if options.debug:

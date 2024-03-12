@@ -11,6 +11,7 @@ from tufup.repo import Repository
 logger = logging.getLogger(__name__)
 
 HELP = dict(
+    version='show version and exit',
     common_key_dirs='Directories to search for private and/or public keys.',
     targets_add=(
         'Add app bundle to the repository. Creates archive and patch from'
@@ -64,6 +65,9 @@ def get_parser() -> argparse.ArgumentParser:
     # https://docs.python.org/3/library/argparse.html#sub-commands
     # https://docs.python.org/3/library/argparse.html#parents
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-v', '--version', action='store_true', required=False, help=HELP['version']
+    )
     subparsers = parser.add_subparsers()
     # add debug option
     debug_parser = argparse.ArgumentParser(add_help=False)

@@ -13,6 +13,7 @@ class ParserTests(unittest.TestCase):
     def test_get_parser(self):
         parser = tufup.repo.cli.get_parser()
         for cmd in [
+            '--version',
             'init',
             'init --debug',
             'targets add 1.0 c:\\my_bundle_dir c:\\private_keys',
@@ -38,7 +39,11 @@ class ParserTests(unittest.TestCase):
                     self.assertTrue(hasattr(options, 'subcommand'))
                 if args[:2] == ['targets', 'add']:
                     self.assertTrue(hasattr(options, 'meta'))
-                self.assertEqual(expected_func_name, options.func.__name__)
+                if args[0] == '--version':
+                    self.assertTrue(options.version)
+                else:
+                    self.assertFalse(options.version)
+                    self.assertEqual(expected_func_name, options.func.__name__)
 
     def test_get_parser_incomplete_commands(self):
         parser = tufup.repo.cli.get_parser()
