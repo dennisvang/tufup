@@ -5,7 +5,7 @@ from tufup.repo import cli
 
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 # https://semver.org/
-__version__ = '0.6.0'
+__version__ = '0.7.0'
 
 logger = logging.getLogger(__name__)
 
