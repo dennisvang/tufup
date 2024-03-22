@@ -21,8 +21,8 @@ class CustomMetadataDict(TypedDict):
     used by tufup internally
     """
 
-    user: Optional[dict]
-    tufup: Optional[dict]
+    user: dict
+    tufup: dict
 
 
 def _immutable(value):
@@ -79,19 +79,19 @@ class TargetMeta(object):
             logger.critical(
                 f'invalid filename "{self.filename}": whitespace not allowed'
             )
-        self._custom = custom
+        self._custom = custom or dict(user=dict(), tufup=dict())
 
     @property
-    def custom(self) -> Optional[dict]:
-        """returns user-specified custom metadata"""
+    def custom(self) -> dict:
+        """returns user-specified custom metadata dict"""
         return self._get_custom_metadata('user')
 
     @property
-    def custom_internal(self) -> Optional[dict]:
-        """returns tufup-internal custom metadata"""
+    def custom_internal(self) -> dict:
+        """returns tufup-internal custom metadata dict"""
         return self._get_custom_metadata('tufup')
 
-    def _get_custom_metadata(self, key: str) -> Optional[dict]:
+    def _get_custom_metadata(self, _key: str) -> dict:
         """
         get custom metadata in a backward-compatible manner (older versions did not
         distinguish between user-specified and internal metadata)
@@ -100,7 +100,8 @@ class TargetMeta(object):
             # check dict keys for backward compatibility
             if get_type_hints(CustomMetadataDict).keys() != self._custom.keys():
                 return self._custom
-            return self._custom.get(key)
+            return self._custom.get(_key)
+        return dict()
 
     def __str__(self):
         return str(self.target_path_str)

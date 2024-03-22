@@ -24,6 +24,7 @@ class ImmutableTests(TestCase):
             bytearray(b'b'),
             dict(a=1),
             [dict(a=[dict(c={1})], b=bytearray(b'd'))],
+            dict(a=dict(b=dict(c=dict()))),
         ]
         for case in cases:
             with self.subTest(msg=case):
@@ -66,7 +67,16 @@ class TargetMetaTests(TempDirTestCase):
 
     def test_hashable(self):
         obj = TargetMeta()
-        self.assertEqual(obj.__hash__(), hash(tuple(vars(obj).items())))
+        try:
+            obj.__hash__()
+        except Exception as e:
+            self.fail(f'__hash__ failed unexpectedly: {e}')
+        expected_obj_hashable = (
+            ('target_path_str', 'None-None.tar.gz'),
+            ('path', pathlib.Path('None-None.tar.gz')),
+            ('_custom', (('user', ()), ('tufup', ()))),
+        )
+        self.assertEqual(hash(expected_obj_hashable), obj.__hash__())
         # we can use the obj as a set member or as dict key
         self.assertEqual({obj, obj}, {obj})
 
@@ -171,8 +181,11 @@ class TargetMetaTests(TempDirTestCase):
 
     def test_custom_metadata_not_specified(self):
         target_meta = TargetMeta()
-        self.assertIsNone(target_meta.custom)
-        self.assertIsNone(target_meta.custom_internal)
+        self.assertIsInstance(target_meta.custom, dict)
+        self.assertIsInstance(target_meta.custom_internal, dict)
+        # user overrides _custom attr
+        target_meta._custom = None
+        self.assertIsInstance(target_meta.custom, dict)
 
 
 class PatcherTests(TempDirTestCase):
