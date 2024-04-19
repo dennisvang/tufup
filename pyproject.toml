@@ -24,7 +24,7 @@ dependencies = [
     "packaging>=21.3",
     "securesystemslib[crypto,pynacl]>=0.26.0",
     "setuptools>=65.5.1",
-    "tuf==3.1.*",
+    "tuf==4.0.*",
     # constraints on sub-dependencies
     "certifi>=2022.12.7",
     "cryptography>=38.0.3",
