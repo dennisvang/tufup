@@ -7,9 +7,12 @@ import tempfile
 import textwrap
 from time import sleep
 import unittest
+from unittest.mock import patch
 
 from tests import BASE_DIR, TempDirTestCase
+import tufup.utils.platform_specific as ps
 from tufup.utils.platform_specific import (
+    ON_MAC,
     ON_WINDOWS,
     PLATFORM_SUPPORTED,
     run_bat_as_admin,
@@ -90,6 +93,14 @@ class UtilsTests(TempDirTestCase):
         print(f'current user: {current_user}')
         self.assertTrue(len(output))
         self.assertNotIn(current_user, output)
+
+    @unittest.skipIf(condition=not ON_MAC, reason='macOS only')
+    def test_install_update_macos_symlinks(self):
+        with patch.object(ps, '_install_update_mac') as mock_install_update_mac:
+            ps.install_update(src_dir='', dst_dir='')
+            self.assertNotIn('symlinks', mock_install_update_mac.call_args.kwargs)
+            ps.install_update(src_dir='', dst_dir='', symlinks=True)
+            self.assertTrue(mock_install_update_mac.call_args.kwargs['symlinks'])
 
     @unittest.skipIf(
         condition=not PLATFORM_SUPPORTED, reason=_reason_platform_not_supported

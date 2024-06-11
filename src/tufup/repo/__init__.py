@@ -953,6 +953,7 @@ class Repository(object):
 
     def _load_keys_and_roles(self, create_keys: bool = False):
         # todo: make public, rename load_keys_and_metadata
+        # todo: check import success (now says "metadata imported" even if files not found)
         if self.keys is None:
             logger.info('Importing public keys...')
             self.keys = Keys(
