@@ -16,6 +16,7 @@ name: Python package
 on:
   push:
     branches: [ master ]
+    tags: [ * ]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
@@ -71,11 +72,13 @@ jobs:
           path: dist/
 
   publish-to-testpypi:
-    # note this is done on *every* push, not only tag pushes [2]
+    # based on [2]
     # to install from test.pypi:
     #   pip install tufup --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
     needs: [test, build]
     runs-on: ubuntu-latest
+    # only publish to test.pypi on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
     environment:
       name: testpypi
       url: https://test.pypi.org/p/tufup
