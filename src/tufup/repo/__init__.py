@@ -632,7 +632,9 @@ class Repository(object):
             logger.warning(f'config file invalid: {file_path}')
         # force posix paths (in case legacy windows config is loaded on linux, see #147)
         for key in ['repo_dir', 'keys_dir']:
-            config_dict[key] = pathlib.Path(config_dict[key]).as_posix()
+            value = config_dict.get(key)
+            if value:
+                config_dict[key] = pathlib.Path(value).as_posix()
         return config_dict
 
     @classmethod
