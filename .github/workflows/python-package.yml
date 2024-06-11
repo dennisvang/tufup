@@ -15,10 +15,13 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
-    tags: [ '*' ]
+    branches:
+      - master
+    tags:
+      - '*'
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
   workflow_dispatch:
   
 jobs:
@@ -73,7 +76,7 @@ jobs:
             tufup_version=$(python -c 'import tufup; print(tufup.__version__)')
             if [[ $GITHUB_REF_NAME != "v$tufup_version" ]]
             then 
-              echo "tag does not match tufup.__version__"
+              echo "tag ($GITHUB_REF_NAME) does not match tufup.__version__ (v$tufup_version)"
               exit 1
             fi
           fi
