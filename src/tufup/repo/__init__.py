@@ -605,13 +605,14 @@ class Repository(object):
                     # which are truncated with a tilde,
                     # e.g. c:\Users\RUNNER~1\...
                     pathlib.Path.cwd().resolve()
-                )
+                ).as_posix()
             except ValueError:
                 logger.warning(
                     f'Saving *absolute* path to config, because the path'
                     f' ({temp_config_dict[key]}) is not relative to cwd'
                     f' ({pathlib.Path.cwd()})'
                 )
+                temp_config_dict[key] = temp_config_dict[key].as_posix()
         # write file
         config_file_path.write_text(
             data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
@@ -629,6 +630,9 @@ class Repository(object):
             logger.warning(f'config file not found: {file_path}')
         except json.JSONDecodeError:
             logger.warning(f'config file invalid: {file_path}')
+        # force posix paths (in case legacy windows config is loaded on linux, see #147)
+        for key in ['repo_dir', 'keys_dir']:
+            config_dict[key] = pathlib.Path(config_dict[key]).as_posix()
         return config_dict
 
     @classmethod
