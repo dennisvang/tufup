@@ -72,6 +72,8 @@ jobs:
 
   publish-to-testpypi:
     # note this is done on *every* push, not only tag pushes [2]
+    # to install from test.pypi:
+    #   pip install tufup --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
     needs: [test, build]
     runs-on: ubuntu-latest
     environment:
@@ -91,6 +93,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   publish-to-pypi:
+    # this requires manual confirmation on github
     # based on [2]
     needs: [test, build, publish-to-testpypi]
     runs-on: ubuntu-latest
@@ -102,5 +105,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: temp
-        run: echo 'nothing yet'
+      - name: Download the distribution packages
+        uses: actions/download-artifact@v3
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish distributions to pypi.org
+        uses: pypa/gh-action-pypi-publish@release/v1
