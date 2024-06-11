@@ -239,8 +239,14 @@ def _install_update_mac(
     dst_dir: Union[pathlib.Path, str],
     purge_dst_dir: bool,
     exclude_from_purge: List[Union[pathlib.Path, str]],
+    symlinks: bool = False,
     **kwargs,
 ):
+    """
+    The symlinks arg is passed on to shutil.copytree()
+
+    [1]: https://docs.python.org/3/library/shutil.html#shutil.copytree
+    """
     # todo: implement as_admin and debug kwargs for mac
     logger.debug(f'Kwargs not used: {kwargs}')
     if purge_dst_dir:
@@ -256,7 +262,7 @@ def _install_update_mac(
             if path not in exclude_from_purge:
                 remove_path(path=path)
     logger.debug(f'Moving content of {src_dir} to {dst_dir}.')
-    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+    shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True, symlinks=symlinks)
     # Note: the src_dir is typically a temporary directory, but we'll clear
     # it anyway just to be consistent with the windows implementation
     for path in pathlib.Path(src_dir).iterdir():
