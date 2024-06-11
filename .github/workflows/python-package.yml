@@ -65,6 +65,18 @@ jobs:
           python3 -m pip install build --user
       - name: Build a binary wheel and a source tarball
         run: python3 -m build
+      - name: Verify current tag matches hardcoded __version__
+        run: |
+          if [[ $GITHUB_REF_TYPE == 'tag' ]]
+          then 
+            python3 -m pip install .
+            tufup_version="v$(python -c 'import tufup; print(tufup.__version__)')"
+            if [[ $GITHUB_REF_NAME != $tufup_version ]]
+            then 
+              echo "tag does not match tufup.__version__"
+              exit 1
+            fi
+          fi
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
         with:
