@@ -594,8 +594,9 @@ class Repository(object):
         """Save current configuration."""
         config_file_path = self.get_config_file_path()
         # make paths relative to current working directory (cwd),
-        # if possible, otherwise keep absolute paths (note, to avoid
-        # confusion, using paths other than cwd is discouraged)
+        # if possible, otherwise keep absolute paths (see #50)
+        # (note, to avoid confusion, using paths other than cwd is discouraged)
+        # also enforce posix paths on windows (see #147)
         temp_config_dict = self.config_dict  # note self.config_dict is a property
         for key in ['repo_dir', 'keys_dir']:
             try:
@@ -605,13 +606,14 @@ class Repository(object):
                     # which are truncated with a tilde,
                     # e.g. c:\Users\RUNNER~1\...
                     pathlib.Path.cwd().resolve()
-                )
+                ).as_posix()
             except ValueError:
                 logger.warning(
                     f'Saving *absolute* path to config, because the path'
                     f' ({temp_config_dict[key]}) is not relative to cwd'
                     f' ({pathlib.Path.cwd()})'
                 )
+                temp_config_dict[key] = temp_config_dict[key].as_posix()
         # write file
         config_file_path.write_text(
             data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
@@ -629,6 +631,12 @@ class Repository(object):
             logger.warning(f'config file not found: {file_path}')
         except json.JSONDecodeError:
             logger.warning(f'config file invalid: {file_path}')
+        # enforce posix paths (for legacy windows configs loaded on linux, see #147)
+        for key in ['repo_dir', 'keys_dir']:
+            value = config_dict.get(key)
+            if value:
+                # interpret the value as a windows path (\\ or /) then enforce posix (/)
+                config_dict[key] = pathlib.PureWindowsPath(value).as_posix()
         return config_dict
 
     @classmethod

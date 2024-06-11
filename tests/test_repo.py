@@ -1,5 +1,6 @@
 import copy
 import tarfile
+import unittest
 from datetime import date, datetime, timedelta
 import json
 import logging
@@ -37,7 +38,7 @@ from tufup.repo import (
     SUFFIX_PUB,
     SUFFIX_PATCH,
 )
-
+from tufup.utils.platform_specific import ON_WINDOWS
 
 mock_input = Mock(return_value='')
 
@@ -545,6 +546,21 @@ class RepositoryTests(TempDirTestCase):
                 # note Path.is_relative_to() is introduced in python 3.9
                 self.assertFalse(pathlib.Path(config_dict[key]).is_absolute())
 
+    @unittest.skipUnless(condition=ON_WINDOWS, reason='windows only')
+    def test_save_config_windows_paths(self):
+        # prepare
+        kwargs = dict(repo_dir='foo\\repo', keys_dir='bar\\keys')
+        repo = Repository(app_name='test', **kwargs)
+        # test
+        repo.save_config()
+        self.assertTrue(repo.get_config_file_path().exists())
+        config_text = repo.get_config_file_path().read_text()
+        print(config_text)
+        config = json.loads(repo.get_config_file_path().read_text())
+        for key in kwargs.keys():
+            with self.subTest(msg=key):
+                self.assertEqual(kwargs[key].replace('\\', '/'), config[key])
+
     def test_load_config(self):
         # file does not exist
         self.assertEqual(dict(), Repository.load_config())
@@ -552,6 +568,19 @@ class RepositoryTests(TempDirTestCase):
         Repository.get_config_file_path().touch()
         # test
         self.assertEqual(dict(), Repository.load_config())
+
+    @unittest.skipIf(condition=ON_WINDOWS, reason='posix only')
+    def test_load_config_windows_paths(self):
+        # prepare (mix windows paths and posix paths for convenience)
+        mock_config = dict(repo_dir='foo\\repo', keys_dir='/tmp/bar/keys')
+        config_path = Repository.get_config_file_path()
+        config_path.write_text(json.dumps(mock_config))
+        print(config_path.read_text())
+        # test
+        config = Repository.load_config()
+        for key in mock_config.keys():
+            with self.subTest(msg=key):
+                self.assertEqual(mock_config[key].replace('\\', '/'), config[key])
 
     def test_from_config(self):
         temp_dir = self.temp_dir_path.resolve()
