@@ -5,10 +5,15 @@
 #   - publish to test.pypi.org [2]
 #   - publish to pypi.org [2]
 #
+# Notes:
+#
+#   - to skip the workflow, add [skip ci] to the commit message [3]
+#
 # References
 #
 # [1]: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-# [2]: # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+# [2]: https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+# [3]: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
 
 
 name: Python package
