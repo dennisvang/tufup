@@ -70,8 +70,8 @@ jobs:
           if [[ $GITHUB_REF_TYPE == 'tag' ]]
           then 
             python3 -m pip install .
-            tufup_version="v$(python -c 'import tufup; print(tufup.__version__)')"
-            if [[ $GITHUB_REF_NAME != $tufup_version ]]
+            tufup_version=$(python -c 'import tufup; print(tufup.__version__)')
+            if [[ $GITHUB_REF_NAME != "v$tufup_version" ]]
             then 
               echo "tag does not match tufup.__version__"
               exit 1
@@ -112,8 +112,8 @@ jobs:
     # based on [2]
     needs: [test, build, publish-to-testpypi]
     runs-on: ubuntu-latest
-    # only publish to pypi on tag pushes (except dev tags)
-    if: ${{ startsWith(github.ref, 'refs/tags/') && ! contains(github.ref, 'dev') }}
+    # only publish to pypi on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
     environment:
       name: pypi
       url: https://pypi.org/p/tufup
