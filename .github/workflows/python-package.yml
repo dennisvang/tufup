@@ -13,16 +13,7 @@
 
 name: Python package
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - '*'
-  pull_request:
-    branches:
-      - master
-  workflow_dispatch:
+on: [push, workflow_dispatch]
   
 jobs:
   test:
