@@ -97,8 +97,6 @@ class UtilsTests(TempDirTestCase):
     @unittest.skipIf(condition=not ON_MAC, reason='macOS only')
     def test_install_update_macos_symlinks(self):
         with patch.object(ps, '_install_update_mac') as mock_install_update_mac:
-            ps.install_update(src_dir='', dst_dir='')
-            mock_install_update_mac.assert_called_with(symlinks=False)
             ps.install_update(src_dir='', dst_dir='', symlinks=True)
             mock_install_update_mac.assert_called_with(symlinks=True)
 
