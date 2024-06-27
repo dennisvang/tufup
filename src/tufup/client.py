@@ -38,6 +38,11 @@ class Client(tuf.ngclient.Updater):
         session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
         **kwargs,
     ):
+        """
+        The `tufup.client.Client` is a subclass of `tuf.ngclient.Updater`.
+
+        for `session_auth` formats, see docs for `tufup.client.AuthRequestsFetcher`
+        """
         # tuf.ngclient.Updater.__init__ loads local root metadata automatically
         super().__init__(
             metadata_dir=str(metadata_dir),
@@ -351,6 +356,8 @@ class AuthRequestsFetcher(tuf.ngclient.RequestsFetcher):
 
         where <scheme and server> can be e.g. https://example.com
         or http://localhost:8000.
+
+        Note: <scheme and server> must *not* have a trailing slash
 
         Naming follows [RFC 2396][1], which defines a generic uri as:
 
