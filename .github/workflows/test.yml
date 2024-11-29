@@ -31,7 +31,7 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         # see currently supported releases: https://devguide.python.org/versions/
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}
     steps:
