@@ -1,54 +1,30 @@
 # This workflow does the following:
 #
-#   - run tests and lint with a variety of Python versions on windows, linux and macos [1]
-#   - build the tufup package [2]
-#   - publish to test.pypi.org [2]
-#   - publish to pypi.org [2]
+#   - run tests
+#   - build the tufup package [1]
+#   - publish to test.pypi.org [1]
+#   - publish to pypi.org [1]
 #
 # Notes:
 #
-#   - to skip the workflow, add [skip ci] to the commit message [3]
+#   - to skip the workflow, add [skip ci] to the commit message [2]
 #
 # References
 #
-# [1]: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-# [2]: https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-# [3]: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
+# [1]: https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+# [2]: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
 
 
-name: Python package
+name: build and publish
 
-on: [push, workflow_dispatch]
-  
+on:
+  release:
+    types: [created]
+
 jobs:
   test:
-    # based on [1]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        # see currently supported releases: https://devguide.python.org/versions/
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Lint with ruff
-      run: |
-        pip install ruff
-        ruff check --output-format=github .
-    - name: Test with unittest
-      run: |
-        python -m unittest
-
+    # re-use test workflow
+    uses: ./.github/workflows/test.yml
   build:
     # based on [2]
     needs: test
@@ -77,19 +53,17 @@ jobs:
             fi
           fi
       - name: Store the distribution packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
 
   publish-to-testpypi:
-    # based on [2]
+    # based on [1]
     # to install from test.pypi:
     #   pip install tufup --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
     needs: [test, build]
     runs-on: ubuntu-latest
-    # only publish to test.pypi on tag pushes
-    if: startsWith(github.ref, 'refs/tags/')
     environment:
       name: testpypi
       url: https://test.pypi.org/p/tufup
@@ -97,7 +71,7 @@ jobs:
       id-token: write
     steps:
       - name: Download the distribution packages
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
@@ -108,11 +82,9 @@ jobs:
 
   publish-to-pypi:
     # this requires manual confirmation on github
-    # based on [2]
+    # based on [1]
     needs: [test, build, publish-to-testpypi]
     runs-on: ubuntu-latest
-    # only publish to pypi on tag pushes
-    if: startsWith(github.ref, 'refs/tags/')
     environment:
       name: pypi
       url: https://pypi.org/p/tufup
@@ -120,7 +92,7 @@ jobs:
       id-token: write
     steps:
       - name: Download the distribution packages
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
