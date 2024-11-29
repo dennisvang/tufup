@@ -1,0 +1,53 @@
+# This workflow does the following:
+#
+#   - run tests and lint with a variety of Python versions on windows, linux and macos [1]
+#
+# Notes:
+#
+#   - to skip the workflow, add [skip ci] to the commit message [2]
+#   - the workflow is reusable [3]
+#
+# References
+#
+# [1]: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# [2]: https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
+# [3]: https://docs.github.com/en/actions/sharing-automations/reusing-workflows
+
+name: lint and unittest
+
+on:
+  - push
+  - pull_request
+  # enable manual trigger
+  - workflow_dispatch
+  # make reusable
+  - workflow_call
+  
+jobs:
+  test:
+    # based on [1]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        # see currently supported releases: https://devguide.python.org/versions/
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Lint with ruff
+      run: |
+        pip install ruff
+        ruff check --output-format=github .
+    - name: Test with unittest
+      run: |
+        python -m unittest
