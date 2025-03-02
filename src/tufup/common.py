@@ -198,11 +198,13 @@ class BinaryDiff(ABC):
     @staticmethod
     @abstractmethod
     def diff(*, src_bytes: bytes, dst_bytes: bytes) -> bytes:
+        """Create patch as the binary difference between source and destination data"""
         pass
 
     @staticmethod
     @abstractmethod
     def patch(*, src_bytes: bytes, patch_bytes: bytes) -> bytes:
+        """Apply binary patch to source data to recover destination data"""
         pass
 
 
@@ -267,6 +269,9 @@ class Patcher(object):
         .tar archives. The source and destination files are expected to be
         gzip-compressed tar archives (.tar.gz).
 
+        The binary differencing method can be customized by implementing a `BinaryDiff`
+        subclass and passing this in via the `binary_diff` argument.
+
         Returns a dict with size and hash of the *uncompressed* destination archive.
         """
         with gzip.open(src_path, mode='rb') as src_file:
@@ -300,6 +305,9 @@ class Patcher(object):
         and hash (from custom tuf metadata), similar to python-tuf's download
         verification. If the patched archive fails this check, the destination file
         is not written.
+
+        The binary patching method can be customized by implementing a `BinaryDiff`
+        subclass and passing this in via the `binary_diff` argument.
         """
         if not patch_targets:
             raise ValueError('no patch targets')
