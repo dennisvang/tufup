@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import gzip
 import hashlib
 import logging
@@ -189,6 +190,34 @@ class TargetMeta(object):
         return cls.filename_pattern.format(name=name, version=version, suffix=suffix)
 
 
+class BinaryDiff(ABC):
+    """
+    BinaryDiff represents an interface for overriding the binary diff/patch functions
+    """
+
+    @staticmethod
+    @abstractmethod
+    def diff(*, src_bytes: bytes, dst_bytes: bytes) -> bytes:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def patch(*, src_bytes: bytes, patch_bytes: bytes) -> bytes:
+        pass
+
+
+class DefaultBinaryDiff(BinaryDiff):
+    """The default implementation of binary differencing and patching functions"""
+
+    @staticmethod
+    def diff(src_bytes: bytes, dst_bytes: bytes) -> bytes:
+        return bsdiff4.diff(src_bytes=src_bytes, dst_bytes=dst_bytes)
+
+    @staticmethod
+    def patch(src_bytes: bytes, patch_bytes: bytes) -> bytes:
+        return bsdiff4.patch(src_bytes=src_bytes, patch_bytes=patch_bytes)
+
+
 class Patcher(object):
     DEFAULT_HASH_ALGORITHM = 'sha256'
 
@@ -227,7 +256,11 @@ class Patcher(object):
 
     @classmethod
     def diff_and_hash(
-        cls, src_path: pathlib.Path, dst_path: pathlib.Path, patch_path: pathlib.Path
+        cls,
+        src_path: pathlib.Path,
+        dst_path: pathlib.Path,
+        patch_path: pathlib.Path,
+        binary_diff: BinaryDiff = DefaultBinaryDiff,
     ) -> dict:
         """
         Creates a patch file from the binary difference between source and destination
@@ -240,7 +273,9 @@ class Patcher(object):
             with gzip.open(dst_path, mode='rb') as dst_file:
                 dst_tar_content = dst_file.read()
                 patch_path.write_bytes(
-                    bsdiff4.diff(src_bytes=src_file.read(), dst_bytes=dst_tar_content)
+                    binary_diff.diff(
+                        src_bytes=src_file.read(), dst_bytes=dst_tar_content
+                    )
                 )
         return cls._get_tar_size_and_hash(tar_content=dst_tar_content)
 
@@ -250,6 +285,7 @@ class Patcher(object):
         src_path: pathlib.Path,
         dst_path: pathlib.Path,
         patch_targets: Dict[TargetMeta, pathlib.Path],
+        binary_diff: BinaryDiff = DefaultBinaryDiff,
     ) -> None:
         """
         Applies one or more binary patch files to a source file in order to
@@ -273,7 +309,7 @@ class Patcher(object):
         # apply cumulative patches (sorted by version, in ascending order)
         for patch_meta, patch_path in sorted(patch_targets.items()):
             logger.info(f'applying patch: {patch_meta.name}')
-            tar_bytes = bsdiff4.patch(
+            tar_bytes = binary_diff.patch(
                 src_bytes=tar_bytes, patch_bytes=patch_path.read_bytes()
             )
         # verify integrity of the final result (raises exception on failure)
