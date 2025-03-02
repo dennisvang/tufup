@@ -562,6 +562,10 @@ class RepositoryTests(TempDirTestCase):
             with self.subTest(msg=key):
                 self.assertEqual(kwargs[key].replace('\\', '/'), config[key])
 
+    def test_save_config_binary_diff(self):
+        # todo: test binary_diff
+        raise NotImplemented
+
     def test_load_config(self):
         # file does not exist
         self.assertEqual(dict(), Repository.load_config())
@@ -623,6 +627,10 @@ class RepositoryTests(TempDirTestCase):
                     {key: getattr(repo, key) for key in config_data.keys()},
                 )
                 self.assertTrue(mmock_load.called)
+
+    def test_from_config_binary_diff(self):
+        # todo: test binary_diff
+        raise NotImplemented
 
     def test_initialize(self):
         # prepare

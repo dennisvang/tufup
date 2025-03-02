@@ -1,3 +1,4 @@
+import importlib
 from copy import deepcopy
 from datetime import datetime, timedelta
 import inspect
@@ -617,6 +618,12 @@ class Repository(object):
                     f' ({pathlib.Path.cwd()})'
                 )
                 temp_config_dict[key] = temp_config_dict[key].as_posix()
+        # save binary_diff module and class name
+        binary_diff = temp_config_dict['binary_diff']
+        if binary_diff:
+            temp_config_dict['binary_diff'] = dict(
+                module=binary_diff.__module__, classname=binary_diff.__name__
+            )
         # write file
         config_file_path.write_text(
             data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
@@ -645,7 +652,19 @@ class Repository(object):
     @classmethod
     def from_config(cls):
         """Create Repository instance from configuration file."""
-        instance = cls(**cls.load_config())
+        kwargs = cls.load_config()
+        # import custom binary_diff class based on config info
+        binary_diff = kwargs.pop('binary_diff', dict())
+        if binary_diff:
+            try:
+                kwargs['binary_diff'] = getattr(
+                    importlib.import_module(name=binary_diff['module']),
+                    binary_diff['classname'],
+                )
+            except Exception as e:
+                kwargs['binary_diff'] = None
+                logger.warning(f'failed to import binary_diff class from config: {e}')
+        instance = cls(**kwargs)
         instance._load_keys_and_roles(create_keys=False)
         return instance
 
