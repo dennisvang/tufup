@@ -257,7 +257,7 @@ class Patcher(object):
         src_path: pathlib.Path,
         dst_path: pathlib.Path,
         patch_path: pathlib.Path,
-        binary_diff: BinaryDiff = DefaultBinaryDiff,
+        binary_diff: Optional[BinaryDiff] = None,
     ) -> dict:
         """
         Creates a patch file from the binary difference between source and destination
@@ -269,6 +269,7 @@ class Patcher(object):
 
         Returns a dict with size and hash of the *uncompressed* destination archive.
         """
+        binary_diff = binary_diff or DefaultBinaryDiff
         with gzip.open(src_path, mode='rb') as src_file:
             with gzip.open(dst_path, mode='rb') as dst_file:
                 dst_tar_content = dst_file.read()
@@ -285,7 +286,7 @@ class Patcher(object):
         src_path: pathlib.Path,
         dst_path: pathlib.Path,
         patch_targets: Dict[TargetMeta, pathlib.Path],
-        binary_diff: BinaryDiff = DefaultBinaryDiff,
+        binary_diff: Optional[BinaryDiff] = None,
     ) -> None:
         """
         Applies one or more binary patch files to a source file in order to
@@ -304,6 +305,7 @@ class Patcher(object):
         The binary patching method can be customized by implementing a `BinaryDiff`
         subclass and passing this in via the `binary_diff` argument.
         """
+        binary_diff = binary_diff or DefaultBinaryDiff
         if not patch_targets:
             raise ValueError('no patch targets')
         # decompress .tar data from source .tar.gz file
