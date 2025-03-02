@@ -211,13 +211,8 @@ class BinaryDiff(ABC):
 class DefaultBinaryDiff(BinaryDiff):
     """The default implementation of binary differencing and patching functions"""
 
-    @staticmethod
-    def diff(src_bytes: bytes, dst_bytes: bytes) -> bytes:
-        return bsdiff4.diff(src_bytes=src_bytes, dst_bytes=dst_bytes)
-
-    @staticmethod
-    def patch(src_bytes: bytes, patch_bytes: bytes) -> bytes:
-        return bsdiff4.patch(src_bytes=src_bytes, patch_bytes=patch_bytes)
+    diff = bsdiff4.diff
+    patch = bsdiff4.patch
 
 
 class Patcher(object):
