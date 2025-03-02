@@ -516,6 +516,7 @@ class RepositoryTests(TempDirTestCase):
             'keys_dir': None,
             'repo_dir': None,
             'thresholds': None,
+            'binary_diff': None
         }
         self.assertEqual(set(expected_config_dict), set(repo.config_dict))
 

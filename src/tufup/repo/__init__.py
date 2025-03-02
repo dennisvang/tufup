@@ -39,13 +39,14 @@ from tuf.api.metadata import (
 from tuf.api.serialization.json import JSONSerializer
 
 from tufup.common import (
+    BinaryDiff,
     CustomMetadataDict,
     KEY_REQUIRED,
     Patcher,
     SUFFIX_PATCH,
     TargetMeta,
 )
-from tufup.utils.platform_specific import _patched_resolve
+from tufup.utils.platform_specific import _patched_resolve  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -533,6 +534,7 @@ class Repository(object):
         encrypted_keys: Optional[List[str]] = None,
         expiration_days: Optional[RolesDict] = None,
         thresholds: Optional[RolesDict] = None,
+        binary_diff: Optional[BinaryDiff] = None,
     ):
         if repo_dir is None:
             repo_dir = DEFAULT_REPO_DIR_NAME
@@ -555,6 +557,7 @@ class Repository(object):
         self.encrypted_keys = encrypted_keys
         self.expiration_days = expiration_days
         self.thresholds = thresholds
+        self.binary_diff = binary_diff
         # keys and roles
         self.keys: Optional[Keys] = None
         self.roles: Optional[Roles] = None
@@ -801,7 +804,10 @@ class Repository(object):
                 patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
                 # create patch
                 dst_size_and_hash = Patcher.diff_and_hash(
-                    src_path=src_path, dst_path=dst_path, patch_path=patch_path
+                    src_path=src_path,
+                    dst_path=dst_path,
+                    patch_path=patch_path,
+                    binary_diff=self.binary_diff,
                 )
                 # register patch (size and hash are used by the client to verify the
                 # integrity of the patched archive)
