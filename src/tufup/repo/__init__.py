@@ -625,8 +625,9 @@ class Repository(object):
         # save binary_diff module and class name
         binary_diff = temp_config_dict['binary_diff']
         if binary_diff:
-            temp_config_dict['binary_diff'] = dict(
-                module=binary_diff.__module__, classname=binary_diff.__name__
+            # store fully qualified class name
+            temp_config_dict['binary_diff'] = '.'.join(
+                [binary_diff.__module__, binary_diff.__name__]
             )
         # write file
         config_file_path.write_text(
@@ -658,12 +659,13 @@ class Repository(object):
         """Create Repository instance from configuration file."""
         kwargs = cls.load_config()
         # import custom binary_diff class based on config info
-        binary_diff = kwargs.pop('binary_diff', dict())
+        binary_diff = kwargs.pop('binary_diff', '')
         if binary_diff:
             try:
+                # split fully qualified name into module and class name
+                module, classname = binary_diff.rsplit('.', 1)
                 kwargs['binary_diff'] = getattr(
-                    importlib.import_module(name=binary_diff['module']),
-                    binary_diff['classname'],
+                    importlib.import_module(name=module), classname
                 )
             except Exception as e:
                 kwargs['binary_diff'] = None

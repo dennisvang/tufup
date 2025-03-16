@@ -565,10 +565,7 @@ class RepositoryTests(TempDirTestCase):
     def test_save_config_binary_diff(self):
         cases = [
             (None, None),
-            (
-                DefaultBinaryDiff,
-                dict(classname='DefaultBinaryDiff', module='tufup.common'),
-            ),
+            (DefaultBinaryDiff, 'tufup.common.DefaultBinaryDiff'),
         ]
         for binary_diff, expected in cases:
             with self.subTest(msg=binary_diff):
@@ -647,10 +644,7 @@ class RepositoryTests(TempDirTestCase):
     def test_from_config_binary_diff(self):
         cases = [
             (None, None),
-            (
-                dict(classname='DefaultBinaryDiff', module='tufup.common'),
-                DefaultBinaryDiff,
-            ),
+            ('tufup.common.DefaultBinaryDiff', DefaultBinaryDiff),
         ]
         for binary_diff, expected in cases:
             with self.subTest(msg=binary_diff):
