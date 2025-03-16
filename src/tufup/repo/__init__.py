@@ -604,13 +604,17 @@ class Repository(object):
         temp_config_dict = self.config_dict  # note self.config_dict is a property
         for key in ['repo_dir', 'keys_dir']:
             try:
-                temp_config_dict[key] = temp_config_dict[key].relative_to(
-                    # resolve() is necessary on windows, to handle "short"
-                    # path components (a.k.a. "8.3 filename" or "8.3 alias"),
-                    # which are truncated with a tilde,
-                    # e.g. c:\Users\RUNNER~1\...
-                    pathlib.Path.cwd().resolve()
-                ).as_posix()
+                temp_config_dict[key] = (
+                    temp_config_dict[key]
+                    .relative_to(
+                        # resolve() is necessary on windows, to handle "short"
+                        # path components (a.k.a. "8.3 filename" or "8.3 alias"),
+                        # which are truncated with a tilde,
+                        # e.g. c:\Users\RUNNER~1\...
+                        pathlib.Path.cwd().resolve()
+                    )
+                    .as_posix()
+                )
             except ValueError:
                 logger.warning(
                     f'Saving *absolute* path to config, because the path'
