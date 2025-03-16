@@ -565,7 +565,10 @@ class RepositoryTests(TempDirTestCase):
     def test_save_config_binary_diff(self):
         cases = [
             (None, None),
-            (DefaultBinaryDiff, dict(classname='DefaultBinaryDiff', module='tufup.common')),
+            (
+                DefaultBinaryDiff,
+                dict(classname='DefaultBinaryDiff', module='tufup.common'),
+            ),
         ]
         for binary_diff, expected in cases:
             with self.subTest(msg=binary_diff):
@@ -642,8 +645,34 @@ class RepositoryTests(TempDirTestCase):
                 self.assertTrue(mmock_load.called)
 
     def test_from_config_binary_diff(self):
-        # todo: test binary_diff
-        raise NotImplementedError
+        cases = [
+            (None, None),
+            (
+                dict(classname='DefaultBinaryDiff', module='tufup.common'),
+                DefaultBinaryDiff,
+            ),
+        ]
+        for binary_diff, expected in cases:
+            with self.subTest(msg=binary_diff):
+                # prepare
+                config_data = dict(
+                    app_name='test',
+                    app_version_attr='my_app.__version__',
+                    repo_dir='repo',
+                    keys_dir='keystore',
+                    key_map=dict(),
+                    encrypted_keys=[],
+                    expiration_days=dict(),
+                    thresholds=dict(),
+                    binary_diff=binary_diff,
+                )
+                Repository.get_config_file_path().write_text(
+                    json.dumps(config_data, default=str)
+                )
+                # test
+                with patch.object(Repository, '_load_keys_and_roles'):
+                    repo = Repository.from_config()
+                self.assertIs(repo.binary_diff, expected)
 
     def test_initialize(self):
         # prepare
