@@ -26,7 +26,7 @@ from tuf.api.metadata import (
 )
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.common import KEY_REQUIRED, TargetMeta
+from tufup.common import DefaultBinaryDiff, KEY_REQUIRED, TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
     Base,
@@ -516,7 +516,7 @@ class RepositoryTests(TempDirTestCase):
             'keys_dir': None,
             'repo_dir': None,
             'thresholds': None,
-            'binary_diff': None
+            'binary_diff': None,
         }
         self.assertEqual(set(expected_config_dict), set(repo.config_dict))
 
@@ -563,8 +563,21 @@ class RepositoryTests(TempDirTestCase):
                 self.assertEqual(kwargs[key].replace('\\', '/'), config[key])
 
     def test_save_config_binary_diff(self):
-        # todo: test binary_diff
-        raise NotImplemented
+        cases = [
+            (None, None),
+            (DefaultBinaryDiff, dict(classname='DefaultBinaryDiff', module='tufup.common')),
+        ]
+        for binary_diff, expected in cases:
+            with self.subTest(msg=binary_diff):
+                # prepare
+                repo = Repository(app_name='test', binary_diff=binary_diff)
+                # test
+                repo.save_config()
+                self.assertTrue(repo.get_config_file_path().exists())
+                config_text = repo.get_config_file_path().read_text()
+                print(config_text)
+                config = json.loads(repo.get_config_file_path().read_text())
+                self.assertEqual(expected, config.get('binary_diff'))
 
     def test_load_config(self):
         # file does not exist
@@ -630,7 +643,7 @@ class RepositoryTests(TempDirTestCase):
 
     def test_from_config_binary_diff(self):
         # todo: test binary_diff
-        raise NotImplemented
+        raise NotImplementedError
 
     def test_initialize(self):
         # prepare
