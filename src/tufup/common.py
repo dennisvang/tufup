@@ -257,7 +257,7 @@ class Patcher(object):
         src_path: pathlib.Path,
         dst_path: pathlib.Path,
         patch_path: pathlib.Path,
-        binary_diff: Optional[BinaryDiff] = None,
+        binary_diff: Optional[type[BinaryDiff]] = None,
     ) -> dict:
         """
         Creates a patch file from the binary difference between source and destination
@@ -286,7 +286,7 @@ class Patcher(object):
         src_path: pathlib.Path,
         dst_path: pathlib.Path,
         patch_targets: Dict[TargetMeta, pathlib.Path],
-        binary_diff: Optional[BinaryDiff] = None,
+        binary_diff: Optional[type[BinaryDiff]] = None,
     ) -> None:
         """
         Applies one or more binary patch files to a source file in order to
