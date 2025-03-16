@@ -2,7 +2,10 @@ import logging
 import pathlib
 import shutil
 
+import bsdiff4
+
 from tufup.client import Client
+from tufup.common import BinaryDiff
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,18 @@ METADATA_BASE_URL = 'http://localhost:8000/metadata/'
 TARGET_BASE_URL = 'http://localhost:8000/targets/'
 
 
+# By default, tufup uses bsdiff4 to create patches, but we can override that.
+# Here's a dummy example (just extending bsdiff4).
+# You do not need to do this if you're happy with the default bsdiff4.
+class CustomBinaryDiff(BinaryDiff):
+    diff = bsdiff4.diff
+
+    @staticmethod
+    def patch(*, src_bytes: bytes, patch_bytes: bytes) -> bytes:
+        logger.info('this is a custom patch, but we still use bsdiff4 for convenience')
+        return bsdiff4.patch(src_bytes=src_bytes, patch_bytes=patch_bytes)
+
+
 def main():
     # The app must ensure dirs exist
     for dir_path in [APP_INSTALL_DIR, METADATA_DIR, TARGET_DIR]:
@@ -65,6 +80,7 @@ def main():
         target_dir=TARGET_DIR,
         target_base_url=TARGET_BASE_URL,
         refresh_required=False,
+        binary_diff=CustomBinaryDiff,
     )
 
     # Perform update

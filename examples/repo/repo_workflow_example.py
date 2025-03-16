@@ -99,6 +99,7 @@ DUMMY_METADATA = dict(changes=['this has changed', 'that has changed', '...'])
 
 # By default, tufup uses bsdiff4 to create patches, but we can override that.
 # Here's a dummy example (just extending bsdiff4).
+# You do not need to do this if you're happy with the default bsdiff4.
 class CustomBinaryDiff(BinaryDiff):
     patch = bsdiff4.patch
 
