@@ -535,7 +535,7 @@ class Repository(object):
         encrypted_keys: Optional[List[str]] = None,
         expiration_days: Optional[RolesDict] = None,
         thresholds: Optional[RolesDict] = None,
-        binary_diff: Optional[BinaryDiff] = None,
+        binary_diff: Optional[type[BinaryDiff]] = None,
     ):
         if repo_dir is None:
             repo_dir = DEFAULT_REPO_DIR_NAME
