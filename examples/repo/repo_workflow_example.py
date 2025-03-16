@@ -6,6 +6,9 @@ import secrets  # from python 3.9+ we can use random.randbytes
 import shutil
 import tempfile
 
+import bsdiff4
+
+from tufup.common import BinaryDiff
 from tufup.repo import (
     DEFAULT_KEY_MAP,
     DEFAULT_KEYS_DIR_NAME,
@@ -93,6 +96,18 @@ ENCRYPTED_KEYS = ['root', 'root_two', 'targets']
 # Custom metadata (for example, a list of changes)
 DUMMY_METADATA = dict(changes=['this has changed', 'that has changed', '...'])
 
+
+# By default, tufup uses bsdiff4 to create patches, but we can override that.
+# Here's a dummy example (just extending bsdiff4).
+class CustomBinaryDiff(BinaryDiff):
+    patch = bsdiff4.patch
+
+    @staticmethod
+    def diff(*, src_bytes: bytes, dst_bytes: bytes) -> bytes:
+        logger.info('this is a custom diff, but we still use bsdiff4 for convenience')
+        return bsdiff4.diff(src_bytes=src_bytes, dst_bytes=dst_bytes)
+
+
 # Create repository instance
 repo = Repository(
     app_name=APP_NAME,
@@ -102,6 +117,7 @@ repo = Repository(
     expiration_days=EXPIRATION_DAYS,
     encrypted_keys=ENCRYPTED_KEYS,
     thresholds=THRESHOLDS,
+    binary_diff=CustomBinaryDiff,
 )
 
 # Save configuration (JSON file)
