@@ -121,7 +121,9 @@ def make_gztar_archive(
     return TargetMeta(target_path=archive_path)
 
 
-def get_binary_diff_class(fully_qualified_name: Optional[str]) -> Optional[type[BinaryDiff]]:
+def get_binary_diff_class(
+    fully_qualified_name: Optional[str]
+) -> Optional[type[BinaryDiff]]:
     """get a BinaryDiff instance from a fully qualified class name"""
     if fully_qualified_name is not None:
         try:

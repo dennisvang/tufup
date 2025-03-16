@@ -223,6 +223,7 @@ class CommandTests(TempDirTestCase):
             [
                 'my-app',  # app name
                 'my_app.__version__',  # app version
+                'my_module.MyBinaryDiff',  # binary_diff
                 'repo/dir',  # repo dir
                 'keys/dir',  # keys dir
                 yes,  # keep default root key name
@@ -259,6 +260,7 @@ class CommandTests(TempDirTestCase):
         original_kwargs = dict(
             app_name='my-app',
             app_version_attr='my_app.__version__',
+            binary_diff='my_module.MyBinaryDiff',
             repo_dir='repo/dir',
             keys_dir='keys/dir',
             key_map={name: [name] for name in role_names},
