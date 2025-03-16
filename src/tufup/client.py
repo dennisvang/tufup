@@ -12,7 +12,7 @@ from requests.auth import AuthBase
 from tuf.api.exceptions import DownloadError, UnsignedMetadataError
 import tuf.ngclient
 
-from tufup.common import KEY_REQUIRED, Patcher, TargetMeta
+from tufup.common import BinaryDiff, KEY_REQUIRED, Patcher, TargetMeta
 from tufup.utils.platform_specific import install_update
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ class Client(tuf.ngclient.Updater):
         extract_dir: Optional[pathlib.Path] = None,
         refresh_required: bool = False,
         session_auth: Optional[Dict[str, Union[Tuple[str, str], AuthBase]]] = None,
+        binary_diff: Optional[type[BinaryDiff]] = None,
         **kwargs,
     ):
         """
@@ -61,6 +62,7 @@ class Client(tuf.ngclient.Updater):
         self.new_archive_info: Optional[tuf.ngclient.TargetFile] = None
         self.new_targets: Optional[dict] = None
         self.downloaded_target_files = {}
+        self.binary_diff = binary_diff
 
     @property
     def trusted_target_metas(self) -> list:
@@ -301,6 +303,7 @@ class Client(tuf.ngclient.Updater):
                     src_path=self.current_archive_local_path,
                     dst_path=self.new_archive_local_path,
                     patch_targets=self.downloaded_target_files,
+                    binary_diff=self.binary_diff,
                 )
         except Exception as e:
             # rename all failed targets in order to skip them (patches) or retry
