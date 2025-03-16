@@ -121,6 +121,16 @@ def make_gztar_archive(
     return TargetMeta(target_path=archive_path)
 
 
+def get_binary_diff_class(fully_qualified_name: Optional[str]) -> Optional[type[BinaryDiff]]:
+    """get a BinaryDiff instance from a fully qualified class name"""
+    if fully_qualified_name is not None:
+        try:
+            module, classname = fully_qualified_name.rsplit('.', 1)
+            return getattr(importlib.import_module(name=module), classname)
+        except Exception as e:
+            logger.warning(f'failed to import binary_diff class from config: {e}')
+
+
 class RolesDict(TypedDict):
     root: Any
     targets: Any
@@ -659,17 +669,9 @@ class Repository(object):
         """Create Repository instance from configuration file."""
         kwargs = cls.load_config()
         # import custom binary_diff class based on config info
-        binary_diff = kwargs.pop('binary_diff', '')
-        if binary_diff:
-            try:
-                # split fully qualified name into module and class name
-                module, classname = binary_diff.rsplit('.', 1)
-                kwargs['binary_diff'] = getattr(
-                    importlib.import_module(name=module), classname
-                )
-            except Exception as e:
-                kwargs['binary_diff'] = None
-                logger.warning(f'failed to import binary_diff class from config: {e}')
+        kwargs['binary_diff'] = get_binary_diff_class(
+            fully_qualified_name=kwargs.get('binary_diff')
+        )
         instance = cls(**kwargs)
         instance._load_keys_and_roles(create_keys=False)
         return instance

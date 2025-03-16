@@ -30,6 +30,7 @@ from tufup.common import DefaultBinaryDiff, KEY_REQUIRED, TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
     Base,
+    get_binary_diff_class,
     in_,
     Keys,
     make_gztar_archive,
@@ -105,6 +106,14 @@ class ModuleTests(TempDirTestCase):
             self.assertTrue(archive.path.exists())
             self.assertTrue(app_name in str(archive.path))
             self.assertTrue(version in str(archive.path))
+
+    def test_get_binary_diff_class(self):
+        cases = [(None, None), ('tufup.common.DefaultBinaryDiff', DefaultBinaryDiff)]
+        for name, expected in cases:
+            with self.subTest(msg=name):
+                self.assertIs(
+                    get_binary_diff_class(fully_qualified_name=name), expected
+                )
 
 
 class BaseTests(TempDirTestCase):
