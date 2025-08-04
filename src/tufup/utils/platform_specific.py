@@ -24,7 +24,7 @@ def install_update(
     exclude_from_purge: Optional[List[Union[pathlib.Path, str]]] = None,
     **kwargs,
 ):
-    """
+    r"""
     Installs update files using platform specific installation script. The
     actual installation script copies the files and folders from `src_dir` to
     `dst_dir`.
@@ -35,7 +35,7 @@ def install_update(
     **DANGER**:
 
     ONLY use `purge_dst_dir=True` if your app is properly installed in its
-    own *separate* directory, such as `%PROGRAMFILES%\\MyApp`.
+    own *separate* directory, such as `%PROGRAMFILES%\MyApp`.
 
     DO NOT use `purge_dst_dir=True` if your app executable is running
     directly from a folder that also contains unrelated files or folders,
@@ -44,7 +44,7 @@ def install_update(
 
     Individual files and folders can be excluded from purge using e.g.
 
-        exclude_from_purge=['path\\to\\file1', r'"path to\file2"', ...]
+        exclude_from_purge=['path\to\file1', r'"path to\file2"', ...]
 
     If `purge_dst_dir` is `False`, the `exclude_from_purge` argument is
     ignored.
