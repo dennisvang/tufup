@@ -44,7 +44,7 @@ def install_update(
 
     Individual files and folders can be excluded from purge using e.g.
 
-        exclude_from_purge=['path\to\file1', r'"path to\file2"', ...]
+        exclude_from_purge=['path\\to\\file1', r'"path to\file2"', ...]
 
     If `purge_dst_dir` is `False`, the `exclude_from_purge` argument is
     ignored.
