@@ -35,7 +35,7 @@ def install_update(
     **DANGER**:
 
     ONLY use `purge_dst_dir=True` if your app is properly installed in its
-    own *separate* directory, such as %PROGRAMFILES%\MyApp.
+    own *separate* directory, such as `%PROGRAMFILES%\\MyApp`.
 
     DO NOT use `purge_dst_dir=True` if your app executable is running
     directly from a folder that also contains unrelated files or folders,
