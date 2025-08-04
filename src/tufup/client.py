@@ -184,6 +184,13 @@ class Client(tuf.ngclient.Updater):
                 sys.exit()
             return None
         # check for new target files (archives and patches)
+        # look through all files  in self.current_archive_local_path.parent, and remove all that is not self.current_archive_local_path
+        # this is to save space
+        for file in self.current_archive_local_path.parent.iterdir():
+            metadata_for_file = TargetMeta.parse_filename(file.name)
+            logger.debug(f'checking {metadata_for_file}')
+            if TargetMeta(name=metadata_for_file["name"], version=metadata_for_file["version"], is_archive=metadata_for_file["suffix"]) < self.current_archive:
+                file.unlink()
         logger.debug(f'current archive: {self.current_archive.filename}')
         all_new_targets = dict(
             (target_meta, self.get_targetinfo(target_meta))
