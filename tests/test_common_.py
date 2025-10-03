@@ -229,6 +229,7 @@ class PatcherTests(TempDirTestCase):
             )
 
     def test_diff_and_hash(self):
+        # todo: explicitly test the binary_diff argument?
         # prepare
         src = 'v-1'
         dst = 'v-2'
@@ -244,6 +245,7 @@ class PatcherTests(TempDirTestCase):
         self.assertEqual(self.tar_fingerprints[dst], dst_fingerprint)
 
     def test_patch_and_verify(self):
+        # todo: explicitly test the binary_diff argument?
         # prepare
         src = 'v-1'
         dst = 'v-3'  # note we're skipping v-2

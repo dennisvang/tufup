@@ -6,7 +6,7 @@ import packaging.version
 from tuf.api.metadata import TOP_LEVEL_ROLE_NAMES
 
 from tufup.utils import log_print, input_bool, input_numeric, input_text, input_list
-from tufup.repo import Repository
+from tufup.repo import get_binary_diff_class, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -180,10 +180,16 @@ class _StoreVersionAction(argparse.Action):
 
 
 def _get_config_from_user(**kwargs) -> dict:
+    """get configuration choices from user via command line"""
     top_level_role_names = ['root', 'targets', 'snapshot', 'timestamp']
     for key, example, optional in [
         ('app_name', '', False),
         ('app_version_attr', ', e.g. my_app.__version__', True),
+        (
+            'binary_diff',
+            ', e.g. my_module.MyBinaryDiff (only needed if bsdiff4 fails)',
+            True,
+        ),
         ('repo_dir', '', False),
         ('keys_dir', '', False),
     ]:
@@ -250,7 +256,11 @@ def _cmd_init(options: argparse.Namespace):
     _print_info(message)
     if modify:
         config_dict = _get_config_from_user(**config_dict)
-    # create repository instance
+    # get binary diff class from fully qualified name
+    config_dict['binary_diff'] = get_binary_diff_class(
+        fully_qualified_name=config_dict.get('binary_diff')
+    )
+    # create repository instance (cannot use from_config here)
     repository = Repository(**config_dict)
     # save new or updated configuration
     _print_info('Saving config...')

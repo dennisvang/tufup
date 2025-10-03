@@ -1,3 +1,4 @@
+import importlib
 from copy import deepcopy
 from datetime import datetime, timedelta
 import inspect
@@ -39,13 +40,14 @@ from tuf.api.metadata import (
 from tuf.api.serialization.json import JSONSerializer
 
 from tufup.common import (
+    BinaryDiff,
     CustomMetadataDict,
     KEY_REQUIRED,
     Patcher,
     SUFFIX_PATCH,
     TargetMeta,
 )
-from tufup.utils.platform_specific import _patched_resolve
+from tufup.utils.platform_specific import _patched_resolve  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,18 @@ def make_gztar_archive(
         # the filter arg could be used in future versions to modify the tarinfo objects
         tar.add(name=src_dir, arcname='.', recursive=True, filter=None)
     return TargetMeta(target_path=archive_path)
+
+
+def get_binary_diff_class(
+    fully_qualified_name: Optional[str]
+) -> Optional[type[BinaryDiff]]:
+    """get a BinaryDiff instance from a fully qualified class name"""
+    if fully_qualified_name is not None:
+        try:
+            module, classname = fully_qualified_name.rsplit('.', 1)
+            return getattr(importlib.import_module(name=module), classname)
+        except Exception as e:
+            logger.warning(f'failed to import binary_diff class from config: {e}')
 
 
 class RolesDict(TypedDict):
@@ -533,6 +547,7 @@ class Repository(object):
         encrypted_keys: Optional[List[str]] = None,
         expiration_days: Optional[RolesDict] = None,
         thresholds: Optional[RolesDict] = None,
+        binary_diff: Optional[type[BinaryDiff]] = None,
     ):
         if repo_dir is None:
             repo_dir = DEFAULT_REPO_DIR_NAME
@@ -555,6 +570,7 @@ class Repository(object):
         self.encrypted_keys = encrypted_keys
         self.expiration_days = expiration_days
         self.thresholds = thresholds
+        self.binary_diff = binary_diff
         # keys and roles
         self.keys: Optional[Keys] = None
         self.roles: Optional[Roles] = None
@@ -600,13 +616,17 @@ class Repository(object):
         temp_config_dict = self.config_dict  # note self.config_dict is a property
         for key in ['repo_dir', 'keys_dir']:
             try:
-                temp_config_dict[key] = temp_config_dict[key].relative_to(
-                    # resolve() is necessary on windows, to handle "short"
-                    # path components (a.k.a. "8.3 filename" or "8.3 alias"),
-                    # which are truncated with a tilde,
-                    # e.g. c:\Users\RUNNER~1\...
-                    pathlib.Path.cwd().resolve()
-                ).as_posix()
+                temp_config_dict[key] = (
+                    temp_config_dict[key]
+                    .relative_to(
+                        # resolve() is necessary on windows, to handle "short"
+                        # path components (a.k.a. "8.3 filename" or "8.3 alias"),
+                        # which are truncated with a tilde,
+                        # e.g. c:\Users\RUNNER~1\...
+                        pathlib.Path.cwd().resolve()
+                    )
+                    .as_posix()
+                )
             except ValueError:
                 logger.warning(
                     f'Saving *absolute* path to config, because the path'
@@ -614,6 +634,13 @@ class Repository(object):
                     f' ({pathlib.Path.cwd()})'
                 )
                 temp_config_dict[key] = temp_config_dict[key].as_posix()
+        # save binary_diff module and class name
+        binary_diff = temp_config_dict['binary_diff']
+        if binary_diff:
+            # store fully qualified class name
+            temp_config_dict['binary_diff'] = '.'.join(
+                [binary_diff.__module__, binary_diff.__name__]
+            )
         # write file
         config_file_path.write_text(
             data=json.dumps(temp_config_dict, default=str, sort_keys=True, indent=4),
@@ -642,7 +669,12 @@ class Repository(object):
     @classmethod
     def from_config(cls):
         """Create Repository instance from configuration file."""
-        instance = cls(**cls.load_config())
+        kwargs = cls.load_config()
+        # import custom binary_diff class based on config info
+        kwargs['binary_diff'] = get_binary_diff_class(
+            fully_qualified_name=kwargs.get('binary_diff')
+        )
+        instance = cls(**kwargs)
         instance._load_keys_and_roles(create_keys=False)
         return instance
 
@@ -801,7 +833,10 @@ class Repository(object):
                 patch_path = dst_path.with_suffix('').with_suffix(SUFFIX_PATCH)
                 # create patch
                 dst_size_and_hash = Patcher.diff_and_hash(
-                    src_path=src_path, dst_path=dst_path, patch_path=patch_path
+                    src_path=src_path,
+                    dst_path=dst_path,
+                    patch_path=patch_path,
+                    binary_diff=self.binary_diff,
                 )
                 # register patch (size and hash are used by the client to verify the
                 # integrity of the patched archive)

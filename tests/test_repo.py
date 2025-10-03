@@ -26,10 +26,11 @@ from tuf.api.metadata import (
 )
 
 from tests import TempDirTestCase, TEST_REPO_DIR
-from tufup.common import KEY_REQUIRED, TargetMeta
+from tufup.common import DefaultBinaryDiff, KEY_REQUIRED, TargetMeta
 import tufup.repo  # for patching
 from tufup.repo import (
     Base,
+    get_binary_diff_class,
     in_,
     Keys,
     make_gztar_archive,
@@ -105,6 +106,14 @@ class ModuleTests(TempDirTestCase):
             self.assertTrue(archive.path.exists())
             self.assertTrue(app_name in str(archive.path))
             self.assertTrue(version in str(archive.path))
+
+    def test_get_binary_diff_class(self):
+        cases = [(None, None), ('tufup.common.DefaultBinaryDiff', DefaultBinaryDiff)]
+        for name, expected in cases:
+            with self.subTest(msg=name):
+                self.assertIs(
+                    get_binary_diff_class(fully_qualified_name=name), expected
+                )
 
 
 class BaseTests(TempDirTestCase):
@@ -516,6 +525,7 @@ class RepositoryTests(TempDirTestCase):
             'keys_dir': None,
             'repo_dir': None,
             'thresholds': None,
+            'binary_diff': None,
         }
         self.assertEqual(set(expected_config_dict), set(repo.config_dict))
 
@@ -560,6 +570,23 @@ class RepositoryTests(TempDirTestCase):
         for key in kwargs.keys():
             with self.subTest(msg=key):
                 self.assertEqual(kwargs[key].replace('\\', '/'), config[key])
+
+    def test_save_config_binary_diff(self):
+        cases = [
+            (None, None),
+            (DefaultBinaryDiff, 'tufup.common.DefaultBinaryDiff'),
+        ]
+        for binary_diff, expected in cases:
+            with self.subTest(msg=binary_diff):
+                # prepare
+                repo = Repository(app_name='test', binary_diff=binary_diff)
+                # test
+                repo.save_config()
+                self.assertTrue(repo.get_config_file_path().exists())
+                config_text = repo.get_config_file_path().read_text()
+                print(config_text)
+                config = json.loads(repo.get_config_file_path().read_text())
+                self.assertEqual(expected, config.get('binary_diff'))
 
     def test_load_config(self):
         # file does not exist
@@ -622,6 +649,33 @@ class RepositoryTests(TempDirTestCase):
                     {key: getattr(repo, key) for key in config_data.keys()},
                 )
                 self.assertTrue(mmock_load.called)
+
+    def test_from_config_binary_diff(self):
+        cases = [
+            (None, None),
+            ('tufup.common.DefaultBinaryDiff', DefaultBinaryDiff),
+        ]
+        for binary_diff, expected in cases:
+            with self.subTest(msg=binary_diff):
+                # prepare
+                config_data = dict(
+                    app_name='test',
+                    app_version_attr='my_app.__version__',
+                    repo_dir='repo',
+                    keys_dir='keystore',
+                    key_map=dict(),
+                    encrypted_keys=[],
+                    expiration_days=dict(),
+                    thresholds=dict(),
+                    binary_diff=binary_diff,
+                )
+                Repository.get_config_file_path().write_text(
+                    json.dumps(config_data, default=str)
+                )
+                # test
+                with patch.object(Repository, '_load_keys_and_roles'):
+                    repo = Repository.from_config()
+                self.assertIs(repo.binary_diff, expected)
 
     def test_initialize(self):
         # prepare
