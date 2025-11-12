@@ -867,10 +867,13 @@ class Repository(object):
             archive_path = self.targets_dir / latest_archive.target_path_str
             patch_path = archive_path.with_suffix('').with_suffix(SUFFIX_PATCH)
             for target_path in [archive_path, patch_path]:
-                removed = self.roles.remove_target(local_path=target_path)
-                logger.info(
+                try:
+                    removed = self.roles.remove_target(local_path=target_path)
+                    logger.info(
                     f'target {"removed" if removed else "not found"}: {target_path}'
                 )
+                except FileNotFoundError:
+                    logger.warning(f'file not found: {target_path}')
 
     def publish_changes(self, private_key_dirs: List[Union[pathlib.Path, str]]):
         """
